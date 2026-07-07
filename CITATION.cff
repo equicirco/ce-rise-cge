@@ -1,0 +1,34 @@
+cff-version: 1.2.0
+title: CE-RISE Circular Economy CGE
+message: >-
+  Pre-release repository state for the forthcoming v0.1.0 public release of
+  the CE-RISE CGE benchmark-construction workflow, including disaggregation
+  mappings, staged SUT artifacts, validation pipeline, and a closed benchmark
+  SAM for calibration.
+type: software
+authors:
+  - given-names: Riccardo
+    family-names: Boero
+    email: ribo@nilu.no
+    orcid: 'https://orcid.org/0000-0002-7468-9096'
+    affiliation: NILU
+repository-code: 'https://github.com/equicirco/ce-rise-cge'
+abstract: >-
+  CE-RISE Circular Economy CGE provides reproducible Julia code and persisted
+  benchmark data for constructing an empirical circular-economy computable
+  general equilibrium database from FIGARO-based supply and use tables and
+  CE-RISE disaggregation inputs. The repository contains staged SUT artifacts,
+  validation outputs, and a closed benchmark social accounting matrix prepared
+  for JCGE calibration.
+keywords:
+  - CE-RISE
+  - Circular Economy
+  - Computable General Equilibrium
+  - CGE
+  - Julia Language
+  - JCGE
+  - FIGARO
+  - Supply and Use Tables
+  - Social Accounting Matrix
+  - Benchmark Calibration
+license: EUPL-1.2

@@ -1,0 +1,26 @@
+sector_id	sector_label	role	status	paper_observability	benchmark_treatment	main_sources_or_anchors	notes
+AGRI_FOOD	Agriculture and food	broad_residual	draft		explicit_sut_sector	A01;A02;A03;C10-12	Coarse basic-consumption and primary-production sector for the first empirical model.
+EXTRACTIVE	Extractive industries	broad_residual	draft		explicit_sut_sector	B	Current placeholder for mining and other extractive activities until metal ore can be isolated more cleanly.
+BASIC_METALS	Basic metals	core_upstream	draft		explicit_sut_sector	C24	Primary metal-processing sector kept explicit.
+METAL_COMPONENTS	Metal components and fabricated metals	core_upstream	draft		explicit_sut_sector	C25	Downstream metal/component sector kept separate from basic metals.
+NEW_ELMA	New CE-RISE electrical equipment	core_ce_rise	draft	O	explicit_sut_sector	C27 child sectors: HPP;PV;BAT;ELMA_c	New production route for the ELMA family.
+NEW_OFMA	New CE-RISE office machinery and computers	core_ce_rise	draft	O	explicit_sut_sector	C26 child sectors: DES;LAP;PRI;OFMA_c	New production route for the OFMA family.
+NEW_RATV	New CE-RISE communication and consumer electronics	core_ce_rise	draft	O	explicit_sut_sector	C26 child sectors: MOB;MON;RATV_c	New production route for the RATV family.
+REP_ELMA	Repair activities linked to ELMA	core_circular	draft	O	explicit_sut_sector	S95_ELMA	Household and personal repair services observed for the ELMA family.
+REP_OFMA	Repair activities linked to OFMA	core_circular	draft	O	explicit_sut_sector	S95_OFMA	Household and personal repair services observed for the OFMA family.
+REP_RATV	Repair activities linked to RATV	core_circular	draft	O	explicit_sut_sector	S95_RATV	Household and personal repair services observed for the RATV family.
+REF_ELMA	Refurbishment route for ELMA	core_circular	draft	C	constructed_sut_sector	C33_ELMA;G46_ELMA	Explicit target SUT sector constructed from machinery-repair and wholesale channels for the ELMA family.
+REF_OFMA	Refurbishment route for OFMA	core_circular	draft	C	constructed_sut_sector	C33_OFMA;G46_OFMA	Explicit target SUT sector constructed from machinery-repair and wholesale channels for the OFMA family.
+REF_RATV	Refurbishment route for RATV	core_circular	draft	C	constructed_sut_sector	C33_RATV;G46_RATV	Explicit target SUT sector constructed from machinery-repair and wholesale channels for the RATV family.
+REU_ELMA	Reuse route for ELMA	core_circular	draft	P	constructed_sut_sector	A_GLAS_reuse;G47_ELMA;N77_ELMA	Explicit target SUT sector anchored in reuse-related retail and leasing channels for the ELMA family.
+REU_OFMA	Reuse route for OFMA	core_circular	draft	P	constructed_sut_sector	A_GLAS_reuse;G47_OFMA;N77_OFMA	Explicit target SUT sector anchored in reuse-related retail and leasing channels for the OFMA family.
+REU_RATV	Reuse route for RATV	core_circular	draft	P	constructed_sut_sector	A_GLAS_reuse;G47_RATV;N77_RATV	Explicit target SUT sector anchored in reuse-related retail and leasing channels for the RATV family.
+REC_EE	Recycling and recovery activities for CE-RISE chains	core_circular	draft	O	explicit_sut_sector	E37-E39 family splits plus recycling/disposal route weights	Observed recycling/recovery industry representation in the SUT; can later support a derived recovered-material account.
+INC_EE	Incineration and disposal activities for CE-RISE chains	core_circular	draft	O	explicit_sut_sector	E37-E39 family splits plus recycling/disposal route weights	Observed end-of-life disposal industry representation in the SUT.
+CONSTRUCTION	Construction	broad_residual	draft		explicit_sut_sector	F	Kept separate because of its size and distinct input structure.
+UTIL_WASTE	Utilities, water, and residual waste services	broad_residual	draft		explicit_sut_sector	D35;E36;residual E37-E39	Residual utility and waste-related activities outside explicit CE-RISE recycling/disposal industries.
+TRADE	Trade services	broad_residual	draft		explicit_sut_sector	G45;G46;G47	Wholesale and retail aggregated together for the first version.
+TRANSPORT	Transport and storage	broad_residual	draft		explicit_sut_sector	H49;H50;H51;H52;H53	Transport and logistics sector.
+OTHER_MANUFACTURING	Other manufacturing	broad_residual	draft		explicit_sut_sector	Remaining C sectors excluding explicit CE-RISE and upstream metal sectors	Covers non-target manufacturing activities.
+OTHER_SERVICES	Other market services	broad_residual	draft		explicit_sut_sector	I;J;K;L;M;N;R;S excluding explicit trade and repair parents	Includes rental and leasing aggregated with the rest of market services.
+PUBLIC_SOCIAL	Public and social services	broad_residual	draft		explicit_sut_sector	O84;P85;Q86;Q87_88	Coarse public, education, health, and social-services sector.

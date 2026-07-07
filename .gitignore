@@ -1,0 +1,4 @@
+article/
+data/raw/
+data/interim/
+data/disaggregation/*.xlsx

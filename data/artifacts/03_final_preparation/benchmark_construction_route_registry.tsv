@@ -1,0 +1,7 @@
+sector_id	sector_label	role	status	paper_observability	benchmark_treatment	main_sources_or_anchors	notes
+REF_ELMA	Refurbishment route for ELMA	core_circular	draft	C	constructed_sut_sector	C33_ELMA;G46_ELMA	Explicit target SUT sector constructed from machinery-repair and wholesale channels for the ELMA family.
+REF_OFMA	Refurbishment route for OFMA	core_circular	draft	C	constructed_sut_sector	C33_OFMA;G46_OFMA	Explicit target SUT sector constructed from machinery-repair and wholesale channels for the OFMA family.
+REF_RATV	Refurbishment route for RATV	core_circular	draft	C	constructed_sut_sector	C33_RATV;G46_RATV	Explicit target SUT sector constructed from machinery-repair and wholesale channels for the RATV family.
+REU_ELMA	Reuse route for ELMA	core_circular	draft	P	constructed_sut_sector	A_GLAS_reuse;G47_ELMA;N77_ELMA	Explicit target SUT sector anchored in reuse-related retail and leasing channels for the ELMA family.
+REU_OFMA	Reuse route for OFMA	core_circular	draft	P	constructed_sut_sector	A_GLAS_reuse;G47_OFMA;N77_OFMA	Explicit target SUT sector anchored in reuse-related retail and leasing channels for the OFMA family.
+REU_RATV	Reuse route for RATV	core_circular	draft	P	constructed_sut_sector	A_GLAS_reuse;G47_RATV;N77_RATV	Explicit target SUT sector anchored in reuse-related retail and leasing channels for the RATV family.

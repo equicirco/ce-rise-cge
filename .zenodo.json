@@ -1,0 +1,41 @@
+{
+  "title": "CE-RISE Circular Economy CGE",
+  "description": "Empirical circular-economy computable general equilibrium benchmark-construction workflow for CE-RISE value chains, implemented in Julia and structured for JCGE calibration.",
+  "license": "EUPL-1.2",
+  "upload_type": "software",
+  "version": "0.1.0",
+  "creators": [
+    {
+      "name": "Boero, Riccardo",
+      "affiliation": "NILU",
+      "orcid": "0000-0002-7468-9096"
+    }
+  ],
+  "keywords": [
+    "CE-RISE",
+    "Circular Economy",
+    "Computable General Equilibrium",
+    "CGE",
+    "Julia Language",
+    "JCGE",
+    "FIGARO",
+    "Supply and Use Tables",
+    "Social Accounting Matrix",
+    "Benchmark Calibration"
+  ],
+  "notes": "Pre-release repository state for the forthcoming v0.1.0 public release of the CE-RISE CGE benchmark-construction workflow, including disaggregation mappings, staged SUT artifacts, validation pipeline, and a closed benchmark SAM for calibration.",
+  "communities": [
+    { "identifier": "ce-rise" },
+    { "identifier": "impact" }
+  ],
+  "grants": [
+    { "id": "101092281" }
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/equicirco/ce-rise-cge",
+      "relation": "isSupplementTo",
+      "resource_type": "software"
+    }
+  ]
+}

@@ -1,0 +1,3 @@
+table	base_total	candidate_total	comparison_total	n_diff	max_abs_diff	sum_abs_diff	n_keys	status
+supply	1.3202124528599934e8	1.3202124528599986e8	1.3202124528599933e8	0	0.0	0.0	10086	PASS
+use	2.0131588149899286e8	2.0131588149898416e8	2.0131588149899286e8	0	0.0	0.0	108628	PASS

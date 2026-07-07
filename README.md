@@ -1,5 +1,19 @@
-# CE-RISE Computable General Equilibrium (CGE) Model
-CGE developed to support Task 3.5 of the CE-RISE research project.
+# CE-RISE Circular Economy CGE
+Computable general equilibrium model developed to support Task 3.5 of the CE-RISE research project.
+
+## Repository Structure
+
+- `scripts/input/`: data-preparation, validation, and benchmark-SAM construction workflow.
+- `data/disaggregation/parent_and_disaggregated_rows_sup_and_use.csv`: required CE-RISE disaggregation input used by the workflow.
+- `data/mappings/`: region and sector mapping tables.
+- `data/artifacts/`: persisted workflow outputs from the initial source bundle to the closed benchmark SAM.
+- `article/`: separate git repository for the manuscript and model-building notes.
+
+## Public Data Scope
+
+This public repository keeps only the disaggregation file required by the workflow from the project-specific source exchange, together with the derived benchmark artifacts needed to inspect and reproduce the model database.
+
+Large raw FIGARO extracts in `data/raw/`, generated working tables in `data/interim/`, and the unused spreadsheet from the original exchange are excluded from version control and can be regenerated locally from the scripts.
 
 ## License
 
