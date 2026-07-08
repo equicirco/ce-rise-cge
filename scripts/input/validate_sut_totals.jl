@@ -43,6 +43,7 @@ const STAGE4_DIR = joinpath(ARTIFACT_DIR, "04_balanced_sut")
 const STAGE5_DIR = joinpath(ARTIFACT_DIR, "05_core_sam")
 const STAGE6_DIR = joinpath(ARTIFACT_DIR, "06_closed_sam")
 const STAGE7_DIR = joinpath(ARTIFACT_DIR, "07_model_scaffold")
+const STAGE8_DIR = joinpath(ARTIFACT_DIR, "08_eu_single_region_bundle")
 
 const STAGE1_FILES = [
     "figaro_reference_supply.tsv",
@@ -60,6 +61,7 @@ const STAGE6_MATRIX = joinpath(STAGE6_DIR, "closed_sam_matrix.tsv")
 const STAGE6_BALANCES = joinpath(STAGE6_DIR, "closed_sam_account_balances.tsv")
 const STAGE6_MACRO_SUMMARY = joinpath(STAGE6_DIR, "closed_sam_macro_summary.tsv")
 const STAGE7_VALIDATION = joinpath(STAGE7_DIR, "stage7_validation.tsv")
+const STAGE8_VALIDATION = joinpath(STAGE8_DIR, "bundle_validation.tsv")
 
 const TOL = 1.0e-8
 const LATE_TOL = 1.0e-6
@@ -91,6 +93,17 @@ function write_tsv(path::AbstractString, header::Vector{String}, rows::Vector{Ve
             println(io, join(row, '\t'))
         end
     end
+end
+
+function read_simple_csv(path::AbstractString)
+    rows = Vector{Vector{String}}()
+    open(path, "r") do io
+        for line in eachline(io)
+            isempty(line) && continue
+            push!(rows, split(line, ','))
+        end
+    end
+    return rows
 end
 
 function read_key_value_file(path::AbstractString)
@@ -469,6 +482,116 @@ function append_stage7_checks!(rows)
     end
 end
 
+function append_stage8_checks!(rows)
+    required_files = [
+        joinpath(STAGE8_DIR, "sam.csv"),
+        joinpath(STAGE8_DIR, "sets.csv"),
+        joinpath(STAGE8_DIR, "labels.csv"),
+        joinpath(STAGE8_DIR, "subsets.csv"),
+        joinpath(STAGE8_DIR, "mappings.csv"),
+        STAGE8_VALIDATION,
+    ]
+    missing = [path for path in required_files if !isfile(path)]
+    if !isempty(missing)
+        push!(rows, artifact_row("08_eu_single_region_bundle", "required_files", "FAIL", STAGE8_DIR, join(missing, ";"), "all canonical bundle files present", "EU single-region canonical bundle is incomplete."))
+        return
+    end
+
+    values = read_key_value_file(STAGE8_VALIDATION)
+    checks = [
+        ("single_region_scope", get(values, "single_region_scope", "missing") == "aggregate_europe_only", get(values, "single_region_scope", "missing"), "aggregate_europe_only", "The bundle should aggregate the European benchmark regions only."),
+        ("synthetic_external_rule", get(values, "synthetic_external_rule", "missing") == "row_col_gap_after_eu_submatrix", get(values, "synthetic_external_rule", "missing"), "row_col_gap_after_eu_submatrix", "Omitted non-European interactions should be represented through the synthetic external account."),
+        ("bundle_activity_count", parse_int(values, "bundle_activity_count") > 0, values["bundle_activity_count"], "> 0", "Bundle must contain explicit activity accounts."),
+        ("bundle_commodity_count", parse_int(values, "bundle_commodity_count") > 0, values["bundle_commodity_count"], "> 0", "Bundle must contain explicit commodity accounts."),
+        ("bundle_factor_count", parse_int(values, "bundle_factor_count") == 2, values["bundle_factor_count"], "2", "Bundle should retain labor and capital as factors."),
+        ("bundle_institution_count", parse_int(values, "bundle_institution_count") == 3, values["bundle_institution_count"], "3", "Bundle should retain households, government, and investment institutions."),
+        ("bundle_external_count", parse_int(values, "bundle_external_count") == 1, values["bundle_external_count"], "1", "Bundle should collapse omitted non-European interactions into one external account."),
+        ("sam_square", get(values, "sam_square", "missing") == "true", get(values, "sam_square", "missing"), "true", "Canonical SAM must be square."),
+        ("max_abs_balance", abs(parse_float(values, "max_abs_balance")) <= LATE_TOL, values["max_abs_balance"], "<= $(LATE_TOL)", "Canonical EU bundle SAM should balance exactly up to numerical tolerance."),
+    ]
+
+    for (check, ok, observed, expected, notes) in checks
+        push!(rows, artifact_row("08_eu_single_region_bundle", check, artifact_status(ok), STAGE8_VALIDATION, observed, expected, notes))
+    end
+
+    sets_rows = read_simple_csv(joinpath(STAGE8_DIR, "sets.csv"))
+    mappings_rows = read_simple_csv(joinpath(STAGE8_DIR, "mappings.csv"))
+    subsets_rows = read_simple_csv(joinpath(STAGE8_DIR, "subsets.csv"))
+
+    set_items = Dict{String,Set{String}}()
+    for row in sets_rows[2:end]
+        set_name = row[1]
+        item = row[2]
+        if !haskey(set_items, set_name)
+            set_items[set_name] = Set{String}()
+        end
+        push!(set_items[set_name], item)
+    end
+
+    mapping_specs = Dict(
+        "activity_to_commodity" => ("activities", "commodities"),
+        "activity_to_route" => ("activities", "routes"),
+        "commodity_to_route" => ("commodities", "routes"),
+        "activity_to_family" => ("activities", "families"),
+        "commodity_to_family" => ("commodities", "families"),
+        "activity_to_service_target" => ("activities", "service_targets"),
+        "commodity_to_service_target" => ("commodities", "service_targets"),
+        "activity_to_eol_target" => ("activities", "eol_targets"),
+        "commodity_to_eol_target" => ("commodities", "eol_targets"),
+        "family_to_service_target" => ("families", "service_targets"),
+        "family_to_eol_target" => ("families", "eol_targets"),
+        "activity_to_material_target" => ("activities", "material_targets"),
+        "commodity_to_material_target" => ("commodities", "material_targets"),
+    )
+
+    bad_mapping_refs = 0
+    unknown_mapping_types = 0
+    for row in mappings_rows[2:end]
+        map_name = row[1]
+        from_item = row[2]
+        to_item = row[3]
+        if !haskey(mapping_specs, map_name)
+            unknown_mapping_types += 1
+            continue
+        end
+        from_set, to_set = mapping_specs[map_name]
+        from_ok = haskey(set_items, from_set) && (from_item in set_items[from_set])
+        to_ok = haskey(set_items, to_set) && (to_item in set_items[to_set])
+        bad_mapping_refs += (!from_ok || !to_ok) ? 1 : 0
+    end
+
+    bad_subset_refs = 0
+    unknown_subset_parents = 0
+    for row in subsets_rows[2:end]
+        parent_set = row[2]
+        item = row[3]
+        if !haskey(set_items, parent_set)
+            unknown_subset_parents += 1
+            continue
+        end
+        bad_subset_refs += (item in set_items[parent_set]) ? 0 : 1
+    end
+
+    push!(rows, artifact_row(
+        "08_eu_single_region_bundle",
+        "mapping_reference_integrity",
+        artifact_status(bad_mapping_refs == 0 && unknown_mapping_types == 0),
+        joinpath(STAGE8_DIR, "mappings.csv"),
+        "bad_refs=$(bad_mapping_refs); unknown_map_types=$(unknown_mapping_types)",
+        "bad_refs=0; unknown_map_types=0",
+        "All mapping rows should reference items that exist in the declared canonical sets.",
+    ))
+    push!(rows, artifact_row(
+        "08_eu_single_region_bundle",
+        "subset_reference_integrity",
+        artifact_status(bad_subset_refs == 0 && unknown_subset_parents == 0),
+        joinpath(STAGE8_DIR, "subsets.csv"),
+        "bad_refs=$(bad_subset_refs); unknown_parent_sets=$(unknown_subset_parents)",
+        "bad_refs=0; unknown_parent_sets=0",
+        "All subset rows should point to an existing parent set and an item declared in that set.",
+    ))
+end
+
 function artifact_report_rows()
     rows = Vector{Vector{String}}()
 
@@ -483,6 +606,7 @@ function artifact_report_rows()
     append_stage5_checks!(rows)
     append_stage6_checks!(rows)
     append_stage7_checks!(rows)
+    append_stage8_checks!(rows)
 
     return rows
 end

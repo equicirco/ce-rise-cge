@@ -31,6 +31,7 @@ function main()
         "build_stage5_core_sam.jl",
         "build_stage6_closed_sam.jl",
         "build_stage7_model_scaffold.jl",
+        "build_stage8_eu_single_region_bundle.jl",
         "validate_sut_totals.jl",
     ]
         run_script(script_name)

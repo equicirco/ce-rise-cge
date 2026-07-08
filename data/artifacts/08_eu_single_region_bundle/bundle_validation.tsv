@@ -1,0 +1,16 @@
+key	value
+single_region_scope	aggregate_europe_only
+synthetic_external_rule	row_col_gap_after_eu_submatrix
+source_eu_regions	DE;FR;IT;PL;SK
+excluded_regions	ROW
+bundle_region_label	EU
+bundle_activity_count	25
+bundle_commodity_count	25
+bundle_factor_count	2
+bundle_institution_count	3
+bundle_external_count	1
+bundle_account_count	56
+synthetic_external_entries	53
+sam_square	true
+max_abs_balance	9.313225746154785e-10
+balance_tolerance	1.0e-8

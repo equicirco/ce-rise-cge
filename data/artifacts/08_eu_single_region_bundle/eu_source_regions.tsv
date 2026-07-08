@@ -1,0 +1,4 @@
+scope_key	scope_value
+source_eu_regions	DE;FR;IT;PL;SK
+excluded_region	ROW
+bundle_region	EU

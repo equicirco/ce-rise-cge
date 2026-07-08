@@ -1,0 +1,74 @@
+set,item,label,description
+activities,ACT_AGRI_FOOD,Activity: Agriculture and food,EU activity account
+activities,ACT_EXTRACTIVE,Activity: Extractive industries,EU activity account
+activities,ACT_BASIC_METALS,Activity: Basic metals,EU activity account
+activities,ACT_METAL_COMPONENTS,Activity: Metal components and fabricated metals,EU activity account
+activities,ACT_NEW_ELMA,Activity: New CE-RISE electrical equipment,EU activity account
+activities,ACT_NEW_OFMA,Activity: New CE-RISE office machinery and computers,EU activity account
+activities,ACT_NEW_RATV,Activity: New CE-RISE communication and consumer electronics,EU activity account
+activities,ACT_REP_ELMA,Activity: Repair activities linked to ELMA,EU activity account
+activities,ACT_REP_OFMA,Activity: Repair activities linked to OFMA,EU activity account
+activities,ACT_REP_RATV,Activity: Repair activities linked to RATV,EU activity account
+activities,ACT_REF_ELMA,Activity: Refurbishment route for ELMA,EU activity account
+activities,ACT_REF_OFMA,Activity: Refurbishment route for OFMA,EU activity account
+activities,ACT_REF_RATV,Activity: Refurbishment route for RATV,EU activity account
+activities,ACT_REU_ELMA,Activity: Reuse route for ELMA,EU activity account
+activities,ACT_REU_OFMA,Activity: Reuse route for OFMA,EU activity account
+activities,ACT_REU_RATV,Activity: Reuse route for RATV,EU activity account
+activities,ACT_REC_EE,Activity: Recycling and recovery activities for CE-RISE chains,EU activity account
+activities,ACT_INC_EE,Activity: Incineration and disposal activities for CE-RISE chains,EU activity account
+activities,ACT_CONSTRUCTION,Activity: Construction,EU activity account
+activities,ACT_UTIL_WASTE,"Activity: Utilities, water, and residual waste services",EU activity account
+activities,ACT_TRADE,Activity: Trade services,EU activity account
+activities,ACT_TRANSPORT,Activity: Transport and storage,EU activity account
+activities,ACT_OTHER_MANUFACTURING,Activity: Other manufacturing,EU activity account
+activities,ACT_OTHER_SERVICES,Activity: Other market services,EU activity account
+activities,ACT_PUBLIC_SOCIAL,Activity: Public and social services,EU activity account
+commodities,COM_AGRI_FOOD,Commodity: Agriculture and food,EU commodity account
+commodities,COM_EXTRACTIVE,Commodity: Extractive industries,EU commodity account
+commodities,COM_BASIC_METALS,Commodity: Basic metals,EU commodity account
+commodities,COM_METAL_COMPONENTS,Commodity: Metal components and fabricated metals,EU commodity account
+commodities,COM_NEW_ELMA,Commodity: New CE-RISE electrical equipment,EU commodity account
+commodities,COM_NEW_OFMA,Commodity: New CE-RISE office machinery and computers,EU commodity account
+commodities,COM_NEW_RATV,Commodity: New CE-RISE communication and consumer electronics,EU commodity account
+commodities,COM_REP_ELMA,Commodity: Repair activities linked to ELMA,EU commodity account
+commodities,COM_REP_OFMA,Commodity: Repair activities linked to OFMA,EU commodity account
+commodities,COM_REP_RATV,Commodity: Repair activities linked to RATV,EU commodity account
+commodities,COM_REF_ELMA,Commodity: Refurbishment route for ELMA,EU commodity account
+commodities,COM_REF_OFMA,Commodity: Refurbishment route for OFMA,EU commodity account
+commodities,COM_REF_RATV,Commodity: Refurbishment route for RATV,EU commodity account
+commodities,COM_REU_ELMA,Commodity: Reuse route for ELMA,EU commodity account
+commodities,COM_REU_OFMA,Commodity: Reuse route for OFMA,EU commodity account
+commodities,COM_REU_RATV,Commodity: Reuse route for RATV,EU commodity account
+commodities,COM_REC_EE,Commodity: Recycling and recovery activities for CE-RISE chains,EU commodity account
+commodities,COM_INC_EE,Commodity: Incineration and disposal activities for CE-RISE chains,EU commodity account
+commodities,COM_CONSTRUCTION,Commodity: Construction,EU commodity account
+commodities,COM_UTIL_WASTE,"Commodity: Utilities, water, and residual waste services",EU commodity account
+commodities,COM_TRADE,Commodity: Trade services,EU commodity account
+commodities,COM_TRANSPORT,Commodity: Transport and storage,EU commodity account
+commodities,COM_OTHER_MANUFACTURING,Commodity: Other manufacturing,EU commodity account
+commodities,COM_OTHER_SERVICES,Commodity: Other market services,EU commodity account
+commodities,COM_PUBLIC_SOCIAL,Commodity: Public and social services,EU commodity account
+factors,CAP,Capital,Primary factor
+factors,LAB,Labor,Primary factor
+institutions,HH,Households (+ NPISH),Merged household institution
+institutions,GOV,Government,Government institution
+institutions,INV,Investment,Savings-investment account
+externals,EXT,External balance,Synthetic external account after omission of non-European benchmark regions
+families,ELMA,Electrical machinery and apparatus,CE-RISE product family
+families,OFMA,Office machinery and computers,CE-RISE product family
+families,RATV,"Radio, television and communication equipment",CE-RISE product family
+routes,NEW,New production,Circular-economy route
+routes,REF,Refurbishment,Circular-economy route
+routes,REP,Repair,Circular-economy route
+routes,REU,Reuse,Circular-economy route
+routes,REC,Recycling,Circular-economy route
+routes,INC,Incineration or disposal,Circular-economy route
+service_targets,TST_ELMA,Service composite for Electrical machinery and apparatus,Target service composite used later in the empirical model
+service_targets,TST_OFMA,Service composite for Office machinery and computers,Target service composite used later in the empirical model
+service_targets,TST_RATV,"Service composite for Radio, television and communication equipment",Target service composite used later in the empirical model
+eol_targets,EOL_ELMA,End-of-life flow for Electrical machinery and apparatus,Target end-of-life account used later in the empirical model
+eol_targets,EOL_OFMA,End-of-life flow for Office machinery and computers,Target end-of-life account used later in the empirical model
+eol_targets,EOL_RATV,"End-of-life flow for Radio, television and communication equipment",Target end-of-life account used later in the empirical model
+material_targets,VMTL_EE,Primary metal pool for CE-RISE routes,Target primary-material account used later in the empirical model
+material_targets,RMTL_EE,Recycled metal pool for CE-RISE routes,Target secondary-material account used later in the empirical model
