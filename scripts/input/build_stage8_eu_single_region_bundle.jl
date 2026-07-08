@@ -38,7 +38,7 @@ const OUT_ROUTE_REGISTRY = joinpath(OUTDIR, "single_region_route_registry.tsv")
 const OUT_PHYSICAL_BRIDGE = joinpath(OUTDIR, "physical_quantity_bridge_template.tsv")
 const OUT_PHYSICAL_COEFFS = joinpath(OUTDIR, "physical_coefficient_template.tsv")
 
-const EU_REGIONS = ["DE", "FR", "IT", "PL", "SK"]
+const EU_REGIONS = ["DE", "FR", "IT", "PL", "SK", "REU"]
 const BUNDLE_REGION = "EU"
 const EXT_ACCOUNT = "EXT"
 const TOL = 1.0e-8

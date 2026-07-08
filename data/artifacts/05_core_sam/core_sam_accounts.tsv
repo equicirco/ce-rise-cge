@@ -99,6 +99,31 @@ ACT:PL:REU_RATV	activity	PL	REU_RATV	PL activity: Reuse route for RATV
 ACT:PL:TRADE	activity	PL	TRADE	PL activity: Trade services
 ACT:PL:TRANSPORT	activity	PL	TRANSPORT	PL activity: Transport and storage
 ACT:PL:UTIL_WASTE	activity	PL	UTIL_WASTE	PL activity: Utilities, water, and residual waste services
+ACT:REU:AGRI_FOOD	activity	REU	AGRI_FOOD	REU activity: Agriculture and food
+ACT:REU:BASIC_METALS	activity	REU	BASIC_METALS	REU activity: Basic metals
+ACT:REU:CONSTRUCTION	activity	REU	CONSTRUCTION	REU activity: Construction
+ACT:REU:EXTRACTIVE	activity	REU	EXTRACTIVE	REU activity: Extractive industries
+ACT:REU:INC_EE	activity	REU	INC_EE	REU activity: Incineration and disposal activities for CE-RISE chains
+ACT:REU:METAL_COMPONENTS	activity	REU	METAL_COMPONENTS	REU activity: Metal components and fabricated metals
+ACT:REU:NEW_ELMA	activity	REU	NEW_ELMA	REU activity: New CE-RISE electrical equipment
+ACT:REU:NEW_OFMA	activity	REU	NEW_OFMA	REU activity: New CE-RISE office machinery and computers
+ACT:REU:NEW_RATV	activity	REU	NEW_RATV	REU activity: New CE-RISE communication and consumer electronics
+ACT:REU:OTHER_MANUFACTURING	activity	REU	OTHER_MANUFACTURING	REU activity: Other manufacturing
+ACT:REU:OTHER_SERVICES	activity	REU	OTHER_SERVICES	REU activity: Other market services
+ACT:REU:PUBLIC_SOCIAL	activity	REU	PUBLIC_SOCIAL	REU activity: Public and social services
+ACT:REU:REC_EE	activity	REU	REC_EE	REU activity: Recycling and recovery activities for CE-RISE chains
+ACT:REU:REF_ELMA	activity	REU	REF_ELMA	REU activity: Refurbishment route for ELMA
+ACT:REU:REF_OFMA	activity	REU	REF_OFMA	REU activity: Refurbishment route for OFMA
+ACT:REU:REF_RATV	activity	REU	REF_RATV	REU activity: Refurbishment route for RATV
+ACT:REU:REP_ELMA	activity	REU	REP_ELMA	REU activity: Repair activities linked to ELMA
+ACT:REU:REP_OFMA	activity	REU	REP_OFMA	REU activity: Repair activities linked to OFMA
+ACT:REU:REP_RATV	activity	REU	REP_RATV	REU activity: Repair activities linked to RATV
+ACT:REU:REU_ELMA	activity	REU	REU_ELMA	REU activity: Reuse route for ELMA
+ACT:REU:REU_OFMA	activity	REU	REU_OFMA	REU activity: Reuse route for OFMA
+ACT:REU:REU_RATV	activity	REU	REU_RATV	REU activity: Reuse route for RATV
+ACT:REU:TRADE	activity	REU	TRADE	REU activity: Trade services
+ACT:REU:TRANSPORT	activity	REU	TRANSPORT	REU activity: Transport and storage
+ACT:REU:UTIL_WASTE	activity	REU	UTIL_WASTE	REU activity: Utilities, water, and residual waste services
 ACT:ROW:AGRI_FOOD	activity	ROW	AGRI_FOOD	ROW activity: Agriculture and food
 ACT:ROW:BASIC_METALS	activity	ROW	BASIC_METALS	ROW activity: Basic metals
 ACT:ROW:CONSTRUCTION	activity	ROW	CONSTRUCTION	ROW activity: Construction
@@ -249,6 +274,31 @@ COM:PL:REU_RATV	commodity	PL	REU_RATV	PL commodity: Reuse route for RATV
 COM:PL:TRADE	commodity	PL	TRADE	PL commodity: Trade services
 COM:PL:TRANSPORT	commodity	PL	TRANSPORT	PL commodity: Transport and storage
 COM:PL:UTIL_WASTE	commodity	PL	UTIL_WASTE	PL commodity: Utilities, water, and residual waste services
+COM:REU:AGRI_FOOD	commodity	REU	AGRI_FOOD	REU commodity: Agriculture and food
+COM:REU:BASIC_METALS	commodity	REU	BASIC_METALS	REU commodity: Basic metals
+COM:REU:CONSTRUCTION	commodity	REU	CONSTRUCTION	REU commodity: Construction
+COM:REU:EXTRACTIVE	commodity	REU	EXTRACTIVE	REU commodity: Extractive industries
+COM:REU:INC_EE	commodity	REU	INC_EE	REU commodity: Incineration and disposal activities for CE-RISE chains
+COM:REU:METAL_COMPONENTS	commodity	REU	METAL_COMPONENTS	REU commodity: Metal components and fabricated metals
+COM:REU:NEW_ELMA	commodity	REU	NEW_ELMA	REU commodity: New CE-RISE electrical equipment
+COM:REU:NEW_OFMA	commodity	REU	NEW_OFMA	REU commodity: New CE-RISE office machinery and computers
+COM:REU:NEW_RATV	commodity	REU	NEW_RATV	REU commodity: New CE-RISE communication and consumer electronics
+COM:REU:OTHER_MANUFACTURING	commodity	REU	OTHER_MANUFACTURING	REU commodity: Other manufacturing
+COM:REU:OTHER_SERVICES	commodity	REU	OTHER_SERVICES	REU commodity: Other market services
+COM:REU:PUBLIC_SOCIAL	commodity	REU	PUBLIC_SOCIAL	REU commodity: Public and social services
+COM:REU:REC_EE	commodity	REU	REC_EE	REU commodity: Recycling and recovery activities for CE-RISE chains
+COM:REU:REF_ELMA	commodity	REU	REF_ELMA	REU commodity: Refurbishment route for ELMA
+COM:REU:REF_OFMA	commodity	REU	REF_OFMA	REU commodity: Refurbishment route for OFMA
+COM:REU:REF_RATV	commodity	REU	REF_RATV	REU commodity: Refurbishment route for RATV
+COM:REU:REP_ELMA	commodity	REU	REP_ELMA	REU commodity: Repair activities linked to ELMA
+COM:REU:REP_OFMA	commodity	REU	REP_OFMA	REU commodity: Repair activities linked to OFMA
+COM:REU:REP_RATV	commodity	REU	REP_RATV	REU commodity: Repair activities linked to RATV
+COM:REU:REU_ELMA	commodity	REU	REU_ELMA	REU commodity: Reuse route for ELMA
+COM:REU:REU_OFMA	commodity	REU	REU_OFMA	REU commodity: Reuse route for OFMA
+COM:REU:REU_RATV	commodity	REU	REU_RATV	REU commodity: Reuse route for RATV
+COM:REU:TRADE	commodity	REU	TRADE	REU commodity: Trade services
+COM:REU:TRANSPORT	commodity	REU	TRANSPORT	REU commodity: Transport and storage
+COM:REU:UTIL_WASTE	commodity	REU	UTIL_WASTE	REU commodity: Utilities, water, and residual waste services
 COM:ROW:AGRI_FOOD	commodity	ROW	AGRI_FOOD	ROW commodity: Agriculture and food
 COM:ROW:BASIC_METALS	commodity	ROW	BASIC_METALS	ROW commodity: Basic metals
 COM:ROW:CONSTRUCTION	commodity	ROW	CONSTRUCTION	ROW commodity: Construction
@@ -319,6 +369,11 @@ FD:PL:P3_S14	final_demand	PL	P3_S14	PL final demand: Final consumption expenditu
 FD:PL:P3_S15	final_demand	PL	P3_S15	PL final demand: Final consumption expenditure by non-profit organisations serving households (NPISH)
 FD:PL:P51G	final_demand	PL	P51G	PL final demand: Gross fixed capital formation
 FD:PL:P5M	final_demand	PL	P5M	PL final demand: Changes in inventories and acquisition less disposals of valuables
+FD:REU:P3_S13	final_demand	REU	P3_S13	REU final demand: Final consumption expenditure by government
+FD:REU:P3_S14	final_demand	REU	P3_S14	REU final demand: Final consumption expenditure by households
+FD:REU:P3_S15	final_demand	REU	P3_S15	REU final demand: Final consumption expenditure by non-profit organisations serving households (NPISH)
+FD:REU:P51G	final_demand	REU	P51G	REU final demand: Gross fixed capital formation
+FD:REU:P5M	final_demand	REU	P5M	REU final demand: Changes in inventories and acquisition less disposals of valuables
 FD:ROW:P3_S13	final_demand	ROW	P3_S13	ROW final demand: Final consumption expenditure by government
 FD:ROW:P3_S14	final_demand	ROW	P3_S14	ROW final demand: Final consumption expenditure by households
 FD:ROW:P3_S15	final_demand	ROW	P3_S15	ROW final demand: Final consumption expenditure by non-profit organisations serving households (NPISH)
@@ -353,6 +408,12 @@ SAT:PL:D21X31	satellite	PL	D21X31	PL satellite: Taxes less subsidies on products
 SAT:PL:D29X39	satellite	PL	D29X39	PL satellite: Other taxes less other subsidies on production
 SAT:PL:OP_NRES	satellite	PL	OP_NRES	PL satellite: Purchases on the domestic territory by non-residents
 SAT:PL:OP_RES	satellite	PL	OP_RES	PL satellite: Direct purchases abroad by residents
+SAT:REU:B2A3G	satellite	REU	B2A3G	REU satellite: Operating surplus and mixed income, gross
+SAT:REU:D1	satellite	REU	D1	REU satellite: Compensation of employees
+SAT:REU:D21X31	satellite	REU	D21X31	REU satellite: Taxes less subsidies on products
+SAT:REU:D29X39	satellite	REU	D29X39	REU satellite: Other taxes less other subsidies on production
+SAT:REU:OP_NRES	satellite	REU	OP_NRES	REU satellite: Purchases on the domestic territory by non-residents
+SAT:REU:OP_RES	satellite	REU	OP_RES	REU satellite: Direct purchases abroad by residents
 SAT:ROW:B2A3G	satellite	ROW	B2A3G	ROW satellite: Operating surplus and mixed income, gross
 SAT:ROW:D1	satellite	ROW	D1	ROW satellite: Compensation of employees
 SAT:ROW:D21X31	satellite	ROW	D21X31	ROW satellite: Taxes less subsidies on products

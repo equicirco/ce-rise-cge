@@ -30,6 +30,11 @@ function load_region_map(path)
     return mapping
 end
 
+function mapped_region(region_map::Dict{String,String}, country::AbstractString)
+    haskey(region_map, country) || error("Missing FIGARO region mapping for country $(country)")
+    return region_map[String(country)]
+end
+
 strip_country_prefix(code) = occursin(':', code) ? split(code, ':', limit = 2)[2] : code
 
 function aggregate_matrix(infile, outfile, region_map)
@@ -40,8 +45,8 @@ function aggregate_matrix(infile, outfile, region_map)
             first && (first = false; continue)
             isempty(line) && continue
             row_country, row_code, col_country, col_code, value_text = split(line, '\t')
-            row_region = get(region_map, row_country, "ROW")
-            col_region = get(region_map, col_country, "ROW")
+            row_region = mapped_region(region_map, row_country)
+            col_region = mapped_region(region_map, col_country)
             key = (
                 row_region,
                 strip_country_prefix(row_code),

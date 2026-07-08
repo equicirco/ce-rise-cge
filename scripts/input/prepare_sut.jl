@@ -9,7 +9,8 @@ the data directories.
 Current benchmark:
 - FIGARO 2016
 - regions kept individually: DE, FR, PL, IT, SK
-- all remaining countries aggregated into ROW
+- remaining European countries aggregated into REU
+- non-European countries aggregated into ROW
 
 Current CE-RISE disaggregation:
 - A_ELMA -> HPP, PV, BAT, ELMA_c

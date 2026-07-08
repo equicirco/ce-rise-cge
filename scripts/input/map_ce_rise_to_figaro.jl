@@ -6,7 +6,7 @@ Map the CE-RISE parent sectors onto the regional FIGARO 2016 base SUT.
 This step does three things:
 1. loads the CE-RISE parent -> FIGARO parent mapping,
 2. aggregates the disaggregation overlay to the working regions
-   (DE, FR, PL, IT, SK, ROW),
+   (DE, FR, PL, IT, SK, REU, ROW),
 3. extracts the base FIGARO supply/use slices needed for the later
    sector split and balancing step.
 
@@ -62,9 +62,18 @@ function load_simple_map(path::AbstractString)
     return header, data
 end
 
-function kept_region(code::AbstractString)
-    code in ("DE", "FR", "PL", "IT", "SK") && return code
-    return "ROW"
+function load_region_map(path::AbstractString)
+    _, rows = load_simple_map(path)
+    mapping = Dict{String, String}()
+    for row in rows
+        mapping[row[1]] = row[2]
+    end
+    return mapping
+end
+
+function mapped_region(region_map::Dict{String,String}, code::AbstractString)
+    haskey(region_map, code) || error("Missing FIGARO region mapping for country $(code)")
+    return region_map[code]
 end
 
 function load_parent_map(path::AbstractString)
@@ -93,14 +102,14 @@ function write_parent_map_copy(parent_map)
     )
 end
 
-function aggregate_overlay_by_regions()
+function aggregate_overlay_by_regions(region_map)
     rows = read_tsv(OVERLAY_FILE)
     data = rows[2:end]
     totals = Dict{NTuple{6, String}, Float64}()
     for row in data
-        from_region = kept_region(row[1])
+        from_region = mapped_region(region_map, row[1])
         from_node = row[2]
-        to_region = kept_region(row[3])
+        to_region = mapped_region(region_map, row[3])
         to_node = row[4]
         unit = row[5]
         value = parse(Float64, row[6])
@@ -185,9 +194,10 @@ function extract_target_use(parent_map)
 end
 
 function main()
+    region_map = load_region_map(REGION_MAP_FILE)
     parent_map = load_parent_map(PARENT_MAP_FILE)
     write_parent_map_copy(parent_map)
-    aggregate_overlay_by_regions()
+    aggregate_overlay_by_regions(region_map)
     write_target_group_summary(parent_map)
     extract_target_supply(parent_map)
     extract_target_use(parent_map)
