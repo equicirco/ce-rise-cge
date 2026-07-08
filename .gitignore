@@ -1,3 +1,4 @@
+.gitignore
 article/
 data/raw/
 data/interim/
