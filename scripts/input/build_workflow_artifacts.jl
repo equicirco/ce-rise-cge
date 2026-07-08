@@ -30,6 +30,7 @@ function main()
         "build_stage4_balanced_sut.jl",
         "build_stage5_core_sam.jl",
         "build_stage6_closed_sam.jl",
+        "build_stage7_model_scaffold.jl",
         "validate_sut_totals.jl",
     ]
         run_script(script_name)

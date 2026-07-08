@@ -1,0 +1,15 @@
+key	value
+single_region_scope	aggregate_europe_only
+future_external_extension	row_separate_later
+missing_required_sut_sectors	none
+n_families	3
+n_route_rows	18
+n_service_routes	12
+n_eol_routes	6
+n_quantity_rows	22
+n_coefficient_rows	23
+service_alignment	TST uses NEW,REF,REP,REU by family
+eol_alignment	EOL allocates across REF,REP,REU,REC,INC by family
+physical_quantity_rule	Q_t = Q0 * q_t; fallback uses value divided by benchmark unit value and relative price
+primary_material_pool	VMTL_EE anchored in BASIC_METALS and METAL_COMPONENTS
+secondary_material_pool	RMTL_EE supplied by REC_EE

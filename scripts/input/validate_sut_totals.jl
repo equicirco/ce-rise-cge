@@ -42,6 +42,7 @@ const STAGE3_DIR = joinpath(ARTIFACT_DIR, "03_final_preparation")
 const STAGE4_DIR = joinpath(ARTIFACT_DIR, "04_balanced_sut")
 const STAGE5_DIR = joinpath(ARTIFACT_DIR, "05_core_sam")
 const STAGE6_DIR = joinpath(ARTIFACT_DIR, "06_closed_sam")
+const STAGE7_DIR = joinpath(ARTIFACT_DIR, "07_model_scaffold")
 
 const STAGE1_FILES = [
     "figaro_reference_supply.tsv",
@@ -58,6 +59,7 @@ const STAGE6_ACCOUNTS = joinpath(STAGE6_DIR, "closed_sam_accounts.tsv")
 const STAGE6_MATRIX = joinpath(STAGE6_DIR, "closed_sam_matrix.tsv")
 const STAGE6_BALANCES = joinpath(STAGE6_DIR, "closed_sam_account_balances.tsv")
 const STAGE6_MACRO_SUMMARY = joinpath(STAGE6_DIR, "closed_sam_macro_summary.tsv")
+const STAGE7_VALIDATION = joinpath(STAGE7_DIR, "stage7_validation.tsv")
 
 const TOL = 1.0e-8
 const LATE_TOL = 1.0e-6
@@ -441,6 +443,32 @@ function append_stage6_checks!(rows)
     push!(rows, artifact_row("06_closed_sam", "calibration_ready", artifact_status(calibration_ok), STAGE6_DIR, observed, expected, notes))
 end
 
+function append_stage7_checks!(rows)
+    if !isfile(STAGE7_VALIDATION)
+        push!(rows, artifact_row("07_model_scaffold", "validation_file", "FAIL", STAGE7_VALIDATION, "missing", "file exists", "Stage-7 validation file is missing."))
+        return
+    end
+
+    values = read_key_value_file(STAGE7_VALIDATION)
+    checks = [
+        ("single_region_scope", get(values, "single_region_scope", "missing") == "aggregate_europe_only", get(values, "single_region_scope", "missing"), "aggregate_europe_only", "The first empirical calibration bundle should aggregate the European system into one region rather than collapse ROW into the same benchmark."),
+        ("future_external_extension", get(values, "future_external_extension", "missing") == "row_separate_later", get(values, "future_external_extension", "missing"), "row_separate_later", "ROW should remain outside the first single-region benchmark and return in the later external or multi-region extension."),
+        ("required_sut_sectors_present", get(values, "missing_required_sut_sectors", "missing") == "none", get(values, "missing_required_sut_sectors", "missing"), "none", "All sectors required by the stylized-consistent single-region scaffold should be present in the explicit SUT registry."),
+        ("family_registry_rows", parse_int(values, "n_families") == 3, values["n_families"], "3", "The empirical single-region scaffold should cover the three CE-RISE product families."),
+        ("route_registry_rows", parse_int(values, "n_route_rows") == 18, values["n_route_rows"], "18", "The route registry should contain six routes per family: NEW, REF, REP, REU, REC, and INC."),
+        ("service_route_rows", parse_int(values, "n_service_routes") == 12, values["n_service_routes"], "12", "Each family should have four service-supplying routes: NEW, REF, REP, and REU."),
+        ("eol_route_rows", parse_int(values, "n_eol_routes") == 6, values["n_eol_routes"], "6", "Each family should map end-of-life flows to REC and INC in addition to life-extension routes."),
+        ("quantity_bridge_rows", parse_int(values, "n_quantity_rows") == 22, values["n_quantity_rows"], "22", "The physical quantity bridge should cover family service, route, and end-of-life anchors plus common material and disposal pools."),
+        ("coefficient_rows", parse_int(values, "n_coefficient_rows") == 23, values["n_coefficient_rows"], "23", "The physical coefficient template should cover family-specific route coefficients plus shared recycling/material parameters."),
+        ("service_alignment", get(values, "service_alignment", "missing") == "TST uses NEW,REF,REP,REU by family", get(values, "service_alignment", "missing"), "TST uses NEW,REF,REP,REU by family", "The single-region service composite should mirror the stylized route nest."),
+        ("physical_quantity_rule", get(values, "physical_quantity_rule", "missing") == "Q_t = Q0 * q_t; fallback uses value divided by benchmark unit value and relative price", get(values, "physical_quantity_rule", "missing"), "Q_t = Q0 * q_t; fallback uses value divided by benchmark unit value and relative price", "Physical reporting should follow model quantity indices and only fall back to value/price conversion when needed."),
+    ]
+
+    for (check, ok, observed, expected, notes) in checks
+        push!(rows, artifact_row("07_model_scaffold", check, artifact_status(ok), STAGE7_VALIDATION, observed, expected, notes))
+    end
+end
+
 function artifact_report_rows()
     rows = Vector{Vector{String}}()
 
@@ -454,6 +482,7 @@ function artifact_report_rows()
     append_stage4_checks!(rows)
     append_stage5_checks!(rows)
     append_stage6_checks!(rows)
+    append_stage7_checks!(rows)
 
     return rows
 end
