@@ -12,7 +12,7 @@ Closure rules used here:
 - governments receive production and product taxes and purchase government
   final demand;
 - investment demand is financed by household saving, government saving, and a
-  residual external-balance account;
+  region-specific external-balance account representing the rest of the world;
 - any small residual activity-account gap left after the SUT balancing step is
   assigned to regional capital income as the residual claimant.
 """
@@ -39,6 +39,7 @@ const SPECIAL_CODES = Set(["B2A3G", "D1", "D21X31", "D29X39", "OP_NRES", "OP_RES
 const HH_FINAL_CODES = Set(["P3_S14", "P3_S15"])
 const GOV_FINAL_CODES = Set(["P3_S13"])
 const INV_FINAL_CODES = Set(["P51G", "P5M"])
+const EU_REGIONS = ["DE", "FR", "IT", "PL", "SK", "REU"]
 const TYPE_ORDER = Dict(
     "activity" => 1,
     "commodity" => 2,
@@ -127,7 +128,7 @@ activity_id(region::AbstractString, code::AbstractString) = "ACT:$region:$code"
 commodity_id(region::AbstractString, code::AbstractString) = "COM:$region:$code"
 factor_id(region::AbstractString, code::AbstractString) = "FAC:$region:$code"
 institution_id(region::AbstractString, code::AbstractString) = "INS:$region:$code"
-external_id() = "EXT:GLOBAL"
+external_id(region::AbstractString) = "EXT:$region"
 
 function add_flow!(
     flows::Dict{Tuple{String,String,String,String,String,String,String},Float64},
@@ -155,9 +156,10 @@ function account_label(prefix::String, region::String, code::String, sector_labe
     elseif prefix == "INS"
         return code == "HH" ? "$region institution: Households (+ NPISH)" :
                code == "GOV" ? "$region institution: Government" :
+               code == "INV_POOL" ? "EU institution: Interregional investment pool" :
                "$region institution: Investment"
     else
-        return "Global external balance"
+        return "$region external: Rest of world"
     end
 end
 
@@ -196,8 +198,11 @@ function build_account_registry(regions, activity_codes, commodity_codes, sector
     for region in regions, code in ("HH", "GOV", "INV")
         push!(rows, [institution_id(region, code), "institution", region, code, account_label("INS", region, code, sector_labels, code_labels)])
     end
+    push!(rows, [institution_id("GLOBAL", "INV_POOL"), "institution", "GLOBAL", "INV_POOL", account_label("INS", "GLOBAL", "INV_POOL", sector_labels, code_labels)])
 
-    push!(rows, [external_id(), "external", "GLOBAL", "EXT", account_label("EXT", "GLOBAL", "EXT", sector_labels, code_labels)])
+    for region in regions
+        push!(rows, [external_id(region), "external", region, "EXT", account_label("EXT", region, "EXT", sector_labels, code_labels)])
+    end
 
     sort!(rows, by = row -> (TYPE_ORDER[row[2]], row[3], row[4]))
     return rows
@@ -315,7 +320,7 @@ function main()
     supply_entries = load_supply_entries(IN_SUPPLY)
     use_entries = load_use_entries(IN_USE)
 
-    regions = sort!(unique(vcat([entry.activity_region for entry in supply_entries], [entry.product_region for entry in use_entries], [entry.use_region for entry in use_entries])))
+    regions = copy(EU_REGIONS)
     activity_codes = sort!(unique(entry.activity_sector for entry in supply_entries))
     commodity_codes = sort!(unique(entry.product_sector for entry in supply_entries))
     activity_code_set = Set(activity_codes)
@@ -330,6 +335,7 @@ function main()
     tourism_out = Dict(region => 0.0 for region in regions)
 
     for entry in supply_entries
+        (entry.product_region in EU_REGIONS && entry.activity_region in EU_REGIONS) || continue
         add_flow!(
             flows,
             activity_id(entry.activity_region, entry.activity_sector),
@@ -344,15 +350,90 @@ function main()
     end
 
     for entry in use_entries
-        if !(entry.product_sector in SPECIAL_CODES)
-            if entry.use_code in activity_code_set
+        use_region_eu = entry.use_region in EU_REGIONS
+        product_region_eu = entry.product_region in EU_REGIONS
+
+        if !use_region_eu
+            if product_region_eu && !(entry.product_sector in SPECIAL_CODES)
                 add_flow!(
                     flows,
                     commodity_id(entry.product_region, entry.product_sector),
-                    activity_id(entry.use_region, entry.use_code),
+                    external_id(entry.product_region),
                     "commodity",
+                    "external",
+                    "export_to_row",
+                    "balanced_use",
+                    entry.product_sector,
+                    entry.value,
+                )
+            end
+            continue
+        end
+
+        if !(entry.product_sector in SPECIAL_CODES)
+            if product_region_eu
+                if entry.use_code in activity_code_set
+                    add_flow!(
+                        flows,
+                        commodity_id(entry.product_region, entry.product_sector),
+                        activity_id(entry.use_region, entry.use_code),
+                        "commodity",
+                        "activity",
+                        "intermediate_demand",
+                        "balanced_use",
+                        entry.product_sector,
+                        entry.value,
+                    )
+                elseif entry.use_code in HH_FINAL_CODES
+                    household_consumption[entry.use_region] += entry.value
+                    add_flow!(
+                        flows,
+                        commodity_id(entry.product_region, entry.product_sector),
+                        institution_id(entry.use_region, "HH"),
+                        "commodity",
+                        "institution",
+                        "household_final_demand",
+                        "balanced_use",
+                        entry.product_sector,
+                        entry.value,
+                    )
+                elseif entry.use_code in GOV_FINAL_CODES
+                    government_consumption[entry.use_region] += entry.value
+                    add_flow!(
+                        flows,
+                        commodity_id(entry.product_region, entry.product_sector),
+                        institution_id(entry.use_region, "GOV"),
+                        "commodity",
+                        "institution",
+                        "government_final_demand",
+                        "balanced_use",
+                        entry.product_sector,
+                        entry.value,
+                    )
+                elseif entry.use_code in INV_FINAL_CODES
+                    investment_demand[entry.use_region] += entry.value
+                    add_flow!(
+                        flows,
+                        commodity_id(entry.product_region, entry.product_sector),
+                        institution_id(entry.use_region, "INV"),
+                        "commodity",
+                        "institution",
+                        "investment_demand",
+                        "balanced_use",
+                        entry.product_sector,
+                        entry.value,
+                    )
+                else
+                    error("Unhandled non-special use code $(entry.use_code)")
+                end
+            elseif entry.use_code in activity_code_set
+                add_flow!(
+                    flows,
+                    external_id(entry.use_region),
+                    activity_id(entry.use_region, entry.use_code),
+                    "external",
                     "activity",
-                    "intermediate_demand",
+                    "import_from_row_intermediate",
                     "balanced_use",
                     entry.product_sector,
                     entry.value,
@@ -361,11 +442,11 @@ function main()
                 household_consumption[entry.use_region] += entry.value
                 add_flow!(
                     flows,
-                    commodity_id(entry.product_region, entry.product_sector),
+                    external_id(entry.use_region),
                     institution_id(entry.use_region, "HH"),
-                    "commodity",
+                    "external",
                     "institution",
-                    "household_final_demand",
+                    "import_from_row_households",
                     "balanced_use",
                     entry.product_sector,
                     entry.value,
@@ -374,11 +455,11 @@ function main()
                 government_consumption[entry.use_region] += entry.value
                 add_flow!(
                     flows,
-                    commodity_id(entry.product_region, entry.product_sector),
+                    external_id(entry.use_region),
                     institution_id(entry.use_region, "GOV"),
-                    "commodity",
+                    "external",
                     "institution",
-                    "government_final_demand",
+                    "import_from_row_government",
                     "balanced_use",
                     entry.product_sector,
                     entry.value,
@@ -387,20 +468,22 @@ function main()
                 investment_demand[entry.use_region] += entry.value
                 add_flow!(
                     flows,
-                    commodity_id(entry.product_region, entry.product_sector),
+                    external_id(entry.use_region),
                     institution_id(entry.use_region, "INV"),
-                    "commodity",
+                    "external",
                     "institution",
-                    "investment_demand",
+                    "import_from_row_investment",
                     "balanced_use",
                     entry.product_sector,
                     entry.value,
                 )
             else
-                error("Unhandled non-special use code $(entry.use_code)")
+                error("Unhandled ROW import use code $(entry.use_code)")
             end
             continue
         end
+
+        product_region_eu || continue
 
         if entry.product_sector == "D1"
             payer_id, payer_type = payer_account(entry.use_region, entry.use_code, activity_code_set)
@@ -448,7 +531,7 @@ function main()
             add_flow!(
                 flows,
                 institution_id(entry.use_region, "HH"),
-                external_id(),
+                external_id(entry.use_region),
                 "institution",
                 "external",
                 "tourism_inbound_adjustment",
@@ -460,7 +543,7 @@ function main()
             tourism_out[entry.use_region] += entry.value
             add_flow!(
                 flows,
-                external_id(),
+                external_id(entry.use_region),
                 institution_id(entry.use_region, "HH"),
                 "external",
                 "institution",
@@ -579,22 +662,10 @@ function main()
     external_balance = Dict{String,Float64}()
     for region in regions
         inv_id = institution_id(region, "INV")
-        ext_id = external_id()
-        inv_gap = get(rowsums, inv_id, 0.0) - get(colsums, inv_id, 0.0)
-        external_balance[region] = -inv_gap
-        if inv_gap > TOL
-            add_flow!(
-                flows,
-                ext_id,
-                inv_id,
-                "external",
-                "institution",
-                "net_lending_abroad",
-                "closure",
-                "EXT",
-                inv_gap,
-            )
-        elseif inv_gap < -TOL
+        ext_id = external_id(region)
+        ext_gap = get(rowsums, ext_id, 0.0) - get(colsums, ext_id, 0.0)
+        external_balance[region] = ext_gap
+        if ext_gap > TOL
             add_flow!(
                 flows,
                 inv_id,
@@ -604,6 +675,51 @@ function main()
                 "foreign_saving",
                 "closure",
                 "EXT",
+                ext_gap,
+            )
+        elseif ext_gap < -TOL
+            add_flow!(
+                flows,
+                ext_id,
+                inv_id,
+                "external",
+                "institution",
+                "net_lending_abroad",
+                "closure",
+                "EXT",
+                -ext_gap,
+            )
+        end
+    end
+
+    rowsums, colsums = row_col_sums(flows)
+
+    inv_pool_id = institution_id("GLOBAL", "INV_POOL")
+    for region in regions
+        inv_id = institution_id(region, "INV")
+        inv_gap = get(rowsums, inv_id, 0.0) - get(colsums, inv_id, 0.0)
+        if inv_gap > TOL
+            add_flow!(
+                flows,
+                inv_pool_id,
+                inv_id,
+                "institution",
+                "institution",
+                "interregional_net_lending",
+                "closure",
+                "INV_POOL",
+                inv_gap,
+            )
+        elseif inv_gap < -TOL
+            add_flow!(
+                flows,
+                inv_id,
+                inv_pool_id,
+                "institution",
+                "institution",
+                "interregional_financing",
+                "closure",
+                "INV_POOL",
                 -inv_gap,
             )
         end

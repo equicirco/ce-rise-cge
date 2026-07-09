@@ -5,8 +5,8 @@ Build the stage-8 EU single-region canonical calibration bundle.
 
 This stage exports data and mappings only. It does not yet create the empirical
 JCGE model specification. The bundle aggregates the selected European benchmark
-regions into one region and represents omitted non-European interactions
-through a synthetic external account.
+regions into one region and aggregates their region-specific rest-of-world
+accounts into one external account.
 """
 
 const ROOT_DIR = normpath(joinpath(@__DIR__, "..", ".."))
@@ -157,10 +157,12 @@ function load_stage7_rows(path::AbstractString)
 end
 
 function map_source_account(row::AccountRow)
-    if row.account_type == "external"
-        return nothing
+    if row.account_type == "institution" && row.region == "GLOBAL" && row.code == "INV_POOL"
+        return "INV"
     elseif !(row.region in EU_REGIONS)
         return nothing
+    elseif row.account_type == "external"
+        return EXT_ACCOUNT
     elseif row.account_type == "activity"
         return "ACT_" * row.code
     elseif row.account_type == "commodity"
@@ -519,9 +521,8 @@ function validation_rows(account_order, activities, commodities, factors, instit
     sam_square = true
     return [
         ["single_region_scope", "aggregate_europe_only"],
-        ["synthetic_external_rule", "row_col_gap_after_eu_submatrix"],
+        ["external_account_rule", "aggregate_regional_external_accounts_then_close_residual_gap"],
         ["source_eu_regions", join(EU_REGIONS, ";")],
-        ["excluded_regions", "ROW"],
         ["bundle_region_label", BUNDLE_REGION],
         ["bundle_activity_count", string(length(activities))],
         ["bundle_commodity_count", string(length(commodities))],
@@ -571,7 +572,7 @@ function main()
     write_tsv(OUT_ACCOUNTS, ["account_id", "account_type", "region", "code", "label"], bundle_accounts)
     write_tsv(OUT_FLOWS, ["row_account_id", "column_account_id", "row_type", "column_type", "flow_kind", "note", "value"], bundle_flow_table)
     write_tsv(OUT_BALANCES, ["account_id", "account_type", "row_sum", "column_sum", "gap"], bundle_balance_table)
-    write_tsv(OUT_REGION_SCOPE, ["scope_key", "scope_value"], [["source_eu_regions", join(EU_REGIONS, ";")], ["excluded_region", "ROW"], ["bundle_region", BUNDLE_REGION]])
+    write_tsv(OUT_REGION_SCOPE, ["scope_key", "scope_value"], [["source_eu_regions", join(EU_REGIONS, ";")], ["regional_external_accounts", "aggregated_to_single_EXT"], ["bundle_region", BUNDLE_REGION]])
     write_tsv(OUT_VALIDATION, ["key", "value"], validation_rows(account_order, activities, commodities, factors, institutions, externals, bundle_flows, ext_rows))
 
     copy_text_file(IN_FAMILY_REGISTRY, OUT_FAMILY_REGISTRY)

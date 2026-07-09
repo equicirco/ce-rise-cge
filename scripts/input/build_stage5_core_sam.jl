@@ -6,11 +6,9 @@ Build the stage-5 core SAM artifact set.
 Stage 5 extracts an incomplete square SAM from the balanced SUT.
 
 What is included:
-- region-specific activity accounts from the balanced supply/use tables;
-- region-specific commodity accounts from the balanced supply/use tables;
-- region-specific final-demand accounts from the balanced use table;
-- region-specific satellite accounts for value added, taxes, and tourism
-  adjustments from the special non-commodity rows.
+- activity and commodity accounts for the six explicit European regions;
+- final-demand and satellite accounts for those same regions;
+- region-specific external accounts carrying trade with the rest of the world.
 
 What is intentionally left open:
 - no household, government, savings-investment, or rest-of-world closure is
@@ -40,11 +38,14 @@ const OUT_BLOCKS = joinpath(OUTDIR, "core_sam_block_totals.tsv")
 const OUT_VALIDATION = joinpath(OUTDIR, "core_sam_validation.tsv")
 
 const SPECIAL_CODES = Set(["B2A3G", "D1", "D21X31", "D29X39", "OP_NRES", "OP_RES"])
+const EU_REGIONS = ["DE", "FR", "IT", "PL", "SK", "REU"]
+const EU_REGION_SET = Set(EU_REGIONS)
 const TYPE_ORDER = Dict(
     "activity" => 1,
     "commodity" => 2,
     "final_demand" => 3,
     "satellite" => 4,
+    "external" => 5,
 )
 
 struct SupplyEntry
@@ -128,6 +129,7 @@ activity_id(region::AbstractString, code::AbstractString) = "ACT:$region:$code"
 commodity_id(region::AbstractString, code::AbstractString) = "COM:$region:$code"
 final_demand_id(region::AbstractString, code::AbstractString) = "FD:$region:$code"
 satellite_id(region::AbstractString, code::AbstractString) = "SAT:$region:$code"
+external_id(region::AbstractString) = "EXT:$region"
 
 function add_flow!(
     flows::Dict{Tuple{String,String,String,String,String,String,String},Float64},
@@ -169,6 +171,8 @@ function account_label(prefix::String, region::String, code::String, sector_labe
         return "$region commodity: $(get(sector_labels, code, code))"
     elseif prefix == "FD"
         return "$region final demand: $(get(code_labels, code, code))"
+    elseif prefix == "EXT"
+        return "$region external: Rest of world"
     else
         return "$region satellite: $(get(code_labels, code, code))"
     end
@@ -180,7 +184,7 @@ function build_account_registry(supply_entries, use_entries, sector_labels, code
 
     activity_codes = sort!(unique(entry.activity_sector for entry in supply_entries))
     commodity_codes = sort!(unique(entry.product_sector for entry in supply_entries))
-    regions = sort!(unique(entry.activity_region for entry in supply_entries))
+    regions = copy(EU_REGIONS)
 
     for region in regions
         for code in activity_codes
@@ -200,8 +204,8 @@ function build_account_registry(supply_entries, use_entries, sector_labels, code
         end
     end
 
-    final_demand_codes = sort!(unique(entry.use_code for entry in use_entries if !(entry.use_code in activity_codes) && !(entry.product_sector in SPECIAL_CODES)))
-    for region in sort!(unique(entry.use_region for entry in use_entries))
+    final_demand_codes = sort!(unique(entry.use_code for entry in use_entries if (entry.use_region in EU_REGION_SET) && !(entry.use_code in activity_codes) && !(entry.product_sector in SPECIAL_CODES)))
+    for region in regions
         for code in final_demand_codes
             id = final_demand_id(region, code)
             id in seen && continue
@@ -212,7 +216,7 @@ function build_account_registry(supply_entries, use_entries, sector_labels, code
 
     satellite_pairs = Set{Tuple{String,String}}()
     for entry in use_entries
-        if entry.product_sector in SPECIAL_CODES
+        if (entry.use_region in EU_REGION_SET) && (entry.product_sector in SPECIAL_CODES)
             push!(satellite_pairs, (entry.use_region, entry.product_sector))
         end
     end
@@ -225,6 +229,11 @@ function build_account_registry(supply_entries, use_entries, sector_labels, code
         push!(rows, [id, "satellite", region, code, account_label("SAT", region, code, sector_labels, code_labels)])
     end
 
+    for region in regions
+        id = external_id(region)
+        push!(rows, [id, "external", region, "EXT", account_label("EXT", region, "EXT", sector_labels, code_labels)])
+    end
+
     sort!(rows, by = row -> (TYPE_ORDER[row[2]], row[3], row[4]))
     return rows, Set(activity_codes)
 end
@@ -233,6 +242,7 @@ function build_flow_table(supply_entries, use_entries, activity_codes::Set{Strin
     flows = Dict{Tuple{String,String,String,String,String,String,String},Float64}()
 
     for entry in supply_entries
+        (entry.product_region in EU_REGION_SET && entry.activity_region in EU_REGION_SET) || continue
         add_flow!(
             flows,
             activity_id(entry.activity_region, entry.activity_sector),
@@ -247,7 +257,28 @@ function build_flow_table(supply_entries, use_entries, activity_codes::Set{Strin
     end
 
     for entry in use_entries
+        use_region_eu = entry.use_region in EU_REGION_SET
+        product_region_eu = entry.product_region in EU_REGION_SET
+
+        if !use_region_eu
+            if product_region_eu && !(entry.product_sector in SPECIAL_CODES)
+                add_flow!(
+                    flows,
+                    commodity_id(entry.product_region, entry.product_sector),
+                    external_id(entry.product_region),
+                    "commodity",
+                    "external",
+                    "export_to_row",
+                    "balanced_use",
+                    entry.product_sector,
+                    entry.value,
+                )
+            end
+            continue
+        end
+
         if entry.product_sector in SPECIAL_CODES
+            product_region_eu || continue
             target_id = entry.use_code in activity_codes ?
                 activity_id(entry.use_region, entry.use_code) :
                 final_demand_id(entry.use_region, entry.use_code)
@@ -274,26 +305,42 @@ function build_flow_table(supply_entries, use_entries, activity_codes::Set{Strin
                 entry.value,
             )
         else
-            if entry.use_code in activity_codes
-                add_flow!(
-                    flows,
-                    commodity_id(entry.product_region, entry.product_sector),
-                    activity_id(entry.use_region, entry.use_code),
-                    "commodity",
-                    "activity",
-                    "intermediate_demand",
-                    "balanced_use",
-                    entry.product_sector,
-                    entry.value,
-                )
+            if product_region_eu
+                if entry.use_code in activity_codes
+                    add_flow!(
+                        flows,
+                        commodity_id(entry.product_region, entry.product_sector),
+                        activity_id(entry.use_region, entry.use_code),
+                        "commodity",
+                        "activity",
+                        "intermediate_demand",
+                        "balanced_use",
+                        entry.product_sector,
+                        entry.value,
+                    )
+                else
+                    add_flow!(
+                        flows,
+                        commodity_id(entry.product_region, entry.product_sector),
+                        final_demand_id(entry.use_region, entry.use_code),
+                        "commodity",
+                        "final_demand",
+                        "final_demand",
+                        "balanced_use",
+                        entry.product_sector,
+                        entry.value,
+                    )
+                end
             else
                 add_flow!(
                     flows,
-                    commodity_id(entry.product_region, entry.product_sector),
-                    final_demand_id(entry.use_region, entry.use_code),
-                    "commodity",
-                    "final_demand",
-                    "final_demand",
+                    external_id(entry.use_region),
+                    entry.use_code in activity_codes ?
+                        activity_id(entry.use_region, entry.use_code) :
+                        final_demand_id(entry.use_region, entry.use_code),
+                    "external",
+                    entry.use_code in activity_codes ? "activity" : "final_demand",
+                    entry.use_code in activity_codes ? "import_from_row_intermediate" : "import_from_row_final",
                     "balanced_use",
                     entry.product_sector,
                     entry.value,
@@ -350,6 +397,7 @@ function block_rows(accounts::Vector{Vector{String}}, matrix, account_ids)
     types = [row[2] for row in accounts]
     rows = Vector{Vector{String}}()
     uniq_types = ["activity", "commodity", "final_demand", "satellite"]
+    push!(uniq_types, "external")
     idx_by_type = Dict{String,Vector{Int}}()
     for t in uniq_types
         idx_by_type[t] = [i for i in eachindex(types) if types[i] == t]
@@ -395,6 +443,7 @@ function validation_rows(accounts::Vector{Vector{String}}, balance_rows_data::Ve
         ["n_commodity_accounts", string(get(counts, "commodity", 0))],
         ["n_final_demand_accounts", string(get(counts, "final_demand", 0))],
         ["n_satellite_accounts", string(get(counts, "satellite", 0))],
+        ["n_external_accounts", string(get(counts, "external", 0))],
         ["max_abs_commodity_imbalance", string(maximum(abs.(commodity_imbalances)))],
         ["max_abs_activity_imbalance", string(maximum(abs.(activity_imbalances)))],
         ["total_final_demand_net_position", string(sum(final_demand_imbalances))],

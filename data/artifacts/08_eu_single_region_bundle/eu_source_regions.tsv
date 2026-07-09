@@ -1,4 +1,4 @@
 scope_key	scope_value
 source_eu_regions	DE;FR;IT;PL;SK;REU
-excluded_region	ROW
+regional_external_accounts	aggregated_to_single_EXT
 bundle_region	EU

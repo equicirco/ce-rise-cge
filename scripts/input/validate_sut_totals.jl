@@ -399,6 +399,7 @@ function append_stage5_checks!(rows)
         ("commodity_accounts_present", parse_int(values, "n_commodity_accounts") > 0, values["n_commodity_accounts"], "> 0", "Commodity accounts must be present in the bridge SAM."),
         ("final_demand_accounts_present", parse_int(values, "n_final_demand_accounts") > 0, values["n_final_demand_accounts"], "> 0", "Final-demand accounts must be present in the bridge SAM."),
         ("satellite_accounts_present", parse_int(values, "n_satellite_accounts") > 0, values["n_satellite_accounts"], "> 0", "Satellite accounts must be present before closure."),
+        ("external_accounts_present", parse_int(values, "n_external_accounts") > 0, values["n_external_accounts"], "> 0", "Region-specific external accounts should already be present in the bridge SAM."),
     ]
 
     for (check, ok, observed, expected, notes) in checks
@@ -421,13 +422,14 @@ function closed_sam_calibration_ready()
 
     external_count = count(row -> row[2] == "external", accounts[2:end])
     activity_regions = Set(row[3] for row in accounts[2:end] if row[2] == "activity")
+    external_regions = Set(row[3] for row in accounts[2:end] if row[2] == "external")
     macro_region_rows = length(macro_rows_tsv) - 1
     max_abs_balance = maximum(abs(parse(Float64, row[7])) for row in balances[2:end])
     type_list = join(sort!(collect(types)), ",")
 
-    ok = matrix_square && type_ok && external_count == 1 && macro_region_rows == length(activity_regions) && max_abs_balance <= LATE_TOL
-    observed = "square=$(matrix_square); types=$(type_list); external_count=$(external_count); macro_rows=$(macro_region_rows); max_abs_balance=$(max_abs_balance)"
-    expected = "square=true; types=activity,commodity,external,factor,institution; external_count=1; macro_rows=$(length(activity_regions)); max_abs_balance<=$(LATE_TOL)"
+    ok = matrix_square && type_ok && external_count == length(activity_regions) && external_regions == activity_regions && macro_region_rows == length(activity_regions) && max_abs_balance <= LATE_TOL
+    observed = "square=$(matrix_square); types=$(type_list); external_count=$(external_count); external_regions=$(join(sort!(collect(external_regions)), ",")); macro_rows=$(macro_region_rows); max_abs_balance=$(max_abs_balance)"
+    expected = "square=true; types=activity,commodity,external,factor,institution; external_count=$(length(activity_regions)); external_regions=$(join(sort!(collect(activity_regions)), ",")); macro_rows=$(length(activity_regions)); max_abs_balance<=$(LATE_TOL)"
     notes = "Closed SAM should be square, exactly balanced, and institutionally complete enough to serve as the benchmark calibration base."
     return ok, observed, expected, notes
 end
@@ -500,7 +502,7 @@ function append_stage8_checks!(rows)
     values = read_key_value_file(STAGE8_VALIDATION)
     checks = [
         ("single_region_scope", get(values, "single_region_scope", "missing") == "aggregate_europe_only", get(values, "single_region_scope", "missing"), "aggregate_europe_only", "The bundle should aggregate the European benchmark regions only."),
-        ("synthetic_external_rule", get(values, "synthetic_external_rule", "missing") == "row_col_gap_after_eu_submatrix", get(values, "synthetic_external_rule", "missing"), "row_col_gap_after_eu_submatrix", "Omitted non-European interactions should be represented through the synthetic external account."),
+        ("external_account_rule", get(values, "external_account_rule", "missing") == "aggregate_regional_external_accounts_then_close_residual_gap", get(values, "external_account_rule", "missing"), "aggregate_regional_external_accounts_then_close_residual_gap", "Regional external accounts should be aggregated into one bundle external account before any tiny residual-gap closure."),
         ("bundle_activity_count", parse_int(values, "bundle_activity_count") > 0, values["bundle_activity_count"], "> 0", "Bundle must contain explicit activity accounts."),
         ("bundle_commodity_count", parse_int(values, "bundle_commodity_count") > 0, values["bundle_commodity_count"], "> 0", "Bundle must contain explicit commodity accounts."),
         ("bundle_factor_count", parse_int(values, "bundle_factor_count") == 2, values["bundle_factor_count"], "2", "Bundle should retain labor and capital as factors."),

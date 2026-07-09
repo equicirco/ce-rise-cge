@@ -124,31 +124,6 @@ ACT:REU:REU_RATV	activity	REU	REU_RATV	REU activity: Reuse route for RATV
 ACT:REU:TRADE	activity	REU	TRADE	REU activity: Trade services
 ACT:REU:TRANSPORT	activity	REU	TRANSPORT	REU activity: Transport and storage
 ACT:REU:UTIL_WASTE	activity	REU	UTIL_WASTE	REU activity: Utilities, water, and residual waste services
-ACT:ROW:AGRI_FOOD	activity	ROW	AGRI_FOOD	ROW activity: Agriculture and food
-ACT:ROW:BASIC_METALS	activity	ROW	BASIC_METALS	ROW activity: Basic metals
-ACT:ROW:CONSTRUCTION	activity	ROW	CONSTRUCTION	ROW activity: Construction
-ACT:ROW:EXTRACTIVE	activity	ROW	EXTRACTIVE	ROW activity: Extractive industries
-ACT:ROW:INC_EE	activity	ROW	INC_EE	ROW activity: Incineration and disposal activities for CE-RISE chains
-ACT:ROW:METAL_COMPONENTS	activity	ROW	METAL_COMPONENTS	ROW activity: Metal components and fabricated metals
-ACT:ROW:NEW_ELMA	activity	ROW	NEW_ELMA	ROW activity: New CE-RISE electrical equipment
-ACT:ROW:NEW_OFMA	activity	ROW	NEW_OFMA	ROW activity: New CE-RISE office machinery and computers
-ACT:ROW:NEW_RATV	activity	ROW	NEW_RATV	ROW activity: New CE-RISE communication and consumer electronics
-ACT:ROW:OTHER_MANUFACTURING	activity	ROW	OTHER_MANUFACTURING	ROW activity: Other manufacturing
-ACT:ROW:OTHER_SERVICES	activity	ROW	OTHER_SERVICES	ROW activity: Other market services
-ACT:ROW:PUBLIC_SOCIAL	activity	ROW	PUBLIC_SOCIAL	ROW activity: Public and social services
-ACT:ROW:REC_EE	activity	ROW	REC_EE	ROW activity: Recycling and recovery activities for CE-RISE chains
-ACT:ROW:REF_ELMA	activity	ROW	REF_ELMA	ROW activity: Refurbishment route for ELMA
-ACT:ROW:REF_OFMA	activity	ROW	REF_OFMA	ROW activity: Refurbishment route for OFMA
-ACT:ROW:REF_RATV	activity	ROW	REF_RATV	ROW activity: Refurbishment route for RATV
-ACT:ROW:REP_ELMA	activity	ROW	REP_ELMA	ROW activity: Repair activities linked to ELMA
-ACT:ROW:REP_OFMA	activity	ROW	REP_OFMA	ROW activity: Repair activities linked to OFMA
-ACT:ROW:REP_RATV	activity	ROW	REP_RATV	ROW activity: Repair activities linked to RATV
-ACT:ROW:REU_ELMA	activity	ROW	REU_ELMA	ROW activity: Reuse route for ELMA
-ACT:ROW:REU_OFMA	activity	ROW	REU_OFMA	ROW activity: Reuse route for OFMA
-ACT:ROW:REU_RATV	activity	ROW	REU_RATV	ROW activity: Reuse route for RATV
-ACT:ROW:TRADE	activity	ROW	TRADE	ROW activity: Trade services
-ACT:ROW:TRANSPORT	activity	ROW	TRANSPORT	ROW activity: Transport and storage
-ACT:ROW:UTIL_WASTE	activity	ROW	UTIL_WASTE	ROW activity: Utilities, water, and residual waste services
 ACT:SK:AGRI_FOOD	activity	SK	AGRI_FOOD	SK activity: Agriculture and food
 ACT:SK:BASIC_METALS	activity	SK	BASIC_METALS	SK activity: Basic metals
 ACT:SK:CONSTRUCTION	activity	SK	CONSTRUCTION	SK activity: Construction
@@ -299,31 +274,6 @@ COM:REU:REU_RATV	commodity	REU	REU_RATV	REU commodity: Reuse route for RATV
 COM:REU:TRADE	commodity	REU	TRADE	REU commodity: Trade services
 COM:REU:TRANSPORT	commodity	REU	TRANSPORT	REU commodity: Transport and storage
 COM:REU:UTIL_WASTE	commodity	REU	UTIL_WASTE	REU commodity: Utilities, water, and residual waste services
-COM:ROW:AGRI_FOOD	commodity	ROW	AGRI_FOOD	ROW commodity: Agriculture and food
-COM:ROW:BASIC_METALS	commodity	ROW	BASIC_METALS	ROW commodity: Basic metals
-COM:ROW:CONSTRUCTION	commodity	ROW	CONSTRUCTION	ROW commodity: Construction
-COM:ROW:EXTRACTIVE	commodity	ROW	EXTRACTIVE	ROW commodity: Extractive industries
-COM:ROW:INC_EE	commodity	ROW	INC_EE	ROW commodity: Incineration and disposal activities for CE-RISE chains
-COM:ROW:METAL_COMPONENTS	commodity	ROW	METAL_COMPONENTS	ROW commodity: Metal components and fabricated metals
-COM:ROW:NEW_ELMA	commodity	ROW	NEW_ELMA	ROW commodity: New CE-RISE electrical equipment
-COM:ROW:NEW_OFMA	commodity	ROW	NEW_OFMA	ROW commodity: New CE-RISE office machinery and computers
-COM:ROW:NEW_RATV	commodity	ROW	NEW_RATV	ROW commodity: New CE-RISE communication and consumer electronics
-COM:ROW:OTHER_MANUFACTURING	commodity	ROW	OTHER_MANUFACTURING	ROW commodity: Other manufacturing
-COM:ROW:OTHER_SERVICES	commodity	ROW	OTHER_SERVICES	ROW commodity: Other market services
-COM:ROW:PUBLIC_SOCIAL	commodity	ROW	PUBLIC_SOCIAL	ROW commodity: Public and social services
-COM:ROW:REC_EE	commodity	ROW	REC_EE	ROW commodity: Recycling and recovery activities for CE-RISE chains
-COM:ROW:REF_ELMA	commodity	ROW	REF_ELMA	ROW commodity: Refurbishment route for ELMA
-COM:ROW:REF_OFMA	commodity	ROW	REF_OFMA	ROW commodity: Refurbishment route for OFMA
-COM:ROW:REF_RATV	commodity	ROW	REF_RATV	ROW commodity: Refurbishment route for RATV
-COM:ROW:REP_ELMA	commodity	ROW	REP_ELMA	ROW commodity: Repair activities linked to ELMA
-COM:ROW:REP_OFMA	commodity	ROW	REP_OFMA	ROW commodity: Repair activities linked to OFMA
-COM:ROW:REP_RATV	commodity	ROW	REP_RATV	ROW commodity: Repair activities linked to RATV
-COM:ROW:REU_ELMA	commodity	ROW	REU_ELMA	ROW commodity: Reuse route for ELMA
-COM:ROW:REU_OFMA	commodity	ROW	REU_OFMA	ROW commodity: Reuse route for OFMA
-COM:ROW:REU_RATV	commodity	ROW	REU_RATV	ROW commodity: Reuse route for RATV
-COM:ROW:TRADE	commodity	ROW	TRADE	ROW commodity: Trade services
-COM:ROW:TRANSPORT	commodity	ROW	TRANSPORT	ROW commodity: Transport and storage
-COM:ROW:UTIL_WASTE	commodity	ROW	UTIL_WASTE	ROW commodity: Utilities, water, and residual waste services
 COM:SK:AGRI_FOOD	commodity	SK	AGRI_FOOD	SK commodity: Agriculture and food
 COM:SK:BASIC_METALS	commodity	SK	BASIC_METALS	SK commodity: Basic metals
 COM:SK:CONSTRUCTION	commodity	SK	CONSTRUCTION	SK commodity: Construction
@@ -359,8 +309,6 @@ FAC:PL:CAP	factor	PL	CAP	PL factor: Capital
 FAC:PL:LAB	factor	PL	LAB	PL factor: Labor
 FAC:REU:CAP	factor	REU	CAP	REU factor: Capital
 FAC:REU:LAB	factor	REU	LAB	REU factor: Labor
-FAC:ROW:CAP	factor	ROW	CAP	ROW factor: Capital
-FAC:ROW:LAB	factor	ROW	LAB	ROW factor: Labor
 FAC:SK:CAP	factor	SK	CAP	SK factor: Capital
 FAC:SK:LAB	factor	SK	LAB	SK factor: Labor
 INS:DE:GOV	institution	DE	GOV	DE institution: Government
@@ -369,6 +317,7 @@ INS:DE:INV	institution	DE	INV	DE institution: Investment
 INS:FR:GOV	institution	FR	GOV	FR institution: Government
 INS:FR:HH	institution	FR	HH	FR institution: Households (+ NPISH)
 INS:FR:INV	institution	FR	INV	FR institution: Investment
+INS:GLOBAL:INV_POOL	institution	GLOBAL	INV_POOL	EU institution: Interregional investment pool
 INS:IT:GOV	institution	IT	GOV	IT institution: Government
 INS:IT:HH	institution	IT	HH	IT institution: Households (+ NPISH)
 INS:IT:INV	institution	IT	INV	IT institution: Investment
@@ -378,10 +327,12 @@ INS:PL:INV	institution	PL	INV	PL institution: Investment
 INS:REU:GOV	institution	REU	GOV	REU institution: Government
 INS:REU:HH	institution	REU	HH	REU institution: Households (+ NPISH)
 INS:REU:INV	institution	REU	INV	REU institution: Investment
-INS:ROW:GOV	institution	ROW	GOV	ROW institution: Government
-INS:ROW:HH	institution	ROW	HH	ROW institution: Households (+ NPISH)
-INS:ROW:INV	institution	ROW	INV	ROW institution: Investment
 INS:SK:GOV	institution	SK	GOV	SK institution: Government
 INS:SK:HH	institution	SK	HH	SK institution: Households (+ NPISH)
 INS:SK:INV	institution	SK	INV	SK institution: Investment
-EXT:GLOBAL	external	GLOBAL	EXT	Global external balance
+EXT:DE	external	DE	EXT	DE external: Rest of world
+EXT:FR	external	FR	EXT	FR external: Rest of world
+EXT:IT	external	IT	EXT	IT external: Rest of world
+EXT:PL	external	PL	EXT	PL external: Rest of world
+EXT:REU	external	REU	EXT	REU external: Rest of world
+EXT:SK	external	SK	EXT	SK external: Rest of world
