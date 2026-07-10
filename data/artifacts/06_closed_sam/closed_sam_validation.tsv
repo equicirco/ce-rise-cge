@@ -1,7 +1,7 @@
 key	value
 n_accounts	337
-n_flows	20076
-max_abs_balance	1.05355866253376e-8
-total_abs_balance	6.605064492693885e-8
+n_flows	19830
+max_abs_balance	2.971501089632511e-8
+total_abs_balance	8.320705131117678e-8
 household_npish_rule	P3_S15 merged into households
 activity_residual_rule	residual assigned to regional capital

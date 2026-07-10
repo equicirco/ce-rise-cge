@@ -1,0 +1,17 @@
+key	value
+industry_count	175
+product_count	175
+final_demand_column_count	35
+value_added_row_count	28
+total_industry_output	1.3202124528599998e8
+total_product_output	1.3202124528599992e8
+total_intermediate_io	6.603343375399973e7
+total_final_demand_io	6.598781153199998e7
+total_value_added	6.5987811531999975e7
+max_abs_product_sales_share_gap	6.661338147750939e-16
+max_abs_row_gap	2.9802322387695312e-8
+max_abs_column_gap	2.9802322387695312e-8
+max_abs_final_demand_gap	1.862645149230957e-8
+row_gap_count_gt_1e-6	0
+column_gap_count_gt_1e-6	0
+final_demand_gap_count_gt_1e-6	0

@@ -9,10 +9,10 @@ using quadratic minimization around the stage-3 tables.
 Adopted rule:
 - keep SAM-like non-commodity rows unchanged;
 - preserve zero support by optimizing only over existing nonzero commodity cells;
-- reconcile the small commodity grand-total mismatch through a size-weighted
-  quadratic adjustment of supply and use column targets;
+- keep industry output columns anchored to the stage-3 supply table;
+- keep final-demand columns anchored to the stage-3 use table;
 - solve the cell-level balancing problem as the nearest table under exact
-  commodity row balance and reconciled column totals.
+  commodity row balance and exact industry-column consistency.
 """
 
 using LinearAlgebra
@@ -24,6 +24,7 @@ const OUTDIR = joinpath(ROOT_DIR, "data", "artifacts", "04_balanced_sut")
 
 const IN_SUPPLY = joinpath(ARTIFACT3_DIR, "final_supply_explicit.tsv")
 const IN_USE = joinpath(ARTIFACT3_DIR, "final_use_explicit.tsv")
+const IN_SECTOR_REGISTRY = joinpath(ARTIFACT3_DIR, "explicit_final_sector_registry.tsv")
 
 const OUT_SUPPLY = joinpath(OUTDIR, "balanced_supply.tsv")
 const OUT_USE = joinpath(OUTDIR, "balanced_use.tsv")
@@ -82,6 +83,11 @@ function write_tsv(path::AbstractString, header::Vector{String}, rows::Vector{Ve
     end
 end
 
+function load_sector_ids(path::AbstractString)
+    rows = read_tsv(path)
+    return Set(row[1] for row in rows[2:end])
+end
+
 row_key(entry::FlowEntry) = (entry.product_region, entry.product_sector)
 col_key(entry::FlowEntry) = (entry.column_region, entry.column_code)
 is_commodity(entry::FlowEntry) = !(entry.product_sector in SPECIAL_PRODUCT_ROWS)
@@ -120,43 +126,51 @@ function sorted_keys(dict::Dict{Tuple{String,String},Float64})
     return sort!(collect(keys(dict)))
 end
 
-function reconcile_column_targets(
-    supply_totals::Dict{Tuple{String,String},Float64},
-    use_totals::Dict{Tuple{String,String},Float64},
+function split_use_column_totals(
+    use_entries::Vector{FlowEntry},
+    sector_ids::Set{String},
 )
-    supply_sum = sum(values(supply_totals))
-    use_sum = sum(values(use_totals))
-    gap = supply_sum - use_sum
-
-    supply_weights = Dict{Tuple{String,String},Float64}()
-    for pair in supply_totals
-        key = pair[1]
-        value = pair[2]
-        supply_weights[key] = max(value, TARGET_FLOOR)
+    activity_totals = Dict{Tuple{String,String},Float64}()
+    final_demand_totals = Dict{Tuple{String,String},Float64}()
+    for entry in use_entries
+        key = col_key(entry)
+        if entry.column_code in sector_ids
+            activity_totals[key] = get(activity_totals, key, 0.0) + entry.value
+        else
+            final_demand_totals[key] = get(final_demand_totals, key, 0.0) + entry.value
+        end
     end
-    use_weights = Dict{Tuple{String,String},Float64}()
-    for pair in use_totals
-        key = pair[1]
-        value = pair[2]
-        use_weights[key] = max(value, TARGET_FLOOR)
-    end
-    λ = gap / (sum(values(supply_weights)) + sum(values(use_weights)))
+    return activity_totals, final_demand_totals
+end
 
-    adjusted_supply = Dict{Tuple{String,String},Float64}()
-    adjusted_use = Dict{Tuple{String,String},Float64}()
-
-    for pair in supply_totals
-        key = pair[1]
-        value = pair[2]
-        adjusted_supply[key] = value - λ * supply_weights[key]
+function fixed_activity_value_added(
+    fixed_use_entries::Vector{FlowEntry},
+    sector_ids::Set{String},
+)
+    totals = Dict{Tuple{String,String},Float64}()
+    for entry in fixed_use_entries
+        if entry.column_code in sector_ids
+            key = col_key(entry)
+            totals[key] = get(totals, key, 0.0) + entry.value
+        end
     end
-    for pair in use_totals
-        key = pair[1]
-        value = pair[2]
-        adjusted_use[key] = value + λ * use_weights[key]
-    end
+    return totals
+end
 
-    return adjusted_supply, adjusted_use, gap, λ
+function reconcile_final_demand_targets(
+    final_demand_targets::Dict{Tuple{String,String},Float64},
+    activity_value_added_targets::Dict{Tuple{String,String},Float64},
+)
+    final_demand_total = sum(values(final_demand_targets))
+    value_added_total = sum(values(activity_value_added_targets))
+    gap = final_demand_total - value_added_total
+    weights = Dict(key => max(value, TARGET_FLOOR) for (key, value) in final_demand_targets)
+    λ = isempty(weights) ? 0.0 : gap / sum(values(weights))
+    adjusted = Dict{Tuple{String,String},Float64}()
+    for (key, value) in final_demand_targets
+        adjusted[key] = value - λ * weights[key]
+    end
+    return adjusted, gap, λ
 end
 
 function build_constraint_system(
@@ -165,10 +179,12 @@ function build_constraint_system(
     free_supply::Vector{Int},
     free_use::Vector{Int},
     supply_targets::Dict{Tuple{String,String},Float64},
-    use_targets::Dict{Tuple{String,String},Float64},
+    final_demand_targets::Dict{Tuple{String,String},Float64},
+    activity_value_added_targets::Dict{Tuple{String,String},Float64},
 )
     supply_cols = sort!(collect(keys(supply_targets)))
-    use_cols = sort!(collect(keys(use_targets)))
+    final_demand_cols = sort!(collect(keys(final_demand_targets)))
+    activity_cols = sort!(collect(keys(activity_value_added_targets)))
 
     all_rows = Set{Tuple{String,String}}()
     for idx in free_supply
@@ -180,12 +196,13 @@ function build_constraint_system(
     commodity_rows = sort!(collect(all_rows))
 
     m_supply = length(supply_cols)
-    m_use = length(use_cols)
+    m_final = length(final_demand_cols)
     m_rows = length(commodity_rows)
+    m_activity = length(activity_cols)
     n_supply = length(free_supply)
     n_use = length(free_use)
     n = n_supply + n_use
-    m = m_supply + m_use + m_rows
+    m = m_supply + m_final + m_rows + m_activity
 
     supply_col_pos = Dict{Tuple{String,String},Int}()
     for pair in enumerate(supply_cols)
@@ -193,11 +210,17 @@ function build_constraint_system(
         key = pair[2]
         supply_col_pos[key] = i
     end
-    use_col_pos = Dict{Tuple{String,String},Int}()
-    for pair in enumerate(use_cols)
+    final_demand_col_pos = Dict{Tuple{String,String},Int}()
+    for pair in enumerate(final_demand_cols)
         i = pair[1]
         key = pair[2]
-        use_col_pos[key] = i
+        final_demand_col_pos[key] = i
+    end
+    activity_col_pos = Dict{Tuple{String,String},Int}()
+    for pair in enumerate(activity_cols)
+        i = pair[1]
+        key = pair[2]
+        activity_col_pos[key] = i
     end
     row_pos = Dict{Tuple{String,String},Int}()
     for pair in enumerate(commodity_rows)
@@ -221,10 +244,15 @@ function build_constraint_system(
         key = pair[2]
         b[j] = supply_targets[key]
     end
-    for pair in enumerate(use_cols)
+    for pair in enumerate(final_demand_cols)
         j = pair[1]
         key = pair[2]
-        b[m_supply + j] = use_targets[key]
+        b[m_supply + j] = final_demand_targets[key]
+    end
+    for pair in enumerate(activity_cols)
+        j = pair[1]
+        key = pair[2]
+        b[m_supply + m_final + m_rows + j] = activity_value_added_targets[key]
     end
 
     for pair in enumerate(free_supply)
@@ -238,7 +266,11 @@ function build_constraint_system(
         push!(colinds, local_idx)
         push!(vals, 1.0)
 
-        push!(rowinds, m_supply + m_use + row_pos[row_key(entry)])
+        push!(rowinds, m_supply + m_final + row_pos[row_key(entry)])
+        push!(colinds, local_idx)
+        push!(vals, 1.0)
+
+        push!(rowinds, m_supply + m_final + m_rows + activity_col_pos[col_key(entry)])
         push!(colinds, local_idx)
         push!(vals, 1.0)
     end
@@ -251,11 +283,17 @@ function build_constraint_system(
         a[local_idx] = entry.value
         use_local_to_global[local0_idx] = global_idx
 
-        push!(rowinds, m_supply + use_col_pos[col_key(entry)])
-        push!(colinds, local_idx)
-        push!(vals, 1.0)
+        if haskey(final_demand_col_pos, col_key(entry))
+            push!(rowinds, m_supply + final_demand_col_pos[col_key(entry)])
+            push!(colinds, local_idx)
+            push!(vals, 1.0)
+        else
+            push!(rowinds, m_supply + m_final + m_rows + activity_col_pos[col_key(entry)])
+            push!(colinds, local_idx)
+            push!(vals, -1.0)
+        end
 
-        push!(rowinds, m_supply + m_use + row_pos[row_key(entry)])
+        push!(rowinds, m_supply + m_final + row_pos[row_key(entry)])
         push!(colinds, local_idx)
         push!(vals, -1.0)
     end
@@ -274,7 +312,8 @@ function build_constraint_system(
         a = a,
         weights = weights,
         supply_cols = supply_cols,
-        use_cols = use_cols,
+        final_demand_cols = final_demand_cols,
+        activity_cols = activity_cols,
         commodity_rows = commodity_rows,
         supply_local_to_global = supply_local_to_global,
         use_local_to_global = use_local_to_global,
@@ -314,7 +353,8 @@ function solve_with_active_set(
     supply_entries::Vector{FlowEntry},
     use_entries::Vector{FlowEntry},
     supply_targets::Dict{Tuple{String,String},Float64},
-    use_targets::Dict{Tuple{String,String},Float64},
+    final_demand_targets::Dict{Tuple{String,String},Float64},
+    activity_value_added_targets::Dict{Tuple{String,String},Float64},
 )
     active_supply = trues(length(supply_entries))
     active_use = trues(length(use_entries))
@@ -333,7 +373,8 @@ function solve_with_active_set(
             free_supply,
             free_use,
             supply_targets,
-            use_targets,
+            final_demand_targets,
+            activity_value_added_targets,
         )
 
         z, objective_value, max_residual = solve_equality_qp(system.A, system.b, system.a, system.weights)
@@ -538,8 +579,11 @@ function validation_rows(
     use_entries::Vector{FlowEntry},
     use_values::Vector{Float64},
     supply_targets::Dict{Tuple{String,String},Float64},
-    use_targets::Dict{Tuple{String,String},Float64},
-    original_gap::Float64,
+    final_demand_targets::Dict{Tuple{String,String},Float64},
+    activity_value_added_targets::Dict{Tuple{String,String},Float64},
+    sector_ids::Set{String},
+    commodity_gap_before::Float64,
+    final_demand_macro_gap::Float64,
     λ::Float64,
     solve_result::SolveResult,
 )
@@ -547,20 +591,46 @@ function validation_rows(
     max_row_gap = maximum(abs(parse(Float64, row[8])) for row in supply_rows)
 
     supply_cols = column_summary_rows(supply_entries, supply_values, supply_targets)
-    use_cols = column_summary_rows(use_entries, use_values, use_targets)
+    use_cols = column_summary_rows(use_entries, use_values, final_demand_targets)
     max_supply_target_residual = maximum(abs(parse(Float64, row[7])) for row in supply_cols)
-    max_use_target_residual = maximum(abs(parse(Float64, row[7])) for row in use_cols)
+    max_use_target_residual = isempty(use_cols) ? 0.0 : maximum(abs(parse(Float64, row[7])) for row in use_cols)
+
+    balanced_supply_cols = Dict{Tuple{String,String},Float64}()
+    balanced_use_activity_cols = Dict{Tuple{String,String},Float64}()
+    for pair in zip(supply_entries, supply_values)
+        entry = pair[1]
+        value = pair[2]
+        key = col_key(entry)
+        balanced_supply_cols[key] = get(balanced_supply_cols, key, 0.0) + value
+    end
+    for pair in zip(use_entries, use_values)
+        entry = pair[1]
+        value = pair[2]
+        if entry.column_code in sector_ids
+            key = col_key(entry)
+            balanced_use_activity_cols[key] = get(balanced_use_activity_cols, key, 0.0) + value
+        end
+    end
+    max_activity_gap = 0.0
+    for key in keys(activity_value_added_targets)
+        gap = get(balanced_supply_cols, key, 0.0) -
+              get(balanced_use_activity_cols, key, 0.0) -
+              activity_value_added_targets[key]
+        max_activity_gap = max(max_activity_gap, abs(gap))
+    end
 
     rows = [
         ["special_product_rows_fixed", join(sort!(collect(SPECIAL_PRODUCT_ROWS)), ";")],
         ["commodity_supply_total_before", string(sum(entry.value for entry in supply_entries))],
         ["commodity_use_total_before", string(sum(entry.value for entry in use_entries))],
-        ["commodity_grand_total_gap_before", string(original_gap)],
+        ["commodity_grand_total_gap_before", string(commodity_gap_before)],
+        ["final_demand_macro_gap_before", string(final_demand_macro_gap)],
         ["column_target_reconciliation_lambda", string(λ)],
         ["commodity_supply_total_after", string(sum(supply_values))],
         ["commodity_use_total_after", string(sum(use_values))],
         ["commodity_grand_total_gap_after", string(sum(supply_values) - sum(use_values))],
         ["max_abs_row_gap_after", string(max_row_gap)],
+        ["max_abs_activity_column_gap_after", string(max_activity_gap)],
         ["max_abs_supply_column_target_residual", string(max_supply_target_residual)],
         ["max_abs_use_column_target_residual", string(max_use_target_residual)],
         ["negative_supply_entries_after", string(count(<(-BALANCE_TOL), supply_values))],
@@ -577,9 +647,11 @@ function configuration_rows()
     return [
         ["approach", "quadratic_minimum_distance"],
         ["cell_objective", "unit_weight_squared_deviation_from_stage3_cells"],
-        ["column_target_reconciliation", "size_weighted_quadratic_adjustment"],
+        ["column_target_reconciliation", "final_demand_macro_reconciliation_only"],
         ["commodity_balance", "exact_supply_use_equality_by_product_region_and_product_sector"],
-        ["column_constraints", "reconciled_supply_and_use_column_totals_preserved_exactly"],
+        ["supply_column_constraints", "stage3 industry output columns preserved exactly"],
+        ["final_demand_column_constraints", "stage3 final-demand columns preserved exactly"],
+        ["activity_identity_constraints", "supply columns equal intermediate-use columns plus fixed value-added"],
         ["support_rule", "existing_nonzero_commodity_cells_only"],
         ["noncommodity_rule", "special_rows_fixed_unchanged"],
         ["nonnegativity_rule", "active_set_with_zero_lower_bound"],
@@ -592,20 +664,24 @@ function main()
 
     raw_supply_entries = parse_flow_entries(IN_SUPPLY)
     raw_use_entries = parse_flow_entries(IN_USE)
+    sector_ids = load_sector_ids(IN_SECTOR_REGISTRY)
 
     commodity_supply, fixed_supply = partition_entries(raw_supply_entries)
     commodity_use, fixed_use = partition_entries(raw_use_entries)
 
     supply_col_totals = accumulate_totals(commodity_supply; by = :col)
-    use_col_totals = accumulate_totals(commodity_use; by = :col)
-    reconciled_supply_targets, reconciled_use_targets, original_gap, λ =
-        reconcile_column_targets(supply_col_totals, use_col_totals)
+    _, raw_final_demand_targets = split_use_column_totals(commodity_use, sector_ids)
+    activity_value_added_targets = fixed_activity_value_added(fixed_use, sector_ids)
+    original_gap = sum(entry.value for entry in commodity_supply) - sum(entry.value for entry in commodity_use)
+    final_demand_targets, final_demand_macro_gap, λ =
+        reconcile_final_demand_targets(raw_final_demand_targets, activity_value_added_targets)
 
     solve_result = solve_with_active_set(
         commodity_supply,
         commodity_use,
-        reconciled_supply_targets,
-        reconciled_use_targets,
+        supply_col_totals,
+        final_demand_targets,
+        activity_value_added_targets,
     )
 
     final_supply_entries = vcat(commodity_supply, fixed_supply)
@@ -640,13 +716,13 @@ function main()
             "activity_region",
             "activity_sector",
             "original_total_meur",
-            "reconciled_target_meur",
+            "target_meur",
             "balanced_total_meur",
             "delta_from_original_meur",
             "target_residual_meur",
             "sum_abs_cell_adjustment_meur",
         ],
-        column_summary_rows(commodity_supply, solve_result.supply_values, reconciled_supply_targets),
+        column_summary_rows(commodity_supply, solve_result.supply_values, supply_col_totals),
     )
 
     write_tsv(
@@ -655,13 +731,13 @@ function main()
             "use_region",
             "use_code",
             "original_total_meur",
-            "reconciled_target_meur",
+            "target_meur",
             "balanced_total_meur",
             "delta_from_original_meur",
             "target_residual_meur",
             "sum_abs_cell_adjustment_meur",
         ],
-        column_summary_rows(commodity_use, solve_result.use_values, reconciled_use_targets),
+        column_summary_rows(commodity_use, solve_result.use_values, final_demand_targets),
     )
 
     write_tsv(OUT_CONFIG, ["key", "value"], configuration_rows())
@@ -673,9 +749,12 @@ function main()
             solve_result.supply_values,
             commodity_use,
             solve_result.use_values,
-            reconciled_supply_targets,
-            reconciled_use_targets,
+            supply_col_totals,
+            final_demand_targets,
+            activity_value_added_targets,
+            sector_ids,
             original_gap,
+            final_demand_macro_gap,
             λ,
             solve_result,
         ),

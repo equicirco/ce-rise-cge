@@ -5,8 +5,8 @@ n_final_demand_accounts	30
 n_satellite_accounts	36
 n_external_accounts	6
 max_abs_commodity_imbalance	4.6566128730773926e-9
-max_abs_activity_imbalance	35.67540731653571
-total_final_demand_net_position	-1.7409820092140574e7
-total_satellite_net_position	1.740974034539273e7
+max_abs_activity_imbalance	2.7939677238464355e-9
+total_final_demand_net_position	-1.7409812165150627e7
+total_satellite_net_position	1.7409812165150657e7
 stage5_status	incomplete_by_design
 stage5_boundary	no_income_allocation_or_macro_closure_yet

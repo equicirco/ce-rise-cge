@@ -40,6 +40,7 @@ const STAGE1_DIR = joinpath(ARTIFACT_DIR, "01_initial_data")
 const STAGE2_DIR = joinpath(ARTIFACT_DIR, "02_integrated_sut")
 const STAGE3_DIR = joinpath(ARTIFACT_DIR, "03_final_preparation")
 const STAGE4_DIR = joinpath(ARTIFACT_DIR, "04_balanced_sut")
+const STAGE4B_DIR = joinpath(ARTIFACT_DIR, "04b_symmetric_io")
 const STAGE5_DIR = joinpath(ARTIFACT_DIR, "05_core_sam")
 const STAGE6_DIR = joinpath(ARTIFACT_DIR, "06_closed_sam")
 const STAGE7_DIR = joinpath(ARTIFACT_DIR, "07_model_scaffold")
@@ -54,6 +55,7 @@ const STAGE1_FILES = [
 const STAGE2_VALIDATION = joinpath(STAGE2_DIR, "integrated_validation.tsv")
 const STAGE3_VALIDATION = joinpath(STAGE3_DIR, "final_validation.tsv")
 const STAGE4_VALIDATION = joinpath(STAGE4_DIR, "balancing_validation.tsv")
+const STAGE4B_VALIDATION = joinpath(STAGE4B_DIR, "symmetric_io_validation.tsv")
 const STAGE5_VALIDATION = joinpath(STAGE5_DIR, "core_sam_validation.tsv")
 const STAGE6_VALIDATION = joinpath(STAGE6_DIR, "closed_sam_validation.tsv")
 const STAGE6_ACCOUNTS = joinpath(STAGE6_DIR, "closed_sam_accounts.tsv")
@@ -373,6 +375,7 @@ function append_stage4_checks!(rows)
     checks = [
         ("commodity_gap_after", abs(parse_float(values, "commodity_grand_total_gap_after")) <= LATE_TOL, values["commodity_grand_total_gap_after"], "<= $(LATE_TOL)", "Balanced supply and use should agree at the aggregate commodity level."),
         ("max_row_gap_after", abs(parse_float(values, "max_abs_row_gap_after")) <= LATE_TOL, values["max_abs_row_gap_after"], "<= $(LATE_TOL)", "Commodity rows should be balanced after stage 4."),
+        ("max_activity_column_gap_after", abs(parse_float(values, "max_abs_activity_column_gap_after")) <= LATE_TOL, values["max_abs_activity_column_gap_after"], "<= $(LATE_TOL)", "Industry columns should satisfy output equals intermediate inputs plus fixed value added."),
         ("supply_column_residual", abs(parse_float(values, "max_abs_supply_column_target_residual")) <= LATE_TOL, values["max_abs_supply_column_target_residual"], "<= $(LATE_TOL)", "Supply columns should stay close to their targets."),
         ("use_column_residual", abs(parse_float(values, "max_abs_use_column_target_residual")) <= LATE_TOL, values["max_abs_use_column_target_residual"], "<= $(LATE_TOL)", "Use columns should stay close to their targets."),
         ("negative_supply_entries", parse_int(values, "negative_supply_entries_after") == 0, values["negative_supply_entries_after"], "0", "Supply cells must remain nonnegative."),
@@ -382,6 +385,30 @@ function append_stage4_checks!(rows)
 
     for (check, ok, observed, expected, notes) in checks
         push!(rows, artifact_row("04_balanced_sut", check, artifact_status(ok), STAGE4_VALIDATION, observed, expected, notes))
+    end
+end
+
+function append_stage4b_checks!(rows)
+    if !isfile(STAGE4B_VALIDATION)
+        push!(rows, artifact_row("04b_symmetric_io", "validation_file", "FAIL", STAGE4B_VALIDATION, "missing", "file exists", "Stage-4b validation file is missing."))
+        return
+    end
+
+    values = read_key_value_file(STAGE4B_VALIDATION)
+    checks = [
+        ("industry_count", parse_int(values, "industry_count") > 0, values["industry_count"], "> 0", "The symmetric IO should contain explicit industries."),
+        ("product_count", parse_int(values, "product_count") > 0, values["product_count"], "> 0", "The symmetric IO should be derived from explicit product rows."),
+        ("sales_share_gap", abs(parse_float(values, "max_abs_product_sales_share_gap")) <= LATE_TOL, values["max_abs_product_sales_share_gap"], "<= $(LATE_TOL)", "Product sales shares should sum to one up to numerical tolerance."),
+        ("row_gap", abs(parse_float(values, "max_abs_row_gap")) <= LATE_TOL, values["max_abs_row_gap"], "<= $(LATE_TOL)", "Industry row totals should equal intermediate plus final uses."),
+        ("column_gap", abs(parse_float(values, "max_abs_column_gap")) <= LATE_TOL, values["max_abs_column_gap"], "<= $(LATE_TOL)", "Industry column totals should equal intermediate inputs plus value added."),
+        ("final_demand_gap", abs(parse_float(values, "max_abs_final_demand_gap")) <= LATE_TOL, values["max_abs_final_demand_gap"], "<= $(LATE_TOL)", "Final-demand totals should be preserved by the Model-D transformation."),
+        ("row_gap_count", parse_int(values, "row_gap_count_gt_1e-6") == 0, values["row_gap_count_gt_1e-6"], "0", "No industry row should exceed the post-transformation balance tolerance."),
+        ("column_gap_count", parse_int(values, "column_gap_count_gt_1e-6") == 0, values["column_gap_count_gt_1e-6"], "0", "No industry column should exceed the post-transformation balance tolerance."),
+        ("final_demand_gap_count", parse_int(values, "final_demand_gap_count_gt_1e-6") == 0, values["final_demand_gap_count_gt_1e-6"], "0", "No final-demand column should exceed the preservation tolerance."),
+    ]
+
+    for (check, ok, observed, expected, notes) in checks
+        push!(rows, artifact_row("04b_symmetric_io", check, artifact_status(ok), STAGE4B_VALIDATION, observed, expected, notes))
     end
 end
 
@@ -605,6 +632,7 @@ function artifact_report_rows()
     append_stage_table_status!(rows, "02_integrated_sut", STAGE2_VALIDATION, "integrated_table")
     append_stage_table_status!(rows, "03_final_preparation", STAGE3_VALIDATION, "final_table")
     append_stage4_checks!(rows)
+    append_stage4b_checks!(rows)
     append_stage5_checks!(rows)
     append_stage6_checks!(rows)
     append_stage7_checks!(rows)

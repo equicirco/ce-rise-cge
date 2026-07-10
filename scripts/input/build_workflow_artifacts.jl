@@ -28,6 +28,7 @@ function main()
         "build_stage2_integrated_artifacts.jl",
         "build_stage3_final_artifacts.jl",
         "build_stage4_balanced_sut.jl",
+        "build_stage4b_symmetric_io.jl",
         "build_stage5_core_sam.jl",
         "build_stage6_closed_sam.jl",
         "build_stage7_model_scaffold.jl",
