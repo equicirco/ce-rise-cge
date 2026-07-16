@@ -1,0 +1,14 @@
+component	key	value	description
+closure	numeraire_label	P_HH_COMMON	Model-defined common household-consumption price index used as the numeraire.
+closure	numeraire_kind	price_index	JCGECore numeraire kind for a model-defined price index.
+numerical	positive_lower	1.0e-8	Strictly positive lower bound supplied to JCGE blocks for prices, outputs, and bilateral trade flows.
+normalization	base_price	1.0	Common calibration price used to express the monetary SAM as model quantities at the reference point.
+trade	armington_elasticity	1.0	Initial Armington elasticity for observed product sourcing; retained as a sensitivity parameter until product-specific evidence is selected.
+trade	cet_transformation_elasticity	1.0	Initial CET transformation elasticity for observed product sales; retained as a sensitivity parameter until product-specific evidence is selected.
+trade	delivery_wedge	1.0	Reference delivery-price wedge for observed trade routes; transport margins are represented in the monetary calibration accounts.
+trade	row_world_price	1.0	Reference world price for the price-taking rest-of-world endpoint.
+trade	baseline_output_tax	0.0	Reference output-tax wedge before calibrated production and product tax treatment is added.
+final_demand	household_codes	P3_S14;P3_S15	Final-demand codes aggregated into regional household consumption.
+final_demand	government_code	P3_S13	Final-demand code for regional government consumption.
+final_demand	fixed_investment_code	P51G	Final-demand code for gross fixed capital formation.
+final_demand	inventory_change_code	P5M	Final-demand code for changes in inventories, retained as a signed exogenous market-clearing term rather than part of fixed investment demand.

@@ -16,7 +16,6 @@ Guiding rule:
 
 const ROOT_DIR = normpath(joinpath(@__DIR__, "..", ".."))
 const OUTDIR = joinpath(ROOT_DIR, "data", "interim", "structure")
-const NOTES_TABLE_DIR = joinpath(ROOT_DIR, "article", "notes", "tables")
 
 function ensure_dir(path::AbstractString)
     isdir(path) || mkpath(path)
@@ -358,7 +357,6 @@ end
 
 function main()
     ensure_dir(OUTDIR)
-    isdir(NOTES_TABLE_DIR) && ensure_dir(NOTES_TABLE_DIR)
 
     accounts = account_rows()
     account_table = [
@@ -393,12 +391,6 @@ function main()
         account_header,
         account_table,
     )
-    isdir(NOTES_TABLE_DIR) && write_tsv(
-        joinpath(NOTES_TABLE_DIR, "target_account_structure.tsv"),
-        account_header,
-        account_table,
-    )
-
     routes = route_rows()
     route_table = [
         [
@@ -434,19 +426,9 @@ function main()
         route_header,
         route_table,
     )
-    isdir(NOTES_TABLE_DIR) && write_tsv(
-        joinpath(NOTES_TABLE_DIR, "target_route_family_structure.tsv"),
-        route_header,
-        route_table,
-    )
-
     println("Wrote:")
     println("  ", joinpath(OUTDIR, "target_account_structure.tsv"))
     println("  ", joinpath(OUTDIR, "target_route_family_structure.tsv"))
-    if isdir(NOTES_TABLE_DIR)
-        println("  ", joinpath(NOTES_TABLE_DIR, "target_account_structure.tsv"))
-        println("  ", joinpath(NOTES_TABLE_DIR, "target_route_family_structure.tsv"))
-    end
 end
 
 main()

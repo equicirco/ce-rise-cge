@@ -1,0 +1,14 @@
+key	value
+model_scope	six_european_regions_with_regional_external_accounts
+regions	DE;FR;IT;PL;SK;REU
+regional_industry_count	25
+bundle_industry_count	150
+bundle_factor_count	12
+bundle_institution_count	18
+bundle_external_count	6
+bundle_investment_pool_count	1
+bundle_account_count	187
+family_count	3
+sam_square	true
+max_abs_balance	2.0227162167429924e-8
+balance_tolerance	1.0e-6

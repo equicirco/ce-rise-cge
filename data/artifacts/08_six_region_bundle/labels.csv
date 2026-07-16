@@ -1,0 +1,269 @@
+set,item,label,description
+industries,IND_DE_AGRI_FOOD,DE industry: Agriculture and food,Calibration-SAM account
+industries,IND_DE_EXTRACTIVE,DE industry: Extractive industries,Calibration-SAM account
+industries,IND_DE_BASIC_METALS,DE industry: Basic metals,Calibration-SAM account
+industries,IND_DE_METAL_COMPONENTS,DE industry: Metal components and fabricated metals,Calibration-SAM account
+industries,IND_DE_NEW_ELMA,DE industry: New CE-RISE electrical equipment,Calibration-SAM account
+industries,IND_DE_NEW_OFMA,DE industry: New CE-RISE office machinery and computers,Calibration-SAM account
+industries,IND_DE_NEW_RATV,DE industry: New CE-RISE communication and consumer electronics,Calibration-SAM account
+industries,IND_DE_REP_ELMA,DE industry: Repair activities linked to ELMA,Calibration-SAM account
+industries,IND_DE_REP_OFMA,DE industry: Repair activities linked to OFMA,Calibration-SAM account
+industries,IND_DE_REP_RATV,DE industry: Repair activities linked to RATV,Calibration-SAM account
+industries,IND_DE_REF_ELMA,DE industry: Refurbishment route for ELMA,Calibration-SAM account
+industries,IND_DE_REF_OFMA,DE industry: Refurbishment route for OFMA,Calibration-SAM account
+industries,IND_DE_REF_RATV,DE industry: Refurbishment route for RATV,Calibration-SAM account
+industries,IND_DE_REU_ELMA,DE industry: Reuse route for ELMA,Calibration-SAM account
+industries,IND_DE_REU_OFMA,DE industry: Reuse route for OFMA,Calibration-SAM account
+industries,IND_DE_REU_RATV,DE industry: Reuse route for RATV,Calibration-SAM account
+industries,IND_DE_REC_EE,DE industry: Recycling and recovery activities for CE-RISE chains,Calibration-SAM account
+industries,IND_DE_INC_EE,DE industry: Incineration and disposal activities for CE-RISE chains,Calibration-SAM account
+industries,IND_DE_CONSTRUCTION,DE industry: Construction,Calibration-SAM account
+industries,IND_DE_UTIL_WASTE,"DE industry: Utilities, water, and residual waste services",Calibration-SAM account
+industries,IND_DE_TRADE,DE industry: Trade services,Calibration-SAM account
+industries,IND_DE_TRANSPORT,DE industry: Transport and storage,Calibration-SAM account
+industries,IND_DE_OTHER_MANUFACTURING,DE industry: Other manufacturing,Calibration-SAM account
+industries,IND_DE_OTHER_SERVICES,DE industry: Other market services,Calibration-SAM account
+industries,IND_DE_PUBLIC_SOCIAL,DE industry: Public and social services,Calibration-SAM account
+factors,FAC_DE_LAB,DE factor: Labour,Calibration-SAM account
+factors,FAC_DE_CAP,DE factor: Capital,Calibration-SAM account
+institutions,INS_DE_HH,DE institution: Households (+ NPISH),Calibration-SAM account
+institutions,INS_DE_GOV,DE institution: Government,Calibration-SAM account
+institutions,INS_DE_INV,DE institution: Investment,Calibration-SAM account
+externals,EXT_DE_EXT,DE external account,Calibration-SAM account
+industries,IND_FR_AGRI_FOOD,FR industry: Agriculture and food,Calibration-SAM account
+industries,IND_FR_EXTRACTIVE,FR industry: Extractive industries,Calibration-SAM account
+industries,IND_FR_BASIC_METALS,FR industry: Basic metals,Calibration-SAM account
+industries,IND_FR_METAL_COMPONENTS,FR industry: Metal components and fabricated metals,Calibration-SAM account
+industries,IND_FR_NEW_ELMA,FR industry: New CE-RISE electrical equipment,Calibration-SAM account
+industries,IND_FR_NEW_OFMA,FR industry: New CE-RISE office machinery and computers,Calibration-SAM account
+industries,IND_FR_NEW_RATV,FR industry: New CE-RISE communication and consumer electronics,Calibration-SAM account
+industries,IND_FR_REP_ELMA,FR industry: Repair activities linked to ELMA,Calibration-SAM account
+industries,IND_FR_REP_OFMA,FR industry: Repair activities linked to OFMA,Calibration-SAM account
+industries,IND_FR_REP_RATV,FR industry: Repair activities linked to RATV,Calibration-SAM account
+industries,IND_FR_REF_ELMA,FR industry: Refurbishment route for ELMA,Calibration-SAM account
+industries,IND_FR_REF_OFMA,FR industry: Refurbishment route for OFMA,Calibration-SAM account
+industries,IND_FR_REF_RATV,FR industry: Refurbishment route for RATV,Calibration-SAM account
+industries,IND_FR_REU_ELMA,FR industry: Reuse route for ELMA,Calibration-SAM account
+industries,IND_FR_REU_OFMA,FR industry: Reuse route for OFMA,Calibration-SAM account
+industries,IND_FR_REU_RATV,FR industry: Reuse route for RATV,Calibration-SAM account
+industries,IND_FR_REC_EE,FR industry: Recycling and recovery activities for CE-RISE chains,Calibration-SAM account
+industries,IND_FR_INC_EE,FR industry: Incineration and disposal activities for CE-RISE chains,Calibration-SAM account
+industries,IND_FR_CONSTRUCTION,FR industry: Construction,Calibration-SAM account
+industries,IND_FR_UTIL_WASTE,"FR industry: Utilities, water, and residual waste services",Calibration-SAM account
+industries,IND_FR_TRADE,FR industry: Trade services,Calibration-SAM account
+industries,IND_FR_TRANSPORT,FR industry: Transport and storage,Calibration-SAM account
+industries,IND_FR_OTHER_MANUFACTURING,FR industry: Other manufacturing,Calibration-SAM account
+industries,IND_FR_OTHER_SERVICES,FR industry: Other market services,Calibration-SAM account
+industries,IND_FR_PUBLIC_SOCIAL,FR industry: Public and social services,Calibration-SAM account
+factors,FAC_FR_LAB,FR factor: Labour,Calibration-SAM account
+factors,FAC_FR_CAP,FR factor: Capital,Calibration-SAM account
+institutions,INS_FR_HH,FR institution: Households (+ NPISH),Calibration-SAM account
+institutions,INS_FR_GOV,FR institution: Government,Calibration-SAM account
+institutions,INS_FR_INV,FR institution: Investment,Calibration-SAM account
+externals,EXT_FR_EXT,FR external account,Calibration-SAM account
+industries,IND_IT_AGRI_FOOD,IT industry: Agriculture and food,Calibration-SAM account
+industries,IND_IT_EXTRACTIVE,IT industry: Extractive industries,Calibration-SAM account
+industries,IND_IT_BASIC_METALS,IT industry: Basic metals,Calibration-SAM account
+industries,IND_IT_METAL_COMPONENTS,IT industry: Metal components and fabricated metals,Calibration-SAM account
+industries,IND_IT_NEW_ELMA,IT industry: New CE-RISE electrical equipment,Calibration-SAM account
+industries,IND_IT_NEW_OFMA,IT industry: New CE-RISE office machinery and computers,Calibration-SAM account
+industries,IND_IT_NEW_RATV,IT industry: New CE-RISE communication and consumer electronics,Calibration-SAM account
+industries,IND_IT_REP_ELMA,IT industry: Repair activities linked to ELMA,Calibration-SAM account
+industries,IND_IT_REP_OFMA,IT industry: Repair activities linked to OFMA,Calibration-SAM account
+industries,IND_IT_REP_RATV,IT industry: Repair activities linked to RATV,Calibration-SAM account
+industries,IND_IT_REF_ELMA,IT industry: Refurbishment route for ELMA,Calibration-SAM account
+industries,IND_IT_REF_OFMA,IT industry: Refurbishment route for OFMA,Calibration-SAM account
+industries,IND_IT_REF_RATV,IT industry: Refurbishment route for RATV,Calibration-SAM account
+industries,IND_IT_REU_ELMA,IT industry: Reuse route for ELMA,Calibration-SAM account
+industries,IND_IT_REU_OFMA,IT industry: Reuse route for OFMA,Calibration-SAM account
+industries,IND_IT_REU_RATV,IT industry: Reuse route for RATV,Calibration-SAM account
+industries,IND_IT_REC_EE,IT industry: Recycling and recovery activities for CE-RISE chains,Calibration-SAM account
+industries,IND_IT_INC_EE,IT industry: Incineration and disposal activities for CE-RISE chains,Calibration-SAM account
+industries,IND_IT_CONSTRUCTION,IT industry: Construction,Calibration-SAM account
+industries,IND_IT_UTIL_WASTE,"IT industry: Utilities, water, and residual waste services",Calibration-SAM account
+industries,IND_IT_TRADE,IT industry: Trade services,Calibration-SAM account
+industries,IND_IT_TRANSPORT,IT industry: Transport and storage,Calibration-SAM account
+industries,IND_IT_OTHER_MANUFACTURING,IT industry: Other manufacturing,Calibration-SAM account
+industries,IND_IT_OTHER_SERVICES,IT industry: Other market services,Calibration-SAM account
+industries,IND_IT_PUBLIC_SOCIAL,IT industry: Public and social services,Calibration-SAM account
+factors,FAC_IT_LAB,IT factor: Labour,Calibration-SAM account
+factors,FAC_IT_CAP,IT factor: Capital,Calibration-SAM account
+institutions,INS_IT_HH,IT institution: Households (+ NPISH),Calibration-SAM account
+institutions,INS_IT_GOV,IT institution: Government,Calibration-SAM account
+institutions,INS_IT_INV,IT institution: Investment,Calibration-SAM account
+externals,EXT_IT_EXT,IT external account,Calibration-SAM account
+industries,IND_PL_AGRI_FOOD,PL industry: Agriculture and food,Calibration-SAM account
+industries,IND_PL_EXTRACTIVE,PL industry: Extractive industries,Calibration-SAM account
+industries,IND_PL_BASIC_METALS,PL industry: Basic metals,Calibration-SAM account
+industries,IND_PL_METAL_COMPONENTS,PL industry: Metal components and fabricated metals,Calibration-SAM account
+industries,IND_PL_NEW_ELMA,PL industry: New CE-RISE electrical equipment,Calibration-SAM account
+industries,IND_PL_NEW_OFMA,PL industry: New CE-RISE office machinery and computers,Calibration-SAM account
+industries,IND_PL_NEW_RATV,PL industry: New CE-RISE communication and consumer electronics,Calibration-SAM account
+industries,IND_PL_REP_ELMA,PL industry: Repair activities linked to ELMA,Calibration-SAM account
+industries,IND_PL_REP_OFMA,PL industry: Repair activities linked to OFMA,Calibration-SAM account
+industries,IND_PL_REP_RATV,PL industry: Repair activities linked to RATV,Calibration-SAM account
+industries,IND_PL_REF_ELMA,PL industry: Refurbishment route for ELMA,Calibration-SAM account
+industries,IND_PL_REF_OFMA,PL industry: Refurbishment route for OFMA,Calibration-SAM account
+industries,IND_PL_REF_RATV,PL industry: Refurbishment route for RATV,Calibration-SAM account
+industries,IND_PL_REU_ELMA,PL industry: Reuse route for ELMA,Calibration-SAM account
+industries,IND_PL_REU_OFMA,PL industry: Reuse route for OFMA,Calibration-SAM account
+industries,IND_PL_REU_RATV,PL industry: Reuse route for RATV,Calibration-SAM account
+industries,IND_PL_REC_EE,PL industry: Recycling and recovery activities for CE-RISE chains,Calibration-SAM account
+industries,IND_PL_INC_EE,PL industry: Incineration and disposal activities for CE-RISE chains,Calibration-SAM account
+industries,IND_PL_CONSTRUCTION,PL industry: Construction,Calibration-SAM account
+industries,IND_PL_UTIL_WASTE,"PL industry: Utilities, water, and residual waste services",Calibration-SAM account
+industries,IND_PL_TRADE,PL industry: Trade services,Calibration-SAM account
+industries,IND_PL_TRANSPORT,PL industry: Transport and storage,Calibration-SAM account
+industries,IND_PL_OTHER_MANUFACTURING,PL industry: Other manufacturing,Calibration-SAM account
+industries,IND_PL_OTHER_SERVICES,PL industry: Other market services,Calibration-SAM account
+industries,IND_PL_PUBLIC_SOCIAL,PL industry: Public and social services,Calibration-SAM account
+factors,FAC_PL_LAB,PL factor: Labour,Calibration-SAM account
+factors,FAC_PL_CAP,PL factor: Capital,Calibration-SAM account
+institutions,INS_PL_HH,PL institution: Households (+ NPISH),Calibration-SAM account
+institutions,INS_PL_GOV,PL institution: Government,Calibration-SAM account
+institutions,INS_PL_INV,PL institution: Investment,Calibration-SAM account
+externals,EXT_PL_EXT,PL external account,Calibration-SAM account
+industries,IND_SK_AGRI_FOOD,SK industry: Agriculture and food,Calibration-SAM account
+industries,IND_SK_EXTRACTIVE,SK industry: Extractive industries,Calibration-SAM account
+industries,IND_SK_BASIC_METALS,SK industry: Basic metals,Calibration-SAM account
+industries,IND_SK_METAL_COMPONENTS,SK industry: Metal components and fabricated metals,Calibration-SAM account
+industries,IND_SK_NEW_ELMA,SK industry: New CE-RISE electrical equipment,Calibration-SAM account
+industries,IND_SK_NEW_OFMA,SK industry: New CE-RISE office machinery and computers,Calibration-SAM account
+industries,IND_SK_NEW_RATV,SK industry: New CE-RISE communication and consumer electronics,Calibration-SAM account
+industries,IND_SK_REP_ELMA,SK industry: Repair activities linked to ELMA,Calibration-SAM account
+industries,IND_SK_REP_OFMA,SK industry: Repair activities linked to OFMA,Calibration-SAM account
+industries,IND_SK_REP_RATV,SK industry: Repair activities linked to RATV,Calibration-SAM account
+industries,IND_SK_REF_ELMA,SK industry: Refurbishment route for ELMA,Calibration-SAM account
+industries,IND_SK_REF_OFMA,SK industry: Refurbishment route for OFMA,Calibration-SAM account
+industries,IND_SK_REF_RATV,SK industry: Refurbishment route for RATV,Calibration-SAM account
+industries,IND_SK_REU_ELMA,SK industry: Reuse route for ELMA,Calibration-SAM account
+industries,IND_SK_REU_OFMA,SK industry: Reuse route for OFMA,Calibration-SAM account
+industries,IND_SK_REU_RATV,SK industry: Reuse route for RATV,Calibration-SAM account
+industries,IND_SK_REC_EE,SK industry: Recycling and recovery activities for CE-RISE chains,Calibration-SAM account
+industries,IND_SK_INC_EE,SK industry: Incineration and disposal activities for CE-RISE chains,Calibration-SAM account
+industries,IND_SK_CONSTRUCTION,SK industry: Construction,Calibration-SAM account
+industries,IND_SK_UTIL_WASTE,"SK industry: Utilities, water, and residual waste services",Calibration-SAM account
+industries,IND_SK_TRADE,SK industry: Trade services,Calibration-SAM account
+industries,IND_SK_TRANSPORT,SK industry: Transport and storage,Calibration-SAM account
+industries,IND_SK_OTHER_MANUFACTURING,SK industry: Other manufacturing,Calibration-SAM account
+industries,IND_SK_OTHER_SERVICES,SK industry: Other market services,Calibration-SAM account
+industries,IND_SK_PUBLIC_SOCIAL,SK industry: Public and social services,Calibration-SAM account
+factors,FAC_SK_LAB,SK factor: Labour,Calibration-SAM account
+factors,FAC_SK_CAP,SK factor: Capital,Calibration-SAM account
+institutions,INS_SK_HH,SK institution: Households (+ NPISH),Calibration-SAM account
+institutions,INS_SK_GOV,SK institution: Government,Calibration-SAM account
+institutions,INS_SK_INV,SK institution: Investment,Calibration-SAM account
+externals,EXT_SK_EXT,SK external account,Calibration-SAM account
+industries,IND_REU_AGRI_FOOD,REU industry: Agriculture and food,Calibration-SAM account
+industries,IND_REU_EXTRACTIVE,REU industry: Extractive industries,Calibration-SAM account
+industries,IND_REU_BASIC_METALS,REU industry: Basic metals,Calibration-SAM account
+industries,IND_REU_METAL_COMPONENTS,REU industry: Metal components and fabricated metals,Calibration-SAM account
+industries,IND_REU_NEW_ELMA,REU industry: New CE-RISE electrical equipment,Calibration-SAM account
+industries,IND_REU_NEW_OFMA,REU industry: New CE-RISE office machinery and computers,Calibration-SAM account
+industries,IND_REU_NEW_RATV,REU industry: New CE-RISE communication and consumer electronics,Calibration-SAM account
+industries,IND_REU_REP_ELMA,REU industry: Repair activities linked to ELMA,Calibration-SAM account
+industries,IND_REU_REP_OFMA,REU industry: Repair activities linked to OFMA,Calibration-SAM account
+industries,IND_REU_REP_RATV,REU industry: Repair activities linked to RATV,Calibration-SAM account
+industries,IND_REU_REF_ELMA,REU industry: Refurbishment route for ELMA,Calibration-SAM account
+industries,IND_REU_REF_OFMA,REU industry: Refurbishment route for OFMA,Calibration-SAM account
+industries,IND_REU_REF_RATV,REU industry: Refurbishment route for RATV,Calibration-SAM account
+industries,IND_REU_REU_ELMA,REU industry: Reuse route for ELMA,Calibration-SAM account
+industries,IND_REU_REU_OFMA,REU industry: Reuse route for OFMA,Calibration-SAM account
+industries,IND_REU_REU_RATV,REU industry: Reuse route for RATV,Calibration-SAM account
+industries,IND_REU_REC_EE,REU industry: Recycling and recovery activities for CE-RISE chains,Calibration-SAM account
+industries,IND_REU_INC_EE,REU industry: Incineration and disposal activities for CE-RISE chains,Calibration-SAM account
+industries,IND_REU_CONSTRUCTION,REU industry: Construction,Calibration-SAM account
+industries,IND_REU_UTIL_WASTE,"REU industry: Utilities, water, and residual waste services",Calibration-SAM account
+industries,IND_REU_TRADE,REU industry: Trade services,Calibration-SAM account
+industries,IND_REU_TRANSPORT,REU industry: Transport and storage,Calibration-SAM account
+industries,IND_REU_OTHER_MANUFACTURING,REU industry: Other manufacturing,Calibration-SAM account
+industries,IND_REU_OTHER_SERVICES,REU industry: Other market services,Calibration-SAM account
+industries,IND_REU_PUBLIC_SOCIAL,REU industry: Public and social services,Calibration-SAM account
+factors,FAC_REU_LAB,REU factor: Labour,Calibration-SAM account
+factors,FAC_REU_CAP,REU factor: Capital,Calibration-SAM account
+institutions,INS_REU_HH,REU institution: Households (+ NPISH),Calibration-SAM account
+institutions,INS_REU_GOV,REU institution: Government,Calibration-SAM account
+institutions,INS_REU_INV,REU institution: Investment,Calibration-SAM account
+externals,EXT_REU_EXT,REU external account,Calibration-SAM account
+investment_pools,INV_POOL,Global interregional investment pool,Calibration-SAM account
+regions,DE,DE,European model region
+regions,FR,FR,European model region
+regions,IT,IT,European model region
+regions,PL,PL,European model region
+regions,SK,SK,European model region
+regions,REU,REU,European model region
+families,ELMA,Electrical machinery and apparatus,CE-RISE product family
+families,OFMA,Office machinery and computers,CE-RISE product family
+families,RATV,"Radio, television and communication equipment",CE-RISE product family
+routes,NEW,New production,Circular-economy route
+routes,REF,Refurbishment,Circular-economy route
+routes,REP,Repair,Circular-economy route
+routes,REU,Reuse,Circular-economy route
+routes,REC,Recycling,Circular-economy route
+routes,INC,Incineration or disposal,Circular-economy route
+regional_families,DE__ELMA,DE: Electrical machinery and apparatus,Region-product-family pair
+regional_families,DE__OFMA,DE: Office machinery and computers,Region-product-family pair
+regional_families,DE__RATV,"DE: Radio, television and communication equipment",Region-product-family pair
+regional_families,FR__ELMA,FR: Electrical machinery and apparatus,Region-product-family pair
+regional_families,FR__OFMA,FR: Office machinery and computers,Region-product-family pair
+regional_families,FR__RATV,"FR: Radio, television and communication equipment",Region-product-family pair
+regional_families,IT__ELMA,IT: Electrical machinery and apparatus,Region-product-family pair
+regional_families,IT__OFMA,IT: Office machinery and computers,Region-product-family pair
+regional_families,IT__RATV,"IT: Radio, television and communication equipment",Region-product-family pair
+regional_families,PL__ELMA,PL: Electrical machinery and apparatus,Region-product-family pair
+regional_families,PL__OFMA,PL: Office machinery and computers,Region-product-family pair
+regional_families,PL__RATV,"PL: Radio, television and communication equipment",Region-product-family pair
+regional_families,SK__ELMA,SK: Electrical machinery and apparatus,Region-product-family pair
+regional_families,SK__OFMA,SK: Office machinery and computers,Region-product-family pair
+regional_families,SK__RATV,"SK: Radio, television and communication equipment",Region-product-family pair
+regional_families,REU__ELMA,REU: Electrical machinery and apparatus,Region-product-family pair
+regional_families,REU__OFMA,REU: Office machinery and computers,Region-product-family pair
+regional_families,REU__RATV,"REU: Radio, television and communication equipment",Region-product-family pair
+service_targets,TST_DE_ELMA,DE service composite: Electrical machinery and apparatus,Family-specific service composite
+service_targets,TST_DE_OFMA,DE service composite: Office machinery and computers,Family-specific service composite
+service_targets,TST_DE_RATV,"DE service composite: Radio, television and communication equipment",Family-specific service composite
+service_targets,TST_FR_ELMA,FR service composite: Electrical machinery and apparatus,Family-specific service composite
+service_targets,TST_FR_OFMA,FR service composite: Office machinery and computers,Family-specific service composite
+service_targets,TST_FR_RATV,"FR service composite: Radio, television and communication equipment",Family-specific service composite
+service_targets,TST_IT_ELMA,IT service composite: Electrical machinery and apparatus,Family-specific service composite
+service_targets,TST_IT_OFMA,IT service composite: Office machinery and computers,Family-specific service composite
+service_targets,TST_IT_RATV,"IT service composite: Radio, television and communication equipment",Family-specific service composite
+service_targets,TST_PL_ELMA,PL service composite: Electrical machinery and apparatus,Family-specific service composite
+service_targets,TST_PL_OFMA,PL service composite: Office machinery and computers,Family-specific service composite
+service_targets,TST_PL_RATV,"PL service composite: Radio, television and communication equipment",Family-specific service composite
+service_targets,TST_SK_ELMA,SK service composite: Electrical machinery and apparatus,Family-specific service composite
+service_targets,TST_SK_OFMA,SK service composite: Office machinery and computers,Family-specific service composite
+service_targets,TST_SK_RATV,"SK service composite: Radio, television and communication equipment",Family-specific service composite
+service_targets,TST_REU_ELMA,REU service composite: Electrical machinery and apparatus,Family-specific service composite
+service_targets,TST_REU_OFMA,REU service composite: Office machinery and computers,Family-specific service composite
+service_targets,TST_REU_RATV,"REU service composite: Radio, television and communication equipment",Family-specific service composite
+eol_targets,EOL_DE_ELMA,DE end-of-life flow: Electrical machinery and apparatus,Family-specific end-of-life flow
+eol_targets,EOL_DE_OFMA,DE end-of-life flow: Office machinery and computers,Family-specific end-of-life flow
+eol_targets,EOL_DE_RATV,"DE end-of-life flow: Radio, television and communication equipment",Family-specific end-of-life flow
+eol_targets,EOL_FR_ELMA,FR end-of-life flow: Electrical machinery and apparatus,Family-specific end-of-life flow
+eol_targets,EOL_FR_OFMA,FR end-of-life flow: Office machinery and computers,Family-specific end-of-life flow
+eol_targets,EOL_FR_RATV,"FR end-of-life flow: Radio, television and communication equipment",Family-specific end-of-life flow
+eol_targets,EOL_IT_ELMA,IT end-of-life flow: Electrical machinery and apparatus,Family-specific end-of-life flow
+eol_targets,EOL_IT_OFMA,IT end-of-life flow: Office machinery and computers,Family-specific end-of-life flow
+eol_targets,EOL_IT_RATV,"IT end-of-life flow: Radio, television and communication equipment",Family-specific end-of-life flow
+eol_targets,EOL_PL_ELMA,PL end-of-life flow: Electrical machinery and apparatus,Family-specific end-of-life flow
+eol_targets,EOL_PL_OFMA,PL end-of-life flow: Office machinery and computers,Family-specific end-of-life flow
+eol_targets,EOL_PL_RATV,"PL end-of-life flow: Radio, television and communication equipment",Family-specific end-of-life flow
+eol_targets,EOL_SK_ELMA,SK end-of-life flow: Electrical machinery and apparatus,Family-specific end-of-life flow
+eol_targets,EOL_SK_OFMA,SK end-of-life flow: Office machinery and computers,Family-specific end-of-life flow
+eol_targets,EOL_SK_RATV,"SK end-of-life flow: Radio, television and communication equipment",Family-specific end-of-life flow
+eol_targets,EOL_REU_ELMA,REU end-of-life flow: Electrical machinery and apparatus,Family-specific end-of-life flow
+eol_targets,EOL_REU_OFMA,REU end-of-life flow: Office machinery and computers,Family-specific end-of-life flow
+eol_targets,EOL_REU_RATV,"REU end-of-life flow: Radio, television and communication equipment",Family-specific end-of-life flow
+material_targets,VMTL_DE_EE,DE primary metal pool,Primary metal input to CE-RISE routes
+material_targets,RMTL_DE_EE,DE recycled metal pool,Secondary metal supplied by recycling
+material_targets,VMTL_FR_EE,FR primary metal pool,Primary metal input to CE-RISE routes
+material_targets,RMTL_FR_EE,FR recycled metal pool,Secondary metal supplied by recycling
+material_targets,VMTL_IT_EE,IT primary metal pool,Primary metal input to CE-RISE routes
+material_targets,RMTL_IT_EE,IT recycled metal pool,Secondary metal supplied by recycling
+material_targets,VMTL_PL_EE,PL primary metal pool,Primary metal input to CE-RISE routes
+material_targets,RMTL_PL_EE,PL recycled metal pool,Secondary metal supplied by recycling
+material_targets,VMTL_SK_EE,SK primary metal pool,Primary metal input to CE-RISE routes
+material_targets,RMTL_SK_EE,SK recycled metal pool,Secondary metal supplied by recycling
+material_targets,VMTL_REU_EE,REU primary metal pool,Primary metal input to CE-RISE routes
+material_targets,RMTL_REU_EE,REU recycled metal pool,Secondary metal supplied by recycling

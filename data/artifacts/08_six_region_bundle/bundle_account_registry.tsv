@@ -1,0 +1,188 @@
+account_id	account_type	region	code	label
+IND_DE_AGRI_FOOD	industry	DE	AGRI_FOOD	DE industry: Agriculture and food
+IND_DE_EXTRACTIVE	industry	DE	EXTRACTIVE	DE industry: Extractive industries
+IND_DE_BASIC_METALS	industry	DE	BASIC_METALS	DE industry: Basic metals
+IND_DE_METAL_COMPONENTS	industry	DE	METAL_COMPONENTS	DE industry: Metal components and fabricated metals
+IND_DE_NEW_ELMA	industry	DE	NEW_ELMA	DE industry: New CE-RISE electrical equipment
+IND_DE_NEW_OFMA	industry	DE	NEW_OFMA	DE industry: New CE-RISE office machinery and computers
+IND_DE_NEW_RATV	industry	DE	NEW_RATV	DE industry: New CE-RISE communication and consumer electronics
+IND_DE_REP_ELMA	industry	DE	REP_ELMA	DE industry: Repair activities linked to ELMA
+IND_DE_REP_OFMA	industry	DE	REP_OFMA	DE industry: Repair activities linked to OFMA
+IND_DE_REP_RATV	industry	DE	REP_RATV	DE industry: Repair activities linked to RATV
+IND_DE_REF_ELMA	industry	DE	REF_ELMA	DE industry: Refurbishment route for ELMA
+IND_DE_REF_OFMA	industry	DE	REF_OFMA	DE industry: Refurbishment route for OFMA
+IND_DE_REF_RATV	industry	DE	REF_RATV	DE industry: Refurbishment route for RATV
+IND_DE_REU_ELMA	industry	DE	REU_ELMA	DE industry: Reuse route for ELMA
+IND_DE_REU_OFMA	industry	DE	REU_OFMA	DE industry: Reuse route for OFMA
+IND_DE_REU_RATV	industry	DE	REU_RATV	DE industry: Reuse route for RATV
+IND_DE_REC_EE	industry	DE	REC_EE	DE industry: Recycling and recovery activities for CE-RISE chains
+IND_DE_INC_EE	industry	DE	INC_EE	DE industry: Incineration and disposal activities for CE-RISE chains
+IND_DE_CONSTRUCTION	industry	DE	CONSTRUCTION	DE industry: Construction
+IND_DE_UTIL_WASTE	industry	DE	UTIL_WASTE	DE industry: Utilities, water, and residual waste services
+IND_DE_TRADE	industry	DE	TRADE	DE industry: Trade services
+IND_DE_TRANSPORT	industry	DE	TRANSPORT	DE industry: Transport and storage
+IND_DE_OTHER_MANUFACTURING	industry	DE	OTHER_MANUFACTURING	DE industry: Other manufacturing
+IND_DE_OTHER_SERVICES	industry	DE	OTHER_SERVICES	DE industry: Other market services
+IND_DE_PUBLIC_SOCIAL	industry	DE	PUBLIC_SOCIAL	DE industry: Public and social services
+FAC_DE_LAB	factor	DE	LAB	DE factor: Labour
+FAC_DE_CAP	factor	DE	CAP	DE factor: Capital
+INS_DE_HH	institution	DE	HH	DE institution: Households (+ NPISH)
+INS_DE_GOV	institution	DE	GOV	DE institution: Government
+INS_DE_INV	institution	DE	INV	DE institution: Investment
+EXT_DE_EXT	external	DE	EXT	DE external account
+IND_FR_AGRI_FOOD	industry	FR	AGRI_FOOD	FR industry: Agriculture and food
+IND_FR_EXTRACTIVE	industry	FR	EXTRACTIVE	FR industry: Extractive industries
+IND_FR_BASIC_METALS	industry	FR	BASIC_METALS	FR industry: Basic metals
+IND_FR_METAL_COMPONENTS	industry	FR	METAL_COMPONENTS	FR industry: Metal components and fabricated metals
+IND_FR_NEW_ELMA	industry	FR	NEW_ELMA	FR industry: New CE-RISE electrical equipment
+IND_FR_NEW_OFMA	industry	FR	NEW_OFMA	FR industry: New CE-RISE office machinery and computers
+IND_FR_NEW_RATV	industry	FR	NEW_RATV	FR industry: New CE-RISE communication and consumer electronics
+IND_FR_REP_ELMA	industry	FR	REP_ELMA	FR industry: Repair activities linked to ELMA
+IND_FR_REP_OFMA	industry	FR	REP_OFMA	FR industry: Repair activities linked to OFMA
+IND_FR_REP_RATV	industry	FR	REP_RATV	FR industry: Repair activities linked to RATV
+IND_FR_REF_ELMA	industry	FR	REF_ELMA	FR industry: Refurbishment route for ELMA
+IND_FR_REF_OFMA	industry	FR	REF_OFMA	FR industry: Refurbishment route for OFMA
+IND_FR_REF_RATV	industry	FR	REF_RATV	FR industry: Refurbishment route for RATV
+IND_FR_REU_ELMA	industry	FR	REU_ELMA	FR industry: Reuse route for ELMA
+IND_FR_REU_OFMA	industry	FR	REU_OFMA	FR industry: Reuse route for OFMA
+IND_FR_REU_RATV	industry	FR	REU_RATV	FR industry: Reuse route for RATV
+IND_FR_REC_EE	industry	FR	REC_EE	FR industry: Recycling and recovery activities for CE-RISE chains
+IND_FR_INC_EE	industry	FR	INC_EE	FR industry: Incineration and disposal activities for CE-RISE chains
+IND_FR_CONSTRUCTION	industry	FR	CONSTRUCTION	FR industry: Construction
+IND_FR_UTIL_WASTE	industry	FR	UTIL_WASTE	FR industry: Utilities, water, and residual waste services
+IND_FR_TRADE	industry	FR	TRADE	FR industry: Trade services
+IND_FR_TRANSPORT	industry	FR	TRANSPORT	FR industry: Transport and storage
+IND_FR_OTHER_MANUFACTURING	industry	FR	OTHER_MANUFACTURING	FR industry: Other manufacturing
+IND_FR_OTHER_SERVICES	industry	FR	OTHER_SERVICES	FR industry: Other market services
+IND_FR_PUBLIC_SOCIAL	industry	FR	PUBLIC_SOCIAL	FR industry: Public and social services
+FAC_FR_LAB	factor	FR	LAB	FR factor: Labour
+FAC_FR_CAP	factor	FR	CAP	FR factor: Capital
+INS_FR_HH	institution	FR	HH	FR institution: Households (+ NPISH)
+INS_FR_GOV	institution	FR	GOV	FR institution: Government
+INS_FR_INV	institution	FR	INV	FR institution: Investment
+EXT_FR_EXT	external	FR	EXT	FR external account
+IND_IT_AGRI_FOOD	industry	IT	AGRI_FOOD	IT industry: Agriculture and food
+IND_IT_EXTRACTIVE	industry	IT	EXTRACTIVE	IT industry: Extractive industries
+IND_IT_BASIC_METALS	industry	IT	BASIC_METALS	IT industry: Basic metals
+IND_IT_METAL_COMPONENTS	industry	IT	METAL_COMPONENTS	IT industry: Metal components and fabricated metals
+IND_IT_NEW_ELMA	industry	IT	NEW_ELMA	IT industry: New CE-RISE electrical equipment
+IND_IT_NEW_OFMA	industry	IT	NEW_OFMA	IT industry: New CE-RISE office machinery and computers
+IND_IT_NEW_RATV	industry	IT	NEW_RATV	IT industry: New CE-RISE communication and consumer electronics
+IND_IT_REP_ELMA	industry	IT	REP_ELMA	IT industry: Repair activities linked to ELMA
+IND_IT_REP_OFMA	industry	IT	REP_OFMA	IT industry: Repair activities linked to OFMA
+IND_IT_REP_RATV	industry	IT	REP_RATV	IT industry: Repair activities linked to RATV
+IND_IT_REF_ELMA	industry	IT	REF_ELMA	IT industry: Refurbishment route for ELMA
+IND_IT_REF_OFMA	industry	IT	REF_OFMA	IT industry: Refurbishment route for OFMA
+IND_IT_REF_RATV	industry	IT	REF_RATV	IT industry: Refurbishment route for RATV
+IND_IT_REU_ELMA	industry	IT	REU_ELMA	IT industry: Reuse route for ELMA
+IND_IT_REU_OFMA	industry	IT	REU_OFMA	IT industry: Reuse route for OFMA
+IND_IT_REU_RATV	industry	IT	REU_RATV	IT industry: Reuse route for RATV
+IND_IT_REC_EE	industry	IT	REC_EE	IT industry: Recycling and recovery activities for CE-RISE chains
+IND_IT_INC_EE	industry	IT	INC_EE	IT industry: Incineration and disposal activities for CE-RISE chains
+IND_IT_CONSTRUCTION	industry	IT	CONSTRUCTION	IT industry: Construction
+IND_IT_UTIL_WASTE	industry	IT	UTIL_WASTE	IT industry: Utilities, water, and residual waste services
+IND_IT_TRADE	industry	IT	TRADE	IT industry: Trade services
+IND_IT_TRANSPORT	industry	IT	TRANSPORT	IT industry: Transport and storage
+IND_IT_OTHER_MANUFACTURING	industry	IT	OTHER_MANUFACTURING	IT industry: Other manufacturing
+IND_IT_OTHER_SERVICES	industry	IT	OTHER_SERVICES	IT industry: Other market services
+IND_IT_PUBLIC_SOCIAL	industry	IT	PUBLIC_SOCIAL	IT industry: Public and social services
+FAC_IT_LAB	factor	IT	LAB	IT factor: Labour
+FAC_IT_CAP	factor	IT	CAP	IT factor: Capital
+INS_IT_HH	institution	IT	HH	IT institution: Households (+ NPISH)
+INS_IT_GOV	institution	IT	GOV	IT institution: Government
+INS_IT_INV	institution	IT	INV	IT institution: Investment
+EXT_IT_EXT	external	IT	EXT	IT external account
+IND_PL_AGRI_FOOD	industry	PL	AGRI_FOOD	PL industry: Agriculture and food
+IND_PL_EXTRACTIVE	industry	PL	EXTRACTIVE	PL industry: Extractive industries
+IND_PL_BASIC_METALS	industry	PL	BASIC_METALS	PL industry: Basic metals
+IND_PL_METAL_COMPONENTS	industry	PL	METAL_COMPONENTS	PL industry: Metal components and fabricated metals
+IND_PL_NEW_ELMA	industry	PL	NEW_ELMA	PL industry: New CE-RISE electrical equipment
+IND_PL_NEW_OFMA	industry	PL	NEW_OFMA	PL industry: New CE-RISE office machinery and computers
+IND_PL_NEW_RATV	industry	PL	NEW_RATV	PL industry: New CE-RISE communication and consumer electronics
+IND_PL_REP_ELMA	industry	PL	REP_ELMA	PL industry: Repair activities linked to ELMA
+IND_PL_REP_OFMA	industry	PL	REP_OFMA	PL industry: Repair activities linked to OFMA
+IND_PL_REP_RATV	industry	PL	REP_RATV	PL industry: Repair activities linked to RATV
+IND_PL_REF_ELMA	industry	PL	REF_ELMA	PL industry: Refurbishment route for ELMA
+IND_PL_REF_OFMA	industry	PL	REF_OFMA	PL industry: Refurbishment route for OFMA
+IND_PL_REF_RATV	industry	PL	REF_RATV	PL industry: Refurbishment route for RATV
+IND_PL_REU_ELMA	industry	PL	REU_ELMA	PL industry: Reuse route for ELMA
+IND_PL_REU_OFMA	industry	PL	REU_OFMA	PL industry: Reuse route for OFMA
+IND_PL_REU_RATV	industry	PL	REU_RATV	PL industry: Reuse route for RATV
+IND_PL_REC_EE	industry	PL	REC_EE	PL industry: Recycling and recovery activities for CE-RISE chains
+IND_PL_INC_EE	industry	PL	INC_EE	PL industry: Incineration and disposal activities for CE-RISE chains
+IND_PL_CONSTRUCTION	industry	PL	CONSTRUCTION	PL industry: Construction
+IND_PL_UTIL_WASTE	industry	PL	UTIL_WASTE	PL industry: Utilities, water, and residual waste services
+IND_PL_TRADE	industry	PL	TRADE	PL industry: Trade services
+IND_PL_TRANSPORT	industry	PL	TRANSPORT	PL industry: Transport and storage
+IND_PL_OTHER_MANUFACTURING	industry	PL	OTHER_MANUFACTURING	PL industry: Other manufacturing
+IND_PL_OTHER_SERVICES	industry	PL	OTHER_SERVICES	PL industry: Other market services
+IND_PL_PUBLIC_SOCIAL	industry	PL	PUBLIC_SOCIAL	PL industry: Public and social services
+FAC_PL_LAB	factor	PL	LAB	PL factor: Labour
+FAC_PL_CAP	factor	PL	CAP	PL factor: Capital
+INS_PL_HH	institution	PL	HH	PL institution: Households (+ NPISH)
+INS_PL_GOV	institution	PL	GOV	PL institution: Government
+INS_PL_INV	institution	PL	INV	PL institution: Investment
+EXT_PL_EXT	external	PL	EXT	PL external account
+IND_SK_AGRI_FOOD	industry	SK	AGRI_FOOD	SK industry: Agriculture and food
+IND_SK_EXTRACTIVE	industry	SK	EXTRACTIVE	SK industry: Extractive industries
+IND_SK_BASIC_METALS	industry	SK	BASIC_METALS	SK industry: Basic metals
+IND_SK_METAL_COMPONENTS	industry	SK	METAL_COMPONENTS	SK industry: Metal components and fabricated metals
+IND_SK_NEW_ELMA	industry	SK	NEW_ELMA	SK industry: New CE-RISE electrical equipment
+IND_SK_NEW_OFMA	industry	SK	NEW_OFMA	SK industry: New CE-RISE office machinery and computers
+IND_SK_NEW_RATV	industry	SK	NEW_RATV	SK industry: New CE-RISE communication and consumer electronics
+IND_SK_REP_ELMA	industry	SK	REP_ELMA	SK industry: Repair activities linked to ELMA
+IND_SK_REP_OFMA	industry	SK	REP_OFMA	SK industry: Repair activities linked to OFMA
+IND_SK_REP_RATV	industry	SK	REP_RATV	SK industry: Repair activities linked to RATV
+IND_SK_REF_ELMA	industry	SK	REF_ELMA	SK industry: Refurbishment route for ELMA
+IND_SK_REF_OFMA	industry	SK	REF_OFMA	SK industry: Refurbishment route for OFMA
+IND_SK_REF_RATV	industry	SK	REF_RATV	SK industry: Refurbishment route for RATV
+IND_SK_REU_ELMA	industry	SK	REU_ELMA	SK industry: Reuse route for ELMA
+IND_SK_REU_OFMA	industry	SK	REU_OFMA	SK industry: Reuse route for OFMA
+IND_SK_REU_RATV	industry	SK	REU_RATV	SK industry: Reuse route for RATV
+IND_SK_REC_EE	industry	SK	REC_EE	SK industry: Recycling and recovery activities for CE-RISE chains
+IND_SK_INC_EE	industry	SK	INC_EE	SK industry: Incineration and disposal activities for CE-RISE chains
+IND_SK_CONSTRUCTION	industry	SK	CONSTRUCTION	SK industry: Construction
+IND_SK_UTIL_WASTE	industry	SK	UTIL_WASTE	SK industry: Utilities, water, and residual waste services
+IND_SK_TRADE	industry	SK	TRADE	SK industry: Trade services
+IND_SK_TRANSPORT	industry	SK	TRANSPORT	SK industry: Transport and storage
+IND_SK_OTHER_MANUFACTURING	industry	SK	OTHER_MANUFACTURING	SK industry: Other manufacturing
+IND_SK_OTHER_SERVICES	industry	SK	OTHER_SERVICES	SK industry: Other market services
+IND_SK_PUBLIC_SOCIAL	industry	SK	PUBLIC_SOCIAL	SK industry: Public and social services
+FAC_SK_LAB	factor	SK	LAB	SK factor: Labour
+FAC_SK_CAP	factor	SK	CAP	SK factor: Capital
+INS_SK_HH	institution	SK	HH	SK institution: Households (+ NPISH)
+INS_SK_GOV	institution	SK	GOV	SK institution: Government
+INS_SK_INV	institution	SK	INV	SK institution: Investment
+EXT_SK_EXT	external	SK	EXT	SK external account
+IND_REU_AGRI_FOOD	industry	REU	AGRI_FOOD	REU industry: Agriculture and food
+IND_REU_EXTRACTIVE	industry	REU	EXTRACTIVE	REU industry: Extractive industries
+IND_REU_BASIC_METALS	industry	REU	BASIC_METALS	REU industry: Basic metals
+IND_REU_METAL_COMPONENTS	industry	REU	METAL_COMPONENTS	REU industry: Metal components and fabricated metals
+IND_REU_NEW_ELMA	industry	REU	NEW_ELMA	REU industry: New CE-RISE electrical equipment
+IND_REU_NEW_OFMA	industry	REU	NEW_OFMA	REU industry: New CE-RISE office machinery and computers
+IND_REU_NEW_RATV	industry	REU	NEW_RATV	REU industry: New CE-RISE communication and consumer electronics
+IND_REU_REP_ELMA	industry	REU	REP_ELMA	REU industry: Repair activities linked to ELMA
+IND_REU_REP_OFMA	industry	REU	REP_OFMA	REU industry: Repair activities linked to OFMA
+IND_REU_REP_RATV	industry	REU	REP_RATV	REU industry: Repair activities linked to RATV
+IND_REU_REF_ELMA	industry	REU	REF_ELMA	REU industry: Refurbishment route for ELMA
+IND_REU_REF_OFMA	industry	REU	REF_OFMA	REU industry: Refurbishment route for OFMA
+IND_REU_REF_RATV	industry	REU	REF_RATV	REU industry: Refurbishment route for RATV
+IND_REU_REU_ELMA	industry	REU	REU_ELMA	REU industry: Reuse route for ELMA
+IND_REU_REU_OFMA	industry	REU	REU_OFMA	REU industry: Reuse route for OFMA
+IND_REU_REU_RATV	industry	REU	REU_RATV	REU industry: Reuse route for RATV
+IND_REU_REC_EE	industry	REU	REC_EE	REU industry: Recycling and recovery activities for CE-RISE chains
+IND_REU_INC_EE	industry	REU	INC_EE	REU industry: Incineration and disposal activities for CE-RISE chains
+IND_REU_CONSTRUCTION	industry	REU	CONSTRUCTION	REU industry: Construction
+IND_REU_UTIL_WASTE	industry	REU	UTIL_WASTE	REU industry: Utilities, water, and residual waste services
+IND_REU_TRADE	industry	REU	TRADE	REU industry: Trade services
+IND_REU_TRANSPORT	industry	REU	TRANSPORT	REU industry: Transport and storage
+IND_REU_OTHER_MANUFACTURING	industry	REU	OTHER_MANUFACTURING	REU industry: Other manufacturing
+IND_REU_OTHER_SERVICES	industry	REU	OTHER_SERVICES	REU industry: Other market services
+IND_REU_PUBLIC_SOCIAL	industry	REU	PUBLIC_SOCIAL	REU industry: Public and social services
+FAC_REU_LAB	factor	REU	LAB	REU factor: Labour
+FAC_REU_CAP	factor	REU	CAP	REU factor: Capital
+INS_REU_HH	institution	REU	HH	REU institution: Households (+ NPISH)
+INS_REU_GOV	institution	REU	GOV	REU institution: Government
+INS_REU_INV	institution	REU	INV	REU institution: Investment
+EXT_REU_EXT	external	REU	EXT	REU external account
+INV_POOL	investment_pool	GLOBAL	INV_POOL	Global interregional investment pool

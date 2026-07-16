@@ -1,19 +1,15 @@
 # CE-RISE Circular Economy CGE
-Computable general equilibrium model developed to support Task 3.5 of the CE-RISE research project.
+This repository develops a Julia-based computable general equilibrium model for analysing circular-economy strategies in European electronics value chains under the CE-RISE project.
 
-## Repository Structure
+## Contents
 
-- `scripts/input/`: data-preparation, validation, and benchmark-SAM construction workflow.
-- `data/disaggregation/parent_and_disaggregated_rows_sup_and_use.csv`: required CE-RISE disaggregation input used by the workflow.
-- `data/mappings/`: region and sector mapping tables.
-- `data/artifacts/`: persisted workflow outputs from the initial source bundle to the closed benchmark SAM.
-- `article/`: separate git repository for the manuscript and model-building notes.
-
-## Public Data Scope
-
-This public repository keeps only the disaggregation file required by the workflow from the project-specific source exchange, together with the derived benchmark artifacts needed to inspect and reproduce the model database.
-
-Large raw FIGARO extracts in `data/raw/`, generated working tables in `data/interim/`, and the unused spreadsheet from the original exchange are excluded from version control and can be regenerated locally from the scripts.
+- `data/disaggregation/`: CE-RISE disaggregation input used in the data workflow.
+- `data/mappings/`: regional, sectoral, and model-configuration mappings.
+- `data/artifacts/`: persisted supply-use, input-output, and social-accounting-matrix artifacts.
+- `scripts/input/`: data preparation, balancing, validation, and calibration-data construction scripts.
+- `src/`: the Julia implementation of the CGE model.
+- `test/`: model and calibration tests.
+- `Project.toml` and `Manifest.toml`: the Julia environment.
 
 ## License
 

@@ -3,7 +3,6 @@
   "description": "Empirical circular-economy computable general equilibrium benchmark-construction workflow for CE-RISE value chains, implemented in Julia and structured for JCGE calibration.",
   "license": "EUPL-1.2",
   "upload_type": "software",
-  "version": "0.1.0",
   "creators": [
     {
       "name": "Boero, Riccardo",
@@ -23,7 +22,6 @@
     "Social Accounting Matrix",
     "Benchmark Calibration"
   ],
-  "notes": "Pre-release repository state for the forthcoming v0.1.0 public release of the CE-RISE CGE benchmark-construction workflow, including disaggregation mappings, staged SUT artifacts, validation pipeline, and a closed benchmark SAM for calibration.",
   "communities": [
     { "identifier": "ce-rise" },
     { "identifier": "impact" }
