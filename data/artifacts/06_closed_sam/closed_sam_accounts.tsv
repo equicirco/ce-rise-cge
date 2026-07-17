@@ -1,338 +1,188 @@
 account_id	account_type	region	code	label
-ACT:DE:AGRI_FOOD	activity	DE	AGRI_FOOD	DE activity: Agriculture and food
-ACT:DE:BASIC_METALS	activity	DE	BASIC_METALS	DE activity: Basic metals
-ACT:DE:CONSTRUCTION	activity	DE	CONSTRUCTION	DE activity: Construction
-ACT:DE:EXTRACTIVE	activity	DE	EXTRACTIVE	DE activity: Extractive industries
-ACT:DE:INC_EE	activity	DE	INC_EE	DE activity: Incineration and disposal activities for CE-RISE chains
-ACT:DE:METAL_COMPONENTS	activity	DE	METAL_COMPONENTS	DE activity: Metal components and fabricated metals
-ACT:DE:NEW_ELMA	activity	DE	NEW_ELMA	DE activity: New CE-RISE electrical equipment
-ACT:DE:NEW_OFMA	activity	DE	NEW_OFMA	DE activity: New CE-RISE office machinery and computers
-ACT:DE:NEW_RATV	activity	DE	NEW_RATV	DE activity: New CE-RISE communication and consumer electronics
-ACT:DE:OTHER_MANUFACTURING	activity	DE	OTHER_MANUFACTURING	DE activity: Other manufacturing
-ACT:DE:OTHER_SERVICES	activity	DE	OTHER_SERVICES	DE activity: Other market services
-ACT:DE:PUBLIC_SOCIAL	activity	DE	PUBLIC_SOCIAL	DE activity: Public and social services
-ACT:DE:REC_EE	activity	DE	REC_EE	DE activity: Recycling and recovery activities for CE-RISE chains
-ACT:DE:REF_ELMA	activity	DE	REF_ELMA	DE activity: Refurbishment route for ELMA
-ACT:DE:REF_OFMA	activity	DE	REF_OFMA	DE activity: Refurbishment route for OFMA
-ACT:DE:REF_RATV	activity	DE	REF_RATV	DE activity: Refurbishment route for RATV
-ACT:DE:REP_ELMA	activity	DE	REP_ELMA	DE activity: Repair activities linked to ELMA
-ACT:DE:REP_OFMA	activity	DE	REP_OFMA	DE activity: Repair activities linked to OFMA
-ACT:DE:REP_RATV	activity	DE	REP_RATV	DE activity: Repair activities linked to RATV
-ACT:DE:REU_ELMA	activity	DE	REU_ELMA	DE activity: Reuse route for ELMA
-ACT:DE:REU_OFMA	activity	DE	REU_OFMA	DE activity: Reuse route for OFMA
-ACT:DE:REU_RATV	activity	DE	REU_RATV	DE activity: Reuse route for RATV
-ACT:DE:TRADE	activity	DE	TRADE	DE activity: Trade services
-ACT:DE:TRANSPORT	activity	DE	TRANSPORT	DE activity: Transport and storage
-ACT:DE:UTIL_WASTE	activity	DE	UTIL_WASTE	DE activity: Utilities, water, and residual waste services
-ACT:FR:AGRI_FOOD	activity	FR	AGRI_FOOD	FR activity: Agriculture and food
-ACT:FR:BASIC_METALS	activity	FR	BASIC_METALS	FR activity: Basic metals
-ACT:FR:CONSTRUCTION	activity	FR	CONSTRUCTION	FR activity: Construction
-ACT:FR:EXTRACTIVE	activity	FR	EXTRACTIVE	FR activity: Extractive industries
-ACT:FR:INC_EE	activity	FR	INC_EE	FR activity: Incineration and disposal activities for CE-RISE chains
-ACT:FR:METAL_COMPONENTS	activity	FR	METAL_COMPONENTS	FR activity: Metal components and fabricated metals
-ACT:FR:NEW_ELMA	activity	FR	NEW_ELMA	FR activity: New CE-RISE electrical equipment
-ACT:FR:NEW_OFMA	activity	FR	NEW_OFMA	FR activity: New CE-RISE office machinery and computers
-ACT:FR:NEW_RATV	activity	FR	NEW_RATV	FR activity: New CE-RISE communication and consumer electronics
-ACT:FR:OTHER_MANUFACTURING	activity	FR	OTHER_MANUFACTURING	FR activity: Other manufacturing
-ACT:FR:OTHER_SERVICES	activity	FR	OTHER_SERVICES	FR activity: Other market services
-ACT:FR:PUBLIC_SOCIAL	activity	FR	PUBLIC_SOCIAL	FR activity: Public and social services
-ACT:FR:REC_EE	activity	FR	REC_EE	FR activity: Recycling and recovery activities for CE-RISE chains
-ACT:FR:REF_ELMA	activity	FR	REF_ELMA	FR activity: Refurbishment route for ELMA
-ACT:FR:REF_OFMA	activity	FR	REF_OFMA	FR activity: Refurbishment route for OFMA
-ACT:FR:REF_RATV	activity	FR	REF_RATV	FR activity: Refurbishment route for RATV
-ACT:FR:REP_ELMA	activity	FR	REP_ELMA	FR activity: Repair activities linked to ELMA
-ACT:FR:REP_OFMA	activity	FR	REP_OFMA	FR activity: Repair activities linked to OFMA
-ACT:FR:REP_RATV	activity	FR	REP_RATV	FR activity: Repair activities linked to RATV
-ACT:FR:REU_ELMA	activity	FR	REU_ELMA	FR activity: Reuse route for ELMA
-ACT:FR:REU_OFMA	activity	FR	REU_OFMA	FR activity: Reuse route for OFMA
-ACT:FR:REU_RATV	activity	FR	REU_RATV	FR activity: Reuse route for RATV
-ACT:FR:TRADE	activity	FR	TRADE	FR activity: Trade services
-ACT:FR:TRANSPORT	activity	FR	TRANSPORT	FR activity: Transport and storage
-ACT:FR:UTIL_WASTE	activity	FR	UTIL_WASTE	FR activity: Utilities, water, and residual waste services
-ACT:IT:AGRI_FOOD	activity	IT	AGRI_FOOD	IT activity: Agriculture and food
-ACT:IT:BASIC_METALS	activity	IT	BASIC_METALS	IT activity: Basic metals
-ACT:IT:CONSTRUCTION	activity	IT	CONSTRUCTION	IT activity: Construction
-ACT:IT:EXTRACTIVE	activity	IT	EXTRACTIVE	IT activity: Extractive industries
-ACT:IT:INC_EE	activity	IT	INC_EE	IT activity: Incineration and disposal activities for CE-RISE chains
-ACT:IT:METAL_COMPONENTS	activity	IT	METAL_COMPONENTS	IT activity: Metal components and fabricated metals
-ACT:IT:NEW_ELMA	activity	IT	NEW_ELMA	IT activity: New CE-RISE electrical equipment
-ACT:IT:NEW_OFMA	activity	IT	NEW_OFMA	IT activity: New CE-RISE office machinery and computers
-ACT:IT:NEW_RATV	activity	IT	NEW_RATV	IT activity: New CE-RISE communication and consumer electronics
-ACT:IT:OTHER_MANUFACTURING	activity	IT	OTHER_MANUFACTURING	IT activity: Other manufacturing
-ACT:IT:OTHER_SERVICES	activity	IT	OTHER_SERVICES	IT activity: Other market services
-ACT:IT:PUBLIC_SOCIAL	activity	IT	PUBLIC_SOCIAL	IT activity: Public and social services
-ACT:IT:REC_EE	activity	IT	REC_EE	IT activity: Recycling and recovery activities for CE-RISE chains
-ACT:IT:REF_ELMA	activity	IT	REF_ELMA	IT activity: Refurbishment route for ELMA
-ACT:IT:REF_OFMA	activity	IT	REF_OFMA	IT activity: Refurbishment route for OFMA
-ACT:IT:REF_RATV	activity	IT	REF_RATV	IT activity: Refurbishment route for RATV
-ACT:IT:REP_ELMA	activity	IT	REP_ELMA	IT activity: Repair activities linked to ELMA
-ACT:IT:REP_OFMA	activity	IT	REP_OFMA	IT activity: Repair activities linked to OFMA
-ACT:IT:REP_RATV	activity	IT	REP_RATV	IT activity: Repair activities linked to RATV
-ACT:IT:REU_ELMA	activity	IT	REU_ELMA	IT activity: Reuse route for ELMA
-ACT:IT:REU_OFMA	activity	IT	REU_OFMA	IT activity: Reuse route for OFMA
-ACT:IT:REU_RATV	activity	IT	REU_RATV	IT activity: Reuse route for RATV
-ACT:IT:TRADE	activity	IT	TRADE	IT activity: Trade services
-ACT:IT:TRANSPORT	activity	IT	TRANSPORT	IT activity: Transport and storage
-ACT:IT:UTIL_WASTE	activity	IT	UTIL_WASTE	IT activity: Utilities, water, and residual waste services
-ACT:PL:AGRI_FOOD	activity	PL	AGRI_FOOD	PL activity: Agriculture and food
-ACT:PL:BASIC_METALS	activity	PL	BASIC_METALS	PL activity: Basic metals
-ACT:PL:CONSTRUCTION	activity	PL	CONSTRUCTION	PL activity: Construction
-ACT:PL:EXTRACTIVE	activity	PL	EXTRACTIVE	PL activity: Extractive industries
-ACT:PL:INC_EE	activity	PL	INC_EE	PL activity: Incineration and disposal activities for CE-RISE chains
-ACT:PL:METAL_COMPONENTS	activity	PL	METAL_COMPONENTS	PL activity: Metal components and fabricated metals
-ACT:PL:NEW_ELMA	activity	PL	NEW_ELMA	PL activity: New CE-RISE electrical equipment
-ACT:PL:NEW_OFMA	activity	PL	NEW_OFMA	PL activity: New CE-RISE office machinery and computers
-ACT:PL:NEW_RATV	activity	PL	NEW_RATV	PL activity: New CE-RISE communication and consumer electronics
-ACT:PL:OTHER_MANUFACTURING	activity	PL	OTHER_MANUFACTURING	PL activity: Other manufacturing
-ACT:PL:OTHER_SERVICES	activity	PL	OTHER_SERVICES	PL activity: Other market services
-ACT:PL:PUBLIC_SOCIAL	activity	PL	PUBLIC_SOCIAL	PL activity: Public and social services
-ACT:PL:REC_EE	activity	PL	REC_EE	PL activity: Recycling and recovery activities for CE-RISE chains
-ACT:PL:REF_ELMA	activity	PL	REF_ELMA	PL activity: Refurbishment route for ELMA
-ACT:PL:REF_OFMA	activity	PL	REF_OFMA	PL activity: Refurbishment route for OFMA
-ACT:PL:REF_RATV	activity	PL	REF_RATV	PL activity: Refurbishment route for RATV
-ACT:PL:REP_ELMA	activity	PL	REP_ELMA	PL activity: Repair activities linked to ELMA
-ACT:PL:REP_OFMA	activity	PL	REP_OFMA	PL activity: Repair activities linked to OFMA
-ACT:PL:REP_RATV	activity	PL	REP_RATV	PL activity: Repair activities linked to RATV
-ACT:PL:REU_ELMA	activity	PL	REU_ELMA	PL activity: Reuse route for ELMA
-ACT:PL:REU_OFMA	activity	PL	REU_OFMA	PL activity: Reuse route for OFMA
-ACT:PL:REU_RATV	activity	PL	REU_RATV	PL activity: Reuse route for RATV
-ACT:PL:TRADE	activity	PL	TRADE	PL activity: Trade services
-ACT:PL:TRANSPORT	activity	PL	TRANSPORT	PL activity: Transport and storage
-ACT:PL:UTIL_WASTE	activity	PL	UTIL_WASTE	PL activity: Utilities, water, and residual waste services
-ACT:REU:AGRI_FOOD	activity	REU	AGRI_FOOD	REU activity: Agriculture and food
-ACT:REU:BASIC_METALS	activity	REU	BASIC_METALS	REU activity: Basic metals
-ACT:REU:CONSTRUCTION	activity	REU	CONSTRUCTION	REU activity: Construction
-ACT:REU:EXTRACTIVE	activity	REU	EXTRACTIVE	REU activity: Extractive industries
-ACT:REU:INC_EE	activity	REU	INC_EE	REU activity: Incineration and disposal activities for CE-RISE chains
-ACT:REU:METAL_COMPONENTS	activity	REU	METAL_COMPONENTS	REU activity: Metal components and fabricated metals
-ACT:REU:NEW_ELMA	activity	REU	NEW_ELMA	REU activity: New CE-RISE electrical equipment
-ACT:REU:NEW_OFMA	activity	REU	NEW_OFMA	REU activity: New CE-RISE office machinery and computers
-ACT:REU:NEW_RATV	activity	REU	NEW_RATV	REU activity: New CE-RISE communication and consumer electronics
-ACT:REU:OTHER_MANUFACTURING	activity	REU	OTHER_MANUFACTURING	REU activity: Other manufacturing
-ACT:REU:OTHER_SERVICES	activity	REU	OTHER_SERVICES	REU activity: Other market services
-ACT:REU:PUBLIC_SOCIAL	activity	REU	PUBLIC_SOCIAL	REU activity: Public and social services
-ACT:REU:REC_EE	activity	REU	REC_EE	REU activity: Recycling and recovery activities for CE-RISE chains
-ACT:REU:REF_ELMA	activity	REU	REF_ELMA	REU activity: Refurbishment route for ELMA
-ACT:REU:REF_OFMA	activity	REU	REF_OFMA	REU activity: Refurbishment route for OFMA
-ACT:REU:REF_RATV	activity	REU	REF_RATV	REU activity: Refurbishment route for RATV
-ACT:REU:REP_ELMA	activity	REU	REP_ELMA	REU activity: Repair activities linked to ELMA
-ACT:REU:REP_OFMA	activity	REU	REP_OFMA	REU activity: Repair activities linked to OFMA
-ACT:REU:REP_RATV	activity	REU	REP_RATV	REU activity: Repair activities linked to RATV
-ACT:REU:REU_ELMA	activity	REU	REU_ELMA	REU activity: Reuse route for ELMA
-ACT:REU:REU_OFMA	activity	REU	REU_OFMA	REU activity: Reuse route for OFMA
-ACT:REU:REU_RATV	activity	REU	REU_RATV	REU activity: Reuse route for RATV
-ACT:REU:TRADE	activity	REU	TRADE	REU activity: Trade services
-ACT:REU:TRANSPORT	activity	REU	TRANSPORT	REU activity: Transport and storage
-ACT:REU:UTIL_WASTE	activity	REU	UTIL_WASTE	REU activity: Utilities, water, and residual waste services
-ACT:SK:AGRI_FOOD	activity	SK	AGRI_FOOD	SK activity: Agriculture and food
-ACT:SK:BASIC_METALS	activity	SK	BASIC_METALS	SK activity: Basic metals
-ACT:SK:CONSTRUCTION	activity	SK	CONSTRUCTION	SK activity: Construction
-ACT:SK:EXTRACTIVE	activity	SK	EXTRACTIVE	SK activity: Extractive industries
-ACT:SK:INC_EE	activity	SK	INC_EE	SK activity: Incineration and disposal activities for CE-RISE chains
-ACT:SK:METAL_COMPONENTS	activity	SK	METAL_COMPONENTS	SK activity: Metal components and fabricated metals
-ACT:SK:NEW_ELMA	activity	SK	NEW_ELMA	SK activity: New CE-RISE electrical equipment
-ACT:SK:NEW_OFMA	activity	SK	NEW_OFMA	SK activity: New CE-RISE office machinery and computers
-ACT:SK:NEW_RATV	activity	SK	NEW_RATV	SK activity: New CE-RISE communication and consumer electronics
-ACT:SK:OTHER_MANUFACTURING	activity	SK	OTHER_MANUFACTURING	SK activity: Other manufacturing
-ACT:SK:OTHER_SERVICES	activity	SK	OTHER_SERVICES	SK activity: Other market services
-ACT:SK:PUBLIC_SOCIAL	activity	SK	PUBLIC_SOCIAL	SK activity: Public and social services
-ACT:SK:REC_EE	activity	SK	REC_EE	SK activity: Recycling and recovery activities for CE-RISE chains
-ACT:SK:REF_ELMA	activity	SK	REF_ELMA	SK activity: Refurbishment route for ELMA
-ACT:SK:REF_OFMA	activity	SK	REF_OFMA	SK activity: Refurbishment route for OFMA
-ACT:SK:REF_RATV	activity	SK	REF_RATV	SK activity: Refurbishment route for RATV
-ACT:SK:REP_ELMA	activity	SK	REP_ELMA	SK activity: Repair activities linked to ELMA
-ACT:SK:REP_OFMA	activity	SK	REP_OFMA	SK activity: Repair activities linked to OFMA
-ACT:SK:REP_RATV	activity	SK	REP_RATV	SK activity: Repair activities linked to RATV
-ACT:SK:REU_ELMA	activity	SK	REU_ELMA	SK activity: Reuse route for ELMA
-ACT:SK:REU_OFMA	activity	SK	REU_OFMA	SK activity: Reuse route for OFMA
-ACT:SK:REU_RATV	activity	SK	REU_RATV	SK activity: Reuse route for RATV
-ACT:SK:TRADE	activity	SK	TRADE	SK activity: Trade services
-ACT:SK:TRANSPORT	activity	SK	TRANSPORT	SK activity: Transport and storage
-ACT:SK:UTIL_WASTE	activity	SK	UTIL_WASTE	SK activity: Utilities, water, and residual waste services
-COM:DE:AGRI_FOOD	commodity	DE	AGRI_FOOD	DE commodity: Agriculture and food
-COM:DE:BASIC_METALS	commodity	DE	BASIC_METALS	DE commodity: Basic metals
-COM:DE:CONSTRUCTION	commodity	DE	CONSTRUCTION	DE commodity: Construction
-COM:DE:EXTRACTIVE	commodity	DE	EXTRACTIVE	DE commodity: Extractive industries
-COM:DE:INC_EE	commodity	DE	INC_EE	DE commodity: Incineration and disposal activities for CE-RISE chains
-COM:DE:METAL_COMPONENTS	commodity	DE	METAL_COMPONENTS	DE commodity: Metal components and fabricated metals
-COM:DE:NEW_ELMA	commodity	DE	NEW_ELMA	DE commodity: New CE-RISE electrical equipment
-COM:DE:NEW_OFMA	commodity	DE	NEW_OFMA	DE commodity: New CE-RISE office machinery and computers
-COM:DE:NEW_RATV	commodity	DE	NEW_RATV	DE commodity: New CE-RISE communication and consumer electronics
-COM:DE:OTHER_MANUFACTURING	commodity	DE	OTHER_MANUFACTURING	DE commodity: Other manufacturing
-COM:DE:OTHER_SERVICES	commodity	DE	OTHER_SERVICES	DE commodity: Other market services
-COM:DE:PUBLIC_SOCIAL	commodity	DE	PUBLIC_SOCIAL	DE commodity: Public and social services
-COM:DE:REC_EE	commodity	DE	REC_EE	DE commodity: Recycling and recovery activities for CE-RISE chains
-COM:DE:REF_ELMA	commodity	DE	REF_ELMA	DE commodity: Refurbishment route for ELMA
-COM:DE:REF_OFMA	commodity	DE	REF_OFMA	DE commodity: Refurbishment route for OFMA
-COM:DE:REF_RATV	commodity	DE	REF_RATV	DE commodity: Refurbishment route for RATV
-COM:DE:REP_ELMA	commodity	DE	REP_ELMA	DE commodity: Repair activities linked to ELMA
-COM:DE:REP_OFMA	commodity	DE	REP_OFMA	DE commodity: Repair activities linked to OFMA
-COM:DE:REP_RATV	commodity	DE	REP_RATV	DE commodity: Repair activities linked to RATV
-COM:DE:REU_ELMA	commodity	DE	REU_ELMA	DE commodity: Reuse route for ELMA
-COM:DE:REU_OFMA	commodity	DE	REU_OFMA	DE commodity: Reuse route for OFMA
-COM:DE:REU_RATV	commodity	DE	REU_RATV	DE commodity: Reuse route for RATV
-COM:DE:TRADE	commodity	DE	TRADE	DE commodity: Trade services
-COM:DE:TRANSPORT	commodity	DE	TRANSPORT	DE commodity: Transport and storage
-COM:DE:UTIL_WASTE	commodity	DE	UTIL_WASTE	DE commodity: Utilities, water, and residual waste services
-COM:FR:AGRI_FOOD	commodity	FR	AGRI_FOOD	FR commodity: Agriculture and food
-COM:FR:BASIC_METALS	commodity	FR	BASIC_METALS	FR commodity: Basic metals
-COM:FR:CONSTRUCTION	commodity	FR	CONSTRUCTION	FR commodity: Construction
-COM:FR:EXTRACTIVE	commodity	FR	EXTRACTIVE	FR commodity: Extractive industries
-COM:FR:INC_EE	commodity	FR	INC_EE	FR commodity: Incineration and disposal activities for CE-RISE chains
-COM:FR:METAL_COMPONENTS	commodity	FR	METAL_COMPONENTS	FR commodity: Metal components and fabricated metals
-COM:FR:NEW_ELMA	commodity	FR	NEW_ELMA	FR commodity: New CE-RISE electrical equipment
-COM:FR:NEW_OFMA	commodity	FR	NEW_OFMA	FR commodity: New CE-RISE office machinery and computers
-COM:FR:NEW_RATV	commodity	FR	NEW_RATV	FR commodity: New CE-RISE communication and consumer electronics
-COM:FR:OTHER_MANUFACTURING	commodity	FR	OTHER_MANUFACTURING	FR commodity: Other manufacturing
-COM:FR:OTHER_SERVICES	commodity	FR	OTHER_SERVICES	FR commodity: Other market services
-COM:FR:PUBLIC_SOCIAL	commodity	FR	PUBLIC_SOCIAL	FR commodity: Public and social services
-COM:FR:REC_EE	commodity	FR	REC_EE	FR commodity: Recycling and recovery activities for CE-RISE chains
-COM:FR:REF_ELMA	commodity	FR	REF_ELMA	FR commodity: Refurbishment route for ELMA
-COM:FR:REF_OFMA	commodity	FR	REF_OFMA	FR commodity: Refurbishment route for OFMA
-COM:FR:REF_RATV	commodity	FR	REF_RATV	FR commodity: Refurbishment route for RATV
-COM:FR:REP_ELMA	commodity	FR	REP_ELMA	FR commodity: Repair activities linked to ELMA
-COM:FR:REP_OFMA	commodity	FR	REP_OFMA	FR commodity: Repair activities linked to OFMA
-COM:FR:REP_RATV	commodity	FR	REP_RATV	FR commodity: Repair activities linked to RATV
-COM:FR:REU_ELMA	commodity	FR	REU_ELMA	FR commodity: Reuse route for ELMA
-COM:FR:REU_OFMA	commodity	FR	REU_OFMA	FR commodity: Reuse route for OFMA
-COM:FR:REU_RATV	commodity	FR	REU_RATV	FR commodity: Reuse route for RATV
-COM:FR:TRADE	commodity	FR	TRADE	FR commodity: Trade services
-COM:FR:TRANSPORT	commodity	FR	TRANSPORT	FR commodity: Transport and storage
-COM:FR:UTIL_WASTE	commodity	FR	UTIL_WASTE	FR commodity: Utilities, water, and residual waste services
-COM:IT:AGRI_FOOD	commodity	IT	AGRI_FOOD	IT commodity: Agriculture and food
-COM:IT:BASIC_METALS	commodity	IT	BASIC_METALS	IT commodity: Basic metals
-COM:IT:CONSTRUCTION	commodity	IT	CONSTRUCTION	IT commodity: Construction
-COM:IT:EXTRACTIVE	commodity	IT	EXTRACTIVE	IT commodity: Extractive industries
-COM:IT:INC_EE	commodity	IT	INC_EE	IT commodity: Incineration and disposal activities for CE-RISE chains
-COM:IT:METAL_COMPONENTS	commodity	IT	METAL_COMPONENTS	IT commodity: Metal components and fabricated metals
-COM:IT:NEW_ELMA	commodity	IT	NEW_ELMA	IT commodity: New CE-RISE electrical equipment
-COM:IT:NEW_OFMA	commodity	IT	NEW_OFMA	IT commodity: New CE-RISE office machinery and computers
-COM:IT:NEW_RATV	commodity	IT	NEW_RATV	IT commodity: New CE-RISE communication and consumer electronics
-COM:IT:OTHER_MANUFACTURING	commodity	IT	OTHER_MANUFACTURING	IT commodity: Other manufacturing
-COM:IT:OTHER_SERVICES	commodity	IT	OTHER_SERVICES	IT commodity: Other market services
-COM:IT:PUBLIC_SOCIAL	commodity	IT	PUBLIC_SOCIAL	IT commodity: Public and social services
-COM:IT:REC_EE	commodity	IT	REC_EE	IT commodity: Recycling and recovery activities for CE-RISE chains
-COM:IT:REF_ELMA	commodity	IT	REF_ELMA	IT commodity: Refurbishment route for ELMA
-COM:IT:REF_OFMA	commodity	IT	REF_OFMA	IT commodity: Refurbishment route for OFMA
-COM:IT:REF_RATV	commodity	IT	REF_RATV	IT commodity: Refurbishment route for RATV
-COM:IT:REP_ELMA	commodity	IT	REP_ELMA	IT commodity: Repair activities linked to ELMA
-COM:IT:REP_OFMA	commodity	IT	REP_OFMA	IT commodity: Repair activities linked to OFMA
-COM:IT:REP_RATV	commodity	IT	REP_RATV	IT commodity: Repair activities linked to RATV
-COM:IT:REU_ELMA	commodity	IT	REU_ELMA	IT commodity: Reuse route for ELMA
-COM:IT:REU_OFMA	commodity	IT	REU_OFMA	IT commodity: Reuse route for OFMA
-COM:IT:REU_RATV	commodity	IT	REU_RATV	IT commodity: Reuse route for RATV
-COM:IT:TRADE	commodity	IT	TRADE	IT commodity: Trade services
-COM:IT:TRANSPORT	commodity	IT	TRANSPORT	IT commodity: Transport and storage
-COM:IT:UTIL_WASTE	commodity	IT	UTIL_WASTE	IT commodity: Utilities, water, and residual waste services
-COM:PL:AGRI_FOOD	commodity	PL	AGRI_FOOD	PL commodity: Agriculture and food
-COM:PL:BASIC_METALS	commodity	PL	BASIC_METALS	PL commodity: Basic metals
-COM:PL:CONSTRUCTION	commodity	PL	CONSTRUCTION	PL commodity: Construction
-COM:PL:EXTRACTIVE	commodity	PL	EXTRACTIVE	PL commodity: Extractive industries
-COM:PL:INC_EE	commodity	PL	INC_EE	PL commodity: Incineration and disposal activities for CE-RISE chains
-COM:PL:METAL_COMPONENTS	commodity	PL	METAL_COMPONENTS	PL commodity: Metal components and fabricated metals
-COM:PL:NEW_ELMA	commodity	PL	NEW_ELMA	PL commodity: New CE-RISE electrical equipment
-COM:PL:NEW_OFMA	commodity	PL	NEW_OFMA	PL commodity: New CE-RISE office machinery and computers
-COM:PL:NEW_RATV	commodity	PL	NEW_RATV	PL commodity: New CE-RISE communication and consumer electronics
-COM:PL:OTHER_MANUFACTURING	commodity	PL	OTHER_MANUFACTURING	PL commodity: Other manufacturing
-COM:PL:OTHER_SERVICES	commodity	PL	OTHER_SERVICES	PL commodity: Other market services
-COM:PL:PUBLIC_SOCIAL	commodity	PL	PUBLIC_SOCIAL	PL commodity: Public and social services
-COM:PL:REC_EE	commodity	PL	REC_EE	PL commodity: Recycling and recovery activities for CE-RISE chains
-COM:PL:REF_ELMA	commodity	PL	REF_ELMA	PL commodity: Refurbishment route for ELMA
-COM:PL:REF_OFMA	commodity	PL	REF_OFMA	PL commodity: Refurbishment route for OFMA
-COM:PL:REF_RATV	commodity	PL	REF_RATV	PL commodity: Refurbishment route for RATV
-COM:PL:REP_ELMA	commodity	PL	REP_ELMA	PL commodity: Repair activities linked to ELMA
-COM:PL:REP_OFMA	commodity	PL	REP_OFMA	PL commodity: Repair activities linked to OFMA
-COM:PL:REP_RATV	commodity	PL	REP_RATV	PL commodity: Repair activities linked to RATV
-COM:PL:REU_ELMA	commodity	PL	REU_ELMA	PL commodity: Reuse route for ELMA
-COM:PL:REU_OFMA	commodity	PL	REU_OFMA	PL commodity: Reuse route for OFMA
-COM:PL:REU_RATV	commodity	PL	REU_RATV	PL commodity: Reuse route for RATV
-COM:PL:TRADE	commodity	PL	TRADE	PL commodity: Trade services
-COM:PL:TRANSPORT	commodity	PL	TRANSPORT	PL commodity: Transport and storage
-COM:PL:UTIL_WASTE	commodity	PL	UTIL_WASTE	PL commodity: Utilities, water, and residual waste services
-COM:REU:AGRI_FOOD	commodity	REU	AGRI_FOOD	REU commodity: Agriculture and food
-COM:REU:BASIC_METALS	commodity	REU	BASIC_METALS	REU commodity: Basic metals
-COM:REU:CONSTRUCTION	commodity	REU	CONSTRUCTION	REU commodity: Construction
-COM:REU:EXTRACTIVE	commodity	REU	EXTRACTIVE	REU commodity: Extractive industries
-COM:REU:INC_EE	commodity	REU	INC_EE	REU commodity: Incineration and disposal activities for CE-RISE chains
-COM:REU:METAL_COMPONENTS	commodity	REU	METAL_COMPONENTS	REU commodity: Metal components and fabricated metals
-COM:REU:NEW_ELMA	commodity	REU	NEW_ELMA	REU commodity: New CE-RISE electrical equipment
-COM:REU:NEW_OFMA	commodity	REU	NEW_OFMA	REU commodity: New CE-RISE office machinery and computers
-COM:REU:NEW_RATV	commodity	REU	NEW_RATV	REU commodity: New CE-RISE communication and consumer electronics
-COM:REU:OTHER_MANUFACTURING	commodity	REU	OTHER_MANUFACTURING	REU commodity: Other manufacturing
-COM:REU:OTHER_SERVICES	commodity	REU	OTHER_SERVICES	REU commodity: Other market services
-COM:REU:PUBLIC_SOCIAL	commodity	REU	PUBLIC_SOCIAL	REU commodity: Public and social services
-COM:REU:REC_EE	commodity	REU	REC_EE	REU commodity: Recycling and recovery activities for CE-RISE chains
-COM:REU:REF_ELMA	commodity	REU	REF_ELMA	REU commodity: Refurbishment route for ELMA
-COM:REU:REF_OFMA	commodity	REU	REF_OFMA	REU commodity: Refurbishment route for OFMA
-COM:REU:REF_RATV	commodity	REU	REF_RATV	REU commodity: Refurbishment route for RATV
-COM:REU:REP_ELMA	commodity	REU	REP_ELMA	REU commodity: Repair activities linked to ELMA
-COM:REU:REP_OFMA	commodity	REU	REP_OFMA	REU commodity: Repair activities linked to OFMA
-COM:REU:REP_RATV	commodity	REU	REP_RATV	REU commodity: Repair activities linked to RATV
-COM:REU:REU_ELMA	commodity	REU	REU_ELMA	REU commodity: Reuse route for ELMA
-COM:REU:REU_OFMA	commodity	REU	REU_OFMA	REU commodity: Reuse route for OFMA
-COM:REU:REU_RATV	commodity	REU	REU_RATV	REU commodity: Reuse route for RATV
-COM:REU:TRADE	commodity	REU	TRADE	REU commodity: Trade services
-COM:REU:TRANSPORT	commodity	REU	TRANSPORT	REU commodity: Transport and storage
-COM:REU:UTIL_WASTE	commodity	REU	UTIL_WASTE	REU commodity: Utilities, water, and residual waste services
-COM:SK:AGRI_FOOD	commodity	SK	AGRI_FOOD	SK commodity: Agriculture and food
-COM:SK:BASIC_METALS	commodity	SK	BASIC_METALS	SK commodity: Basic metals
-COM:SK:CONSTRUCTION	commodity	SK	CONSTRUCTION	SK commodity: Construction
-COM:SK:EXTRACTIVE	commodity	SK	EXTRACTIVE	SK commodity: Extractive industries
-COM:SK:INC_EE	commodity	SK	INC_EE	SK commodity: Incineration and disposal activities for CE-RISE chains
-COM:SK:METAL_COMPONENTS	commodity	SK	METAL_COMPONENTS	SK commodity: Metal components and fabricated metals
-COM:SK:NEW_ELMA	commodity	SK	NEW_ELMA	SK commodity: New CE-RISE electrical equipment
-COM:SK:NEW_OFMA	commodity	SK	NEW_OFMA	SK commodity: New CE-RISE office machinery and computers
-COM:SK:NEW_RATV	commodity	SK	NEW_RATV	SK commodity: New CE-RISE communication and consumer electronics
-COM:SK:OTHER_MANUFACTURING	commodity	SK	OTHER_MANUFACTURING	SK commodity: Other manufacturing
-COM:SK:OTHER_SERVICES	commodity	SK	OTHER_SERVICES	SK commodity: Other market services
-COM:SK:PUBLIC_SOCIAL	commodity	SK	PUBLIC_SOCIAL	SK commodity: Public and social services
-COM:SK:REC_EE	commodity	SK	REC_EE	SK commodity: Recycling and recovery activities for CE-RISE chains
-COM:SK:REF_ELMA	commodity	SK	REF_ELMA	SK commodity: Refurbishment route for ELMA
-COM:SK:REF_OFMA	commodity	SK	REF_OFMA	SK commodity: Refurbishment route for OFMA
-COM:SK:REF_RATV	commodity	SK	REF_RATV	SK commodity: Refurbishment route for RATV
-COM:SK:REP_ELMA	commodity	SK	REP_ELMA	SK commodity: Repair activities linked to ELMA
-COM:SK:REP_OFMA	commodity	SK	REP_OFMA	SK commodity: Repair activities linked to OFMA
-COM:SK:REP_RATV	commodity	SK	REP_RATV	SK commodity: Repair activities linked to RATV
-COM:SK:REU_ELMA	commodity	SK	REU_ELMA	SK commodity: Reuse route for ELMA
-COM:SK:REU_OFMA	commodity	SK	REU_OFMA	SK commodity: Reuse route for OFMA
-COM:SK:REU_RATV	commodity	SK	REU_RATV	SK commodity: Reuse route for RATV
-COM:SK:TRADE	commodity	SK	TRADE	SK commodity: Trade services
-COM:SK:TRANSPORT	commodity	SK	TRANSPORT	SK commodity: Transport and storage
-COM:SK:UTIL_WASTE	commodity	SK	UTIL_WASTE	SK commodity: Utilities, water, and residual waste services
+IND:DE:AGRI_FOOD	industry	DE	AGRI_FOOD	DE industry: Agriculture and food
+IND:DE:EXTRACTIVE	industry	DE	EXTRACTIVE	DE industry: Extractive industries
+IND:DE:BASIC_METALS	industry	DE	BASIC_METALS	DE industry: Basic metals
+IND:DE:METAL_COMPONENTS	industry	DE	METAL_COMPONENTS	DE industry: Metal components and fabricated metals
+IND:DE:NEW_ELMA	industry	DE	NEW_ELMA	DE industry: New CE-RISE electrical equipment
+IND:DE:NEW_OFMA	industry	DE	NEW_OFMA	DE industry: New CE-RISE office machinery and computers
+IND:DE:NEW_RATV	industry	DE	NEW_RATV	DE industry: New CE-RISE communication and consumer electronics
+IND:DE:REP_ELMA	industry	DE	REP_ELMA	DE industry: Repair activities linked to ELMA
+IND:DE:REP_OFMA	industry	DE	REP_OFMA	DE industry: Repair activities linked to OFMA
+IND:DE:REP_RATV	industry	DE	REP_RATV	DE industry: Repair activities linked to RATV
+IND:DE:REF_ELMA	industry	DE	REF_ELMA	DE industry: Refurbishment route for ELMA
+IND:DE:REF_OFMA	industry	DE	REF_OFMA	DE industry: Refurbishment route for OFMA
+IND:DE:REF_RATV	industry	DE	REF_RATV	DE industry: Refurbishment route for RATV
+IND:DE:REU_ELMA	industry	DE	REU_ELMA	DE industry: Reuse route for ELMA
+IND:DE:REU_OFMA	industry	DE	REU_OFMA	DE industry: Reuse route for OFMA
+IND:DE:REU_RATV	industry	DE	REU_RATV	DE industry: Reuse route for RATV
+IND:DE:REC_EE	industry	DE	REC_EE	DE industry: Recycling and recovery activities for CE-RISE chains
+IND:DE:INC_EE	industry	DE	INC_EE	DE industry: Incineration and disposal activities for CE-RISE chains
+IND:DE:CONSTRUCTION	industry	DE	CONSTRUCTION	DE industry: Construction
+IND:DE:UTIL_WASTE	industry	DE	UTIL_WASTE	DE industry: Utilities, water, and residual waste services
+IND:DE:TRADE	industry	DE	TRADE	DE industry: Trade services
+IND:DE:TRANSPORT	industry	DE	TRANSPORT	DE industry: Transport and storage
+IND:DE:OTHER_MANUFACTURING	industry	DE	OTHER_MANUFACTURING	DE industry: Other manufacturing
+IND:DE:OTHER_SERVICES	industry	DE	OTHER_SERVICES	DE industry: Other market services
+IND:DE:PUBLIC_SOCIAL	industry	DE	PUBLIC_SOCIAL	DE industry: Public and social services
+FAC:DE:LAB	factor	DE	LAB	DE factor: Labour
 FAC:DE:CAP	factor	DE	CAP	DE factor: Capital
-FAC:DE:LAB	factor	DE	LAB	DE factor: Labor
-FAC:FR:CAP	factor	FR	CAP	FR factor: Capital
-FAC:FR:LAB	factor	FR	LAB	FR factor: Labor
-FAC:IT:CAP	factor	IT	CAP	IT factor: Capital
-FAC:IT:LAB	factor	IT	LAB	IT factor: Labor
-FAC:PL:CAP	factor	PL	CAP	PL factor: Capital
-FAC:PL:LAB	factor	PL	LAB	PL factor: Labor
-FAC:REU:CAP	factor	REU	CAP	REU factor: Capital
-FAC:REU:LAB	factor	REU	LAB	REU factor: Labor
-FAC:SK:CAP	factor	SK	CAP	SK factor: Capital
-FAC:SK:LAB	factor	SK	LAB	SK factor: Labor
-INS:DE:GOV	institution	DE	GOV	DE institution: Government
 INS:DE:HH	institution	DE	HH	DE institution: Households (+ NPISH)
+INS:DE:GOV	institution	DE	GOV	DE institution: Government
 INS:DE:INV	institution	DE	INV	DE institution: Investment
-INS:FR:GOV	institution	FR	GOV	FR institution: Government
+EXT:DE:EXT	external	DE	EXT	DE external account
+IND:FR:AGRI_FOOD	industry	FR	AGRI_FOOD	FR industry: Agriculture and food
+IND:FR:EXTRACTIVE	industry	FR	EXTRACTIVE	FR industry: Extractive industries
+IND:FR:BASIC_METALS	industry	FR	BASIC_METALS	FR industry: Basic metals
+IND:FR:METAL_COMPONENTS	industry	FR	METAL_COMPONENTS	FR industry: Metal components and fabricated metals
+IND:FR:NEW_ELMA	industry	FR	NEW_ELMA	FR industry: New CE-RISE electrical equipment
+IND:FR:NEW_OFMA	industry	FR	NEW_OFMA	FR industry: New CE-RISE office machinery and computers
+IND:FR:NEW_RATV	industry	FR	NEW_RATV	FR industry: New CE-RISE communication and consumer electronics
+IND:FR:REP_ELMA	industry	FR	REP_ELMA	FR industry: Repair activities linked to ELMA
+IND:FR:REP_OFMA	industry	FR	REP_OFMA	FR industry: Repair activities linked to OFMA
+IND:FR:REP_RATV	industry	FR	REP_RATV	FR industry: Repair activities linked to RATV
+IND:FR:REF_ELMA	industry	FR	REF_ELMA	FR industry: Refurbishment route for ELMA
+IND:FR:REF_OFMA	industry	FR	REF_OFMA	FR industry: Refurbishment route for OFMA
+IND:FR:REF_RATV	industry	FR	REF_RATV	FR industry: Refurbishment route for RATV
+IND:FR:REU_ELMA	industry	FR	REU_ELMA	FR industry: Reuse route for ELMA
+IND:FR:REU_OFMA	industry	FR	REU_OFMA	FR industry: Reuse route for OFMA
+IND:FR:REU_RATV	industry	FR	REU_RATV	FR industry: Reuse route for RATV
+IND:FR:REC_EE	industry	FR	REC_EE	FR industry: Recycling and recovery activities for CE-RISE chains
+IND:FR:INC_EE	industry	FR	INC_EE	FR industry: Incineration and disposal activities for CE-RISE chains
+IND:FR:CONSTRUCTION	industry	FR	CONSTRUCTION	FR industry: Construction
+IND:FR:UTIL_WASTE	industry	FR	UTIL_WASTE	FR industry: Utilities, water, and residual waste services
+IND:FR:TRADE	industry	FR	TRADE	FR industry: Trade services
+IND:FR:TRANSPORT	industry	FR	TRANSPORT	FR industry: Transport and storage
+IND:FR:OTHER_MANUFACTURING	industry	FR	OTHER_MANUFACTURING	FR industry: Other manufacturing
+IND:FR:OTHER_SERVICES	industry	FR	OTHER_SERVICES	FR industry: Other market services
+IND:FR:PUBLIC_SOCIAL	industry	FR	PUBLIC_SOCIAL	FR industry: Public and social services
+FAC:FR:LAB	factor	FR	LAB	FR factor: Labour
+FAC:FR:CAP	factor	FR	CAP	FR factor: Capital
 INS:FR:HH	institution	FR	HH	FR institution: Households (+ NPISH)
+INS:FR:GOV	institution	FR	GOV	FR institution: Government
 INS:FR:INV	institution	FR	INV	FR institution: Investment
-INS:GLOBAL:INV_POOL	institution	GLOBAL	INV_POOL	EU institution: Interregional investment pool
-INS:IT:GOV	institution	IT	GOV	IT institution: Government
+EXT:FR:EXT	external	FR	EXT	FR external account
+IND:IT:AGRI_FOOD	industry	IT	AGRI_FOOD	IT industry: Agriculture and food
+IND:IT:EXTRACTIVE	industry	IT	EXTRACTIVE	IT industry: Extractive industries
+IND:IT:BASIC_METALS	industry	IT	BASIC_METALS	IT industry: Basic metals
+IND:IT:METAL_COMPONENTS	industry	IT	METAL_COMPONENTS	IT industry: Metal components and fabricated metals
+IND:IT:NEW_ELMA	industry	IT	NEW_ELMA	IT industry: New CE-RISE electrical equipment
+IND:IT:NEW_OFMA	industry	IT	NEW_OFMA	IT industry: New CE-RISE office machinery and computers
+IND:IT:NEW_RATV	industry	IT	NEW_RATV	IT industry: New CE-RISE communication and consumer electronics
+IND:IT:REP_ELMA	industry	IT	REP_ELMA	IT industry: Repair activities linked to ELMA
+IND:IT:REP_OFMA	industry	IT	REP_OFMA	IT industry: Repair activities linked to OFMA
+IND:IT:REP_RATV	industry	IT	REP_RATV	IT industry: Repair activities linked to RATV
+IND:IT:REF_ELMA	industry	IT	REF_ELMA	IT industry: Refurbishment route for ELMA
+IND:IT:REF_OFMA	industry	IT	REF_OFMA	IT industry: Refurbishment route for OFMA
+IND:IT:REF_RATV	industry	IT	REF_RATV	IT industry: Refurbishment route for RATV
+IND:IT:REU_ELMA	industry	IT	REU_ELMA	IT industry: Reuse route for ELMA
+IND:IT:REU_OFMA	industry	IT	REU_OFMA	IT industry: Reuse route for OFMA
+IND:IT:REU_RATV	industry	IT	REU_RATV	IT industry: Reuse route for RATV
+IND:IT:REC_EE	industry	IT	REC_EE	IT industry: Recycling and recovery activities for CE-RISE chains
+IND:IT:INC_EE	industry	IT	INC_EE	IT industry: Incineration and disposal activities for CE-RISE chains
+IND:IT:CONSTRUCTION	industry	IT	CONSTRUCTION	IT industry: Construction
+IND:IT:UTIL_WASTE	industry	IT	UTIL_WASTE	IT industry: Utilities, water, and residual waste services
+IND:IT:TRADE	industry	IT	TRADE	IT industry: Trade services
+IND:IT:TRANSPORT	industry	IT	TRANSPORT	IT industry: Transport and storage
+IND:IT:OTHER_MANUFACTURING	industry	IT	OTHER_MANUFACTURING	IT industry: Other manufacturing
+IND:IT:OTHER_SERVICES	industry	IT	OTHER_SERVICES	IT industry: Other market services
+IND:IT:PUBLIC_SOCIAL	industry	IT	PUBLIC_SOCIAL	IT industry: Public and social services
+FAC:IT:LAB	factor	IT	LAB	IT factor: Labour
+FAC:IT:CAP	factor	IT	CAP	IT factor: Capital
 INS:IT:HH	institution	IT	HH	IT institution: Households (+ NPISH)
+INS:IT:GOV	institution	IT	GOV	IT institution: Government
 INS:IT:INV	institution	IT	INV	IT institution: Investment
-INS:PL:GOV	institution	PL	GOV	PL institution: Government
+EXT:IT:EXT	external	IT	EXT	IT external account
+IND:PL:AGRI_FOOD	industry	PL	AGRI_FOOD	PL industry: Agriculture and food
+IND:PL:EXTRACTIVE	industry	PL	EXTRACTIVE	PL industry: Extractive industries
+IND:PL:BASIC_METALS	industry	PL	BASIC_METALS	PL industry: Basic metals
+IND:PL:METAL_COMPONENTS	industry	PL	METAL_COMPONENTS	PL industry: Metal components and fabricated metals
+IND:PL:NEW_ELMA	industry	PL	NEW_ELMA	PL industry: New CE-RISE electrical equipment
+IND:PL:NEW_OFMA	industry	PL	NEW_OFMA	PL industry: New CE-RISE office machinery and computers
+IND:PL:NEW_RATV	industry	PL	NEW_RATV	PL industry: New CE-RISE communication and consumer electronics
+IND:PL:REP_ELMA	industry	PL	REP_ELMA	PL industry: Repair activities linked to ELMA
+IND:PL:REP_OFMA	industry	PL	REP_OFMA	PL industry: Repair activities linked to OFMA
+IND:PL:REP_RATV	industry	PL	REP_RATV	PL industry: Repair activities linked to RATV
+IND:PL:REF_ELMA	industry	PL	REF_ELMA	PL industry: Refurbishment route for ELMA
+IND:PL:REF_OFMA	industry	PL	REF_OFMA	PL industry: Refurbishment route for OFMA
+IND:PL:REF_RATV	industry	PL	REF_RATV	PL industry: Refurbishment route for RATV
+IND:PL:REU_ELMA	industry	PL	REU_ELMA	PL industry: Reuse route for ELMA
+IND:PL:REU_OFMA	industry	PL	REU_OFMA	PL industry: Reuse route for OFMA
+IND:PL:REU_RATV	industry	PL	REU_RATV	PL industry: Reuse route for RATV
+IND:PL:REC_EE	industry	PL	REC_EE	PL industry: Recycling and recovery activities for CE-RISE chains
+IND:PL:INC_EE	industry	PL	INC_EE	PL industry: Incineration and disposal activities for CE-RISE chains
+IND:PL:CONSTRUCTION	industry	PL	CONSTRUCTION	PL industry: Construction
+IND:PL:UTIL_WASTE	industry	PL	UTIL_WASTE	PL industry: Utilities, water, and residual waste services
+IND:PL:TRADE	industry	PL	TRADE	PL industry: Trade services
+IND:PL:TRANSPORT	industry	PL	TRANSPORT	PL industry: Transport and storage
+IND:PL:OTHER_MANUFACTURING	industry	PL	OTHER_MANUFACTURING	PL industry: Other manufacturing
+IND:PL:OTHER_SERVICES	industry	PL	OTHER_SERVICES	PL industry: Other market services
+IND:PL:PUBLIC_SOCIAL	industry	PL	PUBLIC_SOCIAL	PL industry: Public and social services
+FAC:PL:LAB	factor	PL	LAB	PL factor: Labour
+FAC:PL:CAP	factor	PL	CAP	PL factor: Capital
 INS:PL:HH	institution	PL	HH	PL institution: Households (+ NPISH)
+INS:PL:GOV	institution	PL	GOV	PL institution: Government
 INS:PL:INV	institution	PL	INV	PL institution: Investment
-INS:REU:GOV	institution	REU	GOV	REU institution: Government
-INS:REU:HH	institution	REU	HH	REU institution: Households (+ NPISH)
-INS:REU:INV	institution	REU	INV	REU institution: Investment
-INS:SK:GOV	institution	SK	GOV	SK institution: Government
+EXT:PL:EXT	external	PL	EXT	PL external account
+IND:SK:AGRI_FOOD	industry	SK	AGRI_FOOD	SK industry: Agriculture and food
+IND:SK:EXTRACTIVE	industry	SK	EXTRACTIVE	SK industry: Extractive industries
+IND:SK:BASIC_METALS	industry	SK	BASIC_METALS	SK industry: Basic metals
+IND:SK:METAL_COMPONENTS	industry	SK	METAL_COMPONENTS	SK industry: Metal components and fabricated metals
+IND:SK:NEW_ELMA	industry	SK	NEW_ELMA	SK industry: New CE-RISE electrical equipment
+IND:SK:NEW_OFMA	industry	SK	NEW_OFMA	SK industry: New CE-RISE office machinery and computers
+IND:SK:NEW_RATV	industry	SK	NEW_RATV	SK industry: New CE-RISE communication and consumer electronics
+IND:SK:REP_ELMA	industry	SK	REP_ELMA	SK industry: Repair activities linked to ELMA
+IND:SK:REP_OFMA	industry	SK	REP_OFMA	SK industry: Repair activities linked to OFMA
+IND:SK:REP_RATV	industry	SK	REP_RATV	SK industry: Repair activities linked to RATV
+IND:SK:REF_ELMA	industry	SK	REF_ELMA	SK industry: Refurbishment route for ELMA
+IND:SK:REF_OFMA	industry	SK	REF_OFMA	SK industry: Refurbishment route for OFMA
+IND:SK:REF_RATV	industry	SK	REF_RATV	SK industry: Refurbishment route for RATV
+IND:SK:REU_ELMA	industry	SK	REU_ELMA	SK industry: Reuse route for ELMA
+IND:SK:REU_OFMA	industry	SK	REU_OFMA	SK industry: Reuse route for OFMA
+IND:SK:REU_RATV	industry	SK	REU_RATV	SK industry: Reuse route for RATV
+IND:SK:REC_EE	industry	SK	REC_EE	SK industry: Recycling and recovery activities for CE-RISE chains
+IND:SK:INC_EE	industry	SK	INC_EE	SK industry: Incineration and disposal activities for CE-RISE chains
+IND:SK:CONSTRUCTION	industry	SK	CONSTRUCTION	SK industry: Construction
+IND:SK:UTIL_WASTE	industry	SK	UTIL_WASTE	SK industry: Utilities, water, and residual waste services
+IND:SK:TRADE	industry	SK	TRADE	SK industry: Trade services
+IND:SK:TRANSPORT	industry	SK	TRANSPORT	SK industry: Transport and storage
+IND:SK:OTHER_MANUFACTURING	industry	SK	OTHER_MANUFACTURING	SK industry: Other manufacturing
+IND:SK:OTHER_SERVICES	industry	SK	OTHER_SERVICES	SK industry: Other market services
+IND:SK:PUBLIC_SOCIAL	industry	SK	PUBLIC_SOCIAL	SK industry: Public and social services
+FAC:SK:LAB	factor	SK	LAB	SK factor: Labour
+FAC:SK:CAP	factor	SK	CAP	SK factor: Capital
 INS:SK:HH	institution	SK	HH	SK institution: Households (+ NPISH)
+INS:SK:GOV	institution	SK	GOV	SK institution: Government
 INS:SK:INV	institution	SK	INV	SK institution: Investment
-EXT:DE	external	DE	EXT	DE external: Rest of world
-EXT:FR	external	FR	EXT	FR external: Rest of world
-EXT:IT	external	IT	EXT	IT external: Rest of world
-EXT:PL	external	PL	EXT	PL external: Rest of world
-EXT:REU	external	REU	EXT	REU external: Rest of world
-EXT:SK	external	SK	EXT	SK external: Rest of world
+EXT:SK:EXT	external	SK	EXT	SK external account
+IND:REU:AGRI_FOOD	industry	REU	AGRI_FOOD	REU industry: Agriculture and food
+IND:REU:EXTRACTIVE	industry	REU	EXTRACTIVE	REU industry: Extractive industries
+IND:REU:BASIC_METALS	industry	REU	BASIC_METALS	REU industry: Basic metals
+IND:REU:METAL_COMPONENTS	industry	REU	METAL_COMPONENTS	REU industry: Metal components and fabricated metals
+IND:REU:NEW_ELMA	industry	REU	NEW_ELMA	REU industry: New CE-RISE electrical equipment
+IND:REU:NEW_OFMA	industry	REU	NEW_OFMA	REU industry: New CE-RISE office machinery and computers
+IND:REU:NEW_RATV	industry	REU	NEW_RATV	REU industry: New CE-RISE communication and consumer electronics
+IND:REU:REP_ELMA	industry	REU	REP_ELMA	REU industry: Repair activities linked to ELMA
+IND:REU:REP_OFMA	industry	REU	REP_OFMA	REU industry: Repair activities linked to OFMA
+IND:REU:REP_RATV	industry	REU	REP_RATV	REU industry: Repair activities linked to RATV
+IND:REU:REF_ELMA	industry	REU	REF_ELMA	REU industry: Refurbishment route for ELMA
+IND:REU:REF_OFMA	industry	REU	REF_OFMA	REU industry: Refurbishment route for OFMA
+IND:REU:REF_RATV	industry	REU	REF_RATV	REU industry: Refurbishment route for RATV
+IND:REU:REU_ELMA	industry	REU	REU_ELMA	REU industry: Reuse route for ELMA
+IND:REU:REU_OFMA	industry	REU	REU_OFMA	REU industry: Reuse route for OFMA
+IND:REU:REU_RATV	industry	REU	REU_RATV	REU industry: Reuse route for RATV
+IND:REU:REC_EE	industry	REU	REC_EE	REU industry: Recycling and recovery activities for CE-RISE chains
+IND:REU:INC_EE	industry	REU	INC_EE	REU industry: Incineration and disposal activities for CE-RISE chains
+IND:REU:CONSTRUCTION	industry	REU	CONSTRUCTION	REU industry: Construction
+IND:REU:UTIL_WASTE	industry	REU	UTIL_WASTE	REU industry: Utilities, water, and residual waste services
+IND:REU:TRADE	industry	REU	TRADE	REU industry: Trade services
+IND:REU:TRANSPORT	industry	REU	TRANSPORT	REU industry: Transport and storage
+IND:REU:OTHER_MANUFACTURING	industry	REU	OTHER_MANUFACTURING	REU industry: Other manufacturing
+IND:REU:OTHER_SERVICES	industry	REU	OTHER_SERVICES	REU industry: Other market services
+IND:REU:PUBLIC_SOCIAL	industry	REU	PUBLIC_SOCIAL	REU industry: Public and social services
+FAC:REU:LAB	factor	REU	LAB	REU factor: Labour
+FAC:REU:CAP	factor	REU	CAP	REU factor: Capital
+INS:REU:HH	institution	REU	HH	REU institution: Households (+ NPISH)
+INS:REU:GOV	institution	REU	GOV	REU institution: Government
+INS:REU:INV	institution	REU	INV	REU institution: Investment
+EXT:REU:EXT	external	REU	EXT	REU external account
+INS:GLOBAL:INV_POOL	investment_pool	GLOBAL	INV_POOL	Global interregional investment pool

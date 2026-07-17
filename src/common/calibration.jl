@@ -61,18 +61,51 @@ end
 
 default_calibration_bundle() = load_calibration_bundle(:eu_2016_six_region)
 
-"""Return the model-defined numeraire closure declared in a calibration bundle."""
-function numeraire_closure(bundle::CalibrationBundle = default_calibration_bundle())
+function _configuration_values(bundle::CalibrationBundle, component::String)
     columns = Set(names(bundle.configuration))
     required = Set(["component", "key", "value"])
     issubset(required, columns) || error("Calibration bundle configuration must contain component, key, and value columns.")
-    closure_rows = filter(row -> row.component == "closure", bundle.configuration)
-    values = Dict(String(row.key) => String(row.value) for row in eachrow(closure_rows))
+    rows = filter(row -> String(row.component) == component, bundle.configuration)
+    return Dict(String(row.key) => String(row.value) for row in eachrow(rows))
+end
+
+"""Return the model-defined numeraire closure declared in a calibration bundle."""
+function numeraire_closure(bundle::CalibrationBundle = default_calibration_bundle())
+    values = _configuration_values(bundle, "closure")
     label = get(values, "numeraire_label", nothing)
     kind = get(values, "numeraire_kind", nothing)
     label === nothing && error("Calibration bundle configuration is missing closure.numeraire_label.")
     kind === nothing && error("Calibration bundle configuration is missing closure.numeraire_kind.")
     return JCGECore.ClosureSpec(Symbol(label); kind = Symbol(kind))
+end
+
+"""Return the calibration-defined identities retained as post-solution checks."""
+function closure_accounting_targets(bundle::CalibrationBundle = default_calibration_bundle())
+    values = _configuration_values(bundle, "closure")
+    pool = get(values, "accounting_investment_pool", nothing)
+    region = get(values, "accounting_market_region", nothing)
+    industry = get(values, "accounting_market_industry", nothing)
+    pool === nothing && error("Calibration bundle configuration is missing closure.accounting_investment_pool.")
+    region === nothing && error("Calibration bundle configuration is missing closure.accounting_market_region.")
+    industry === nothing && error("Calibration bundle configuration is missing closure.accounting_market_industry.")
+
+    pool_code = Symbol(pool)
+    region_code = Symbol(region)
+    industry_code = Symbol(industry)
+    pool_code in get(bundle.sets, :investment_pools, Symbol[]) ||
+        error("Closure accounting investment pool $(pool_code) is not in the calibration bundle.")
+    region_code in get(bundle.sets, :regions, Symbol[]) ||
+        error("Closure accounting market region $(region_code) is not in the calibration bundle.")
+
+    matches = [
+        Symbol(row.account_id)
+        for row in eachrow(bundle.accounts)
+        if String(row.account_type) == "industry" &&
+           Symbol(row.region) == region_code && Symbol(row.code) == industry_code
+    ]
+    length(matches) == 1 || error(
+        "Closure accounting market industry $(industry_code) in $(region_code) must identify exactly one industry account.")
+    return (investment_pool = pool_code, market_region = region_code, market_good = only(matches))
 end
 
 function calibration_summary(bundle::CalibrationBundle = default_calibration_bundle())

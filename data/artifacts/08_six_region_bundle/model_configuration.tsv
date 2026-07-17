@@ -1,14 +1,23 @@
 component	key	value	description
 closure	numeraire_label	P_HH_COMMON	Model-defined common household-consumption price index used as the numeraire.
 closure	numeraire_kind	price_index	JCGECore numeraire kind for a model-defined price index.
+closure	accounting_investment_pool	INV_POOL	The sole global investment pool whose zero-sum transfer identity is evaluated after solution as an accounting check.
+closure	accounting_market_region	DE	Region of the composite-market identity evaluated after solution to remove the Walras-redundant market condition.
+closure	accounting_market_industry	AGRI_FOOD	Industry code of the composite-market identity evaluated after solution to remove the Walras-redundant market condition.
 numerical	positive_lower	1.0e-8	Strictly positive lower bound supplied to JCGE blocks for prices, outputs, and bilateral trade flows.
+solver	ipopt_bound_push_share	0.01	Fraction of the smallest positive calibrated starting value used as Ipopt's absolute interior-point bound push.
+solver	equation_scaling_floor	1.0	Minimum equation scale in the calibrated monetary unit. It prevents rounding differences in very small accounts from dominating the scaled baseline system.
+solver	ipopt_hessian_approximation	limited-memory	Ipopt Hessian treatment for the large nonlinear feasibility system.
+solver	ipopt_bound_mult_init_method	mu-based	Ipopt bound-multiplier initialization consistent with a feasible calibrated start point.
+solver	ipopt_mu_init	1.0e-8	Initial Ipopt barrier parameter for the calibrated feasibility solve.
+solver	ipopt_tolerance	1.0e-6	Ipopt convergence tolerance used for calibration replication.
+solver	ipopt_acceptable_tolerance	1.0e-6	Ipopt acceptable convergence tolerance used for calibration replication.
 normalization	base_price	1.0	Common calibration price used to express the monetary SAM as model quantities at the reference point.
 trade	armington_elasticity	1.0	Initial Armington elasticity for observed product sourcing; retained as a sensitivity parameter until product-specific evidence is selected.
 trade	cet_transformation_elasticity	1.0	Initial CET transformation elasticity for observed product sales; retained as a sensitivity parameter until product-specific evidence is selected.
 trade	delivery_wedge	1.0	Reference delivery-price wedge for observed trade routes; transport margins are represented in the monetary calibration accounts.
 trade	row_world_price	1.0	Reference world price for the price-taking rest-of-world endpoint.
-trade	baseline_output_tax	0.0	Reference output-tax wedge before calibrated production and product tax treatment is added.
 final_demand	household_codes	P3_S14;P3_S15	Final-demand codes aggregated into regional household consumption.
 final_demand	government_code	P3_S13	Final-demand code for regional government consumption.
 final_demand	fixed_investment_code	P51G	Final-demand code for gross fixed capital formation.
-final_demand	inventory_change_code	P5M	Final-demand code for changes in inventories, retained as a signed exogenous market-clearing term rather than part of fixed investment demand.
+final_demand	inventory_change_code	P5M	Final-demand code for changes in inventories, retained from gross output before trade allocation and financed through saving-investment rather than treated as goods-market demand or fixed investment.

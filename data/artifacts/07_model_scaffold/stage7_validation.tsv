@@ -1,6 +1,5 @@
 key	value
-single_region_scope	aggregate_europe_only
-future_external_extension	row_separate_later
+model_scope	six_european_regions_with_regional_external_accounts
 missing_required_sut_sectors	none
 n_families	3
 n_route_rows	18

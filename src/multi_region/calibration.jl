@@ -21,11 +21,23 @@ struct MultiRegionCalibration
     production_tax_value::Dict{Symbol,Float64}
     household_demand::Dict{Symbol,Float64}
     household_share::Dict{Symbol,Float64}
+    household_demand_share::Dict{Tuple{Symbol,Symbol},Float64}
     household_total::Dict{Symbol,Float64}
     government_demand::Dict{Symbol,Float64}
+    government_share::Dict{Tuple{Symbol,Symbol},Float64}
     fixed_investment_demand::Dict{Symbol,Float64}
-    inventory_change_by_origin::Dict{Tuple{Symbol,Symbol},Float64}
+    inventory_change::Dict{Symbol,Float64}
     inventory_spending::Dict{Symbol,Float64}
+    direct_tax_value::Dict{Symbol,Float64}
+    direct_tax_rate::Dict{Symbol,Float64}
+    private_saving::Dict{Symbol,Float64}
+    private_saving_share::Dict{Symbol,Float64}
+    government_tax_revenue::Dict{Symbol,Float64}
+    government_saving::Dict{Symbol,Float64}
+    government_saving_share::Dict{Symbol,Float64}
+    foreign_saving::Dict{Symbol,Float64}
+    investment_spending::Dict{Symbol,Float64}
+    investment_pool_transfer::Dict{Symbol,Float64}
     price_weight::Dict{Tuple{Symbol,Symbol},Float64}
     common_price_weight::Dict{Symbol,Float64}
     trade_routes::Vector{JCGEBlocks.TradeRoute}
@@ -107,7 +119,6 @@ function _use_values(bundle::CalibrationBundle, products, product_by_region, rol
     government = Dict{Symbol,Float64}()
     fixed_investment = Dict{Symbol,Float64}()
     inventory_by_origin = Dict{Tuple{Symbol,Symbol},Float64}()
-    inventory_spending = Dict(region => 0.0 for region in region_codes(bundle))
 
     for row in eachrow(bundle.product_use_registry)
         product = Symbol(row.product)
@@ -119,7 +130,6 @@ function _use_values(bundle::CalibrationBundle, products, product_by_region, rol
 
         if kind === :inventory_change
             inventory_by_origin[(product, origin)] = get(inventory_by_origin, (product, origin), 0.0) + value
-            destination in regions && (inventory_spending[destination] += value)
             continue
         end
         destination in regions || continue
@@ -137,7 +147,7 @@ function _use_values(bundle::CalibrationBundle, products, product_by_region, rol
             error("Unsupported product-use kind $(kind).")
         end
     end
-    return intermediate, household, government, fixed_investment, inventory_by_origin, inventory_spending
+    return intermediate, household, government, fixed_investment, inventory_by_origin
 end
 
 function _trade_groups(routes::Vector{JCGEBlocks.TradeRoute})
@@ -157,8 +167,8 @@ function _calibrated_cd_scale(total::Float64, routes, values::Dict{Symbol,Float6
 end
 
 function _calibrate_trade!(routes, values, supply, demand, products, product_by_region,
-    activity_output, inventory_by_origin, intermediate, household, government, fixed_investment,
-    armington_exponent, cet_exponent, base_delivery_wedge, base_world_price, base_output_tax)
+    activity_output, inventory_change, intermediate, household, government, fixed_investment,
+    armington_exponent, cet_exponent, base_delivery_wedge, base_world_price, output_tax)
     goods = Dict{Tuple{Symbol,Symbol},Symbol}()
     armington_scale = Dict{Tuple{Symbol,Symbol},Float64}()
     armington_share = Dict{Symbol,Float64}()
@@ -166,7 +176,6 @@ function _calibrate_trade!(routes, values, supply, demand, products, product_by_
     cet_share = Dict{Symbol,Float64}()
     delivery_wedge = Dict(route.id => base_delivery_wedge for route in routes)
     world_price = Dict(route.id => base_world_price for route in routes if route.origin == :ROW || route.destination == :ROW)
-    output_tax = Dict{Tuple{Symbol,Symbol},Float64}()
 
     for ((product, destination), group) in demand
         good = product_by_region[(destination, product)]
@@ -195,13 +204,14 @@ function _calibrate_trade!(routes, values, supply, demand, products, product_by_
         activity = product_by_region[(origin, product)]
         goods[(product, origin)] = activity
         observed = sum(values[route.id] for route in group)
-        inventory = get(inventory_by_origin, (product, origin), 0.0)
+        inventory = get(inventory_change, activity, 0.0)
         expected = activity_output[activity] - inventory
         expected > 0.0 || error("Marketed output for $(product), $(origin) is not positive.")
         isapprox(observed, expected; rtol = 1.0e-6, atol = 1.0e-6) ||
             error("Trade-supply calibration mismatch for $(product), $(origin): $(observed) versus $(expected).")
         exponent = cet_exponent[(product, origin)]
-        output_tax[(product, origin)] = base_output_tax
+        haskey(output_tax, (product, origin)) ||
+            error("Missing calibrated output-tax rate for $(product), $(origin).")
         if iszero(exponent)
             shares, scale = _calibrated_cd_scale(observed, group, values)
             merge!(cet_share, shares)
@@ -229,7 +239,17 @@ function multi_region_calibration(bundle::CalibrationBundle = default_calibratio
     base_price > 0.0 || error("normalization.base_price must be strictly positive.")
 
     intermediate, household_demand, government_demand, fixed_investment_demand,
-    inventory_by_origin, inventory_spending = _use_values(bundle, products, product_by_region, roles)
+    inventory_by_origin = _use_values(
+        bundle, products, product_by_region, roles)
+    inventory_by_origin = Dict(key => value / base_price for (key, value) in inventory_by_origin)
+    inventory_change = Dict{Symbol,Float64}()
+    inventory_spending = Dict(region => 0.0 for region in regions)
+    for region in regions, product in products
+        good = product_by_region[(region, product)]
+        change = get(inventory_by_origin, (product, region), 0.0)
+        inventory_change[good] = change
+        inventory_spending[region] += change
+    end
 
     activity_output = Dict{Symbol,Float64}()
     factor_payment = Dict{Tuple{Symbol,Symbol},Float64}()
@@ -241,6 +261,7 @@ function multi_region_calibration(bundle::CalibrationBundle = default_calibratio
     intermediate_coefficient = Dict{Tuple{Symbol,Symbol},Float64}()
     production_tax_value = Dict{Symbol,Float64}()
     marketed_output = Dict{Symbol,Float64}()
+    output_tax_rate = Dict{Tuple{Symbol,Symbol},Float64}()
 
     for region in regions
         activities = [product_by_region[(region, product)] for product in products]
@@ -270,7 +291,11 @@ function multi_region_calibration(bundle::CalibrationBundle = default_calibratio
             production_scale[activity] = value_added /
                 prod(factor_payment[(factor, activity)]^factor_share[(factor, activity)] for factor in factors)
             product = only(filter(p -> product_by_region[(region, p)] == activity, products))
-            marketed_output[activity] = activity_output[activity] - get(inventory_by_origin, (product, region), 0.0) / base_price
+            marketed_output[activity] = activity_output[activity] - get(inventory_change, activity, 0.0)
+            net_output_value = activity_output[activity] - production_tax_value[activity]
+            net_output_value > 0.0 ||
+                error("Activity $(activity) has non-positive output net of production taxes.")
+            output_tax_rate[(product, region)] = production_tax_value[activity] / net_output_value
         end
         for factor in factors
             factor_endowment[factor] = sum(factor_payment[(factor, activity)] for activity in activities)
@@ -280,6 +305,7 @@ function multi_region_calibration(bundle::CalibrationBundle = default_calibratio
 
     household_total = Dict{Symbol,Float64}()
     household_share = Dict{Symbol,Float64}()
+    household_demand_share = Dict{Tuple{Symbol,Symbol},Float64}()
     price_weight = Dict{Tuple{Symbol,Symbol},Float64}()
     for region in regions
         goods = [product_by_region[(region, product)] for product in products]
@@ -291,6 +317,7 @@ function multi_region_calibration(bundle::CalibrationBundle = default_calibratio
             demand > 0.0 || error("Household demand for $(good) is not positive.")
             household_demand[good] = demand
             household_share[good] = demand / total
+            household_demand_share[(good, region)] = household_share[good]
             price_weight[(good, region)] = household_share[good]
             government_demand[good] = get(government_demand, good, 0.0) / base_price
             fixed_investment_demand[good] = get(fixed_investment_demand, good, 0.0) / base_price
@@ -298,6 +325,42 @@ function multi_region_calibration(bundle::CalibrationBundle = default_calibratio
     end
     all_household = sum(values(household_total))
     common_price_weight = Dict(region => household_total[region] / all_household for region in regions)
+
+    direct_tax_value = Dict{Symbol,Float64}()
+    direct_tax_rate = Dict{Symbol,Float64}()
+    private_saving = Dict{Symbol,Float64}()
+    private_saving_share = Dict{Symbol,Float64}()
+    government_tax_revenue = Dict{Symbol,Float64}()
+    government_saving = Dict{Symbol,Float64}()
+    government_saving_share = Dict{Symbol,Float64}()
+    government_share = Dict{Tuple{Symbol,Symbol},Float64}()
+    for region in regions
+        household_account = institutions_by_code[(region, :HH)]
+        government_account = institutions_by_code[(region, :GOV)]
+        activities = [product_by_region[(region, product)] for product in products]
+        factors = [factors_by_code[(region, :LAB)], factors_by_code[(region, :CAP)]]
+        factor_income = sum(factor_payment[(factor, activity)] for factor in factors for activity in activities)
+        direct_tax_value[region] = _sam_value(bundle, government_account, household_account) / base_price
+        direct_tax_value[region] >= 0.0 ||
+            error("Direct taxes must be non-negative in $(region).")
+        direct_tax_value[region] < factor_income ||
+            error("Direct taxes exhaust factor income in $(region).")
+        direct_tax_rate[region] = direct_tax_value[region] / factor_income
+        disposable_income = factor_income - direct_tax_value[region]
+        private_saving[region] = disposable_income - household_total[region]
+        private_saving_share[region] = private_saving[region] / disposable_income
+        government_tax_revenue[region] = direct_tax_value[region] +
+            sum(production_tax_value[activity] for activity in activities)
+        government_tax_revenue[region] > 0.0 ||
+            error("Government tax revenue is not positive in $(region).")
+        government_total = sum(government_demand[good] for good in activities)
+        government_total > 0.0 || error("Government consumption is not positive in $(region).")
+        for good in activities
+            government_share[(good, region)] = government_demand[good] / government_total
+        end
+        government_saving[region] = government_tax_revenue[region] - government_total
+        government_saving_share[region] = government_saving[region] / government_tax_revenue[region]
+    end
 
     trade_routes = JCGEBlocks.TradeRoute[]
     trade_value = Dict{Symbol,Float64}()
@@ -322,7 +385,7 @@ function multi_region_calibration(bundle::CalibrationBundle = default_calibratio
     armington_sigma > 0.0 || error("trade.armington_elasticity must be positive.")
     cet_psi > 0.0 || error("trade.cet_transformation_elasticity must be positive.")
     armington_exponent = Dict((product, region) => JCGECalibrate.rho_from_sigma(armington_sigma) for product in products for region in regions)
-    cet_exponent = Dict((product, region) => (cet_psi + 1.0) / cet_psi for product in products for region in regions)
+    cet_exponent = Dict((product, region) => JCGECalibrate.rho_from_sigma(cet_psi) for product in products for region in regions)
     supply_groups, demand_groups = _trade_groups(trade_routes)
     trade_goods, armington_scale, armington_share, cet_scale, cet_share,
     delivery_wedge, world_price, output_tax = _calibrate_trade!(
@@ -333,7 +396,7 @@ function multi_region_calibration(bundle::CalibrationBundle = default_calibratio
         products,
         product_by_region,
         activity_output,
-        inventory_by_origin,
+        inventory_change,
         intermediate,
         household_demand,
         government_demand,
@@ -342,8 +405,27 @@ function multi_region_calibration(bundle::CalibrationBundle = default_calibratio
         cet_exponent,
         calibration_option_number(bundle, "trade", "delivery_wedge"),
         calibration_option_number(bundle, "trade", "row_world_price"),
-        calibration_option_number(bundle, "trade", "baseline_output_tax"),
+        output_tax_rate,
     )
+
+    foreign_saving = Dict{Symbol,Float64}()
+    investment_spending = Dict{Symbol,Float64}()
+    investment_pool_transfer = Dict{Symbol,Float64}()
+    for region in regions
+        row_import_value = sum(
+            world_price[route.id] * trade_value[route.id]
+            for route in trade_routes if route.origin == :ROW && route.destination == region)
+        row_export_value = sum(
+            world_price[route.id] * trade_value[route.id]
+            for route in trade_routes if route.origin == region && route.destination == :ROW)
+        foreign_saving[region] = row_import_value - row_export_value
+        goods = [product_by_region[(region, product)] for product in products]
+        investment_spending[region] = sum(
+            fixed_investment_demand[good] + get(inventory_change, good, 0.0)
+            for good in goods)
+        investment_pool_transfer[region] = investment_spending[region] -
+            private_saving[region] - government_saving[region] - foreign_saving[region]
+    end
 
     return MultiRegionCalibration(
         bundle,
@@ -361,11 +443,23 @@ function multi_region_calibration(bundle::CalibrationBundle = default_calibratio
         production_tax_value,
         household_demand,
         household_share,
+        household_demand_share,
         household_total,
         government_demand,
+        government_share,
         fixed_investment_demand,
-        inventory_by_origin,
+        inventory_change,
         inventory_spending,
+        direct_tax_value,
+        direct_tax_rate,
+        private_saving,
+        private_saving_share,
+        government_tax_revenue,
+        government_saving,
+        government_saving_share,
+        foreign_saving,
+        investment_spending,
+        investment_pool_transfer,
         price_weight,
         common_price_weight,
         trade_routes,
@@ -403,7 +497,7 @@ function calibration_consistency(calibration::MultiRegionCalibration = multi_reg
     for ((product, origin), routes) in supply
         activity = calibration.product_by_region[(origin, product)]
         actual = sum(calibration.trade_value[route.id] for route in routes)
-        expected = calibration.activity_output[activity] - get(calibration.inventory_change_by_origin, (product, origin), 0.0)
+        expected = calibration.activity_output[activity] - get(calibration.inventory_change, activity, 0.0)
         push!(supply_residuals, actual - expected)
     end
     demand_residuals = Float64[]

@@ -1,18 +1,16 @@
 #!/usr/bin/env julia
 
 """
-Build the stage-7 empirical single-region model scaffold.
+Build the stage-7 circular-economy model templates.
 
 This stage does not yet calibrate or solve a JCGE model. It fixes the
-single-region conceptual structure that should mirror the stylized circular
-CGE model and prepares the physical-bridge templates needed to report route-
-and material-level quantities alongside monetary model results.
+route structure that mirrors the stylized circular CGE model and prepares the
+physical-bridge templates later instantiated in every model region.
 """
 
 const ROOT_DIR = normpath(joinpath(@__DIR__, "..", ".."))
 const OUTDIR = joinpath(ROOT_DIR, "data", "artifacts", "07_model_scaffold")
 const FINAL_SECTOR_REGISTRY = joinpath(ROOT_DIR, "data", "mappings", "final_sector_registry.tsv")
-const NOTES_TABLE_DIR = joinpath(ROOT_DIR, "article", "notes", "tables")
 
 function ensure_dir(path::AbstractString)
     isdir(path) || mkpath(path)
@@ -96,7 +94,7 @@ function family_definitions()
     ]
 end
 
-function single_region_family_rows()
+function family_rows()
     return [
         [
             fam.family,
@@ -115,7 +113,7 @@ function single_region_family_rows()
             "NEW;REF;REP;REU",
             "REF;REP;REU;REC;INC",
             "CES(NEW,REF,REP,REU)",
-            "Stylized-model-consistent single-region family structure with one service composite per CE-RISE family.",
+            "Stylized-model-consistent family structure with one service composite per CE-RISE family in each model region.",
         ]
         for fam in family_definitions()
     ]
@@ -420,8 +418,7 @@ function validation_pairs(final_registry, route_registry, quantity_template, coe
     n_eol_routes = count(row -> row[4] in ("eol_recovery", "eol_disposal"), route_registry)
 
     return [
-        ("single_region_scope", "aggregate_europe_only"),
-        ("future_external_extension", "row_separate_later"),
+        ("model_scope", "six_european_regions_with_regional_external_accounts"),
         ("missing_required_sut_sectors", isempty(missing) ? "none" : join(missing, ";")),
         ("n_families", string(length(family_definitions()))),
         ("n_route_rows", string(length(route_registry))),
@@ -439,8 +436,6 @@ end
 
 function main()
     ensure_dir(OUTDIR)
-    isdir(NOTES_TABLE_DIR) && ensure_dir(NOTES_TABLE_DIR)
-
     final_registry = load_final_sector_registry()
 
     family_header = [
@@ -462,7 +457,7 @@ function main()
         "service_nest",
         "notes",
     ]
-    family_table = single_region_family_rows()
+    family_table = family_rows()
 
     route_header = [
         "family",
@@ -516,31 +511,18 @@ function main()
 
     validation = validation_pairs(final_registry, route_table, quantity_table, coefficient_table)
 
-    write_tsv(joinpath(OUTDIR, "single_region_family_registry.tsv"), family_header, family_table)
-    write_tsv(joinpath(OUTDIR, "single_region_route_registry.tsv"), route_header, route_table)
+    write_tsv(joinpath(OUTDIR, "family_registry.tsv"), family_header, family_table)
+    write_tsv(joinpath(OUTDIR, "route_registry.tsv"), route_header, route_table)
     write_tsv(joinpath(OUTDIR, "physical_quantity_bridge_template.tsv"), quantity_header, quantity_table)
     write_tsv(joinpath(OUTDIR, "physical_coefficient_template.tsv"), coefficient_header, coefficient_table)
     write_key_value_tsv(joinpath(OUTDIR, "stage7_validation.tsv"), validation)
 
-    if isdir(NOTES_TABLE_DIR)
-        write_tsv(joinpath(NOTES_TABLE_DIR, "single_region_family_registry.tsv"), family_header, family_table)
-        write_tsv(joinpath(NOTES_TABLE_DIR, "single_region_route_registry.tsv"), route_header, route_table)
-        write_tsv(joinpath(NOTES_TABLE_DIR, "physical_quantity_bridge_template.tsv"), quantity_header, quantity_table)
-        write_tsv(joinpath(NOTES_TABLE_DIR, "physical_coefficient_template.tsv"), coefficient_header, coefficient_table)
-    end
-
     println("Wrote:")
-    println("  ", joinpath(OUTDIR, "single_region_family_registry.tsv"))
-    println("  ", joinpath(OUTDIR, "single_region_route_registry.tsv"))
+    println("  ", joinpath(OUTDIR, "family_registry.tsv"))
+    println("  ", joinpath(OUTDIR, "route_registry.tsv"))
     println("  ", joinpath(OUTDIR, "physical_quantity_bridge_template.tsv"))
     println("  ", joinpath(OUTDIR, "physical_coefficient_template.tsv"))
     println("  ", joinpath(OUTDIR, "stage7_validation.tsv"))
-    if isdir(NOTES_TABLE_DIR)
-        println("  ", joinpath(NOTES_TABLE_DIR, "single_region_family_registry.tsv"))
-        println("  ", joinpath(NOTES_TABLE_DIR, "single_region_route_registry.tsv"))
-        println("  ", joinpath(NOTES_TABLE_DIR, "physical_quantity_bridge_template.tsv"))
-        println("  ", joinpath(NOTES_TABLE_DIR, "physical_coefficient_template.tsv"))
-    end
 end
 
 main()

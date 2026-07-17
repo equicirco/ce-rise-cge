@@ -1,7 +1,7 @@
 key	value
 overall_status	PASS
-n_checks	59
-n_pass	59
+n_checks	56
+n_pass	56
 n_fail	0
 sut_report_file	/home/riccardo/data/code/equicirco/JCGE/ce-rise-cge/data/interim/sut_2016/sut_validation_report.tsv
 artifact_report_file	/home/riccardo/data/code/equicirco/JCGE/ce-rise-cge/data/artifacts/artifact_validation_report.tsv

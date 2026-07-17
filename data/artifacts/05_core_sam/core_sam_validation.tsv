@@ -1,12 +1,6 @@
 key	value
-n_activity_accounts	150
-n_commodity_accounts	150
-n_final_demand_accounts	30
-n_satellite_accounts	36
-n_external_accounts	6
-max_abs_commodity_imbalance	4.6566128730773926e-9
-max_abs_activity_imbalance	2.7939677238464355e-9
-total_final_demand_net_position	-1.7409812165150627e7
-total_satellite_net_position	1.7409812165150657e7
-stage5_status	incomplete_by_design
-stage5_boundary	no_income_allocation_or_macro_closure_yet
+account_structure	industry_by_industry
+n_industries_per_region	25
+n_regions	6
+n_accounts	187
+max_abs_preclosure_balance	5.6763572755999835e6

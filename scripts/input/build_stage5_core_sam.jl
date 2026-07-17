@@ -1,34 +1,25 @@
 #!/usr/bin/env julia
 
 """
-Build the stage-5 core SAM artifact set.
+Build the stage-5 core industry-by-industry SAM artifact set.
 
-Stage 5 extracts an incomplete square SAM from the balanced SUT.
-
-What is included:
-- activity and commodity accounts for the six explicit European regions;
-- final-demand and satellite accounts for those same regions;
-- region-specific external accounts carrying trade with the rest of the world.
-
-What is intentionally left open:
-- no household, government, savings-investment, or rest-of-world closure is
-  imposed yet;
-- satellite accounts therefore collect receipts without their later
-  redistribution columns;
-- final-demand accounts therefore keep their expenditure columns without their
-  later income rows.
+The source is the symmetric industry-by-industry IO table produced at stage 4b.
+Each of the six European regions has one account for each retained industry,
+two factor accounts, three institutional accounts, and one external account.
+The global investment-pool account is included for the stage-6 closure.
 """
 
 const ROOT_DIR = normpath(joinpath(@__DIR__, "..", ".."))
-const ARTIFACT4_DIR = joinpath(ROOT_DIR, "data", "artifacts", "04_balanced_sut")
-const ARTIFACT3_DIR = joinpath(ROOT_DIR, "data", "artifacts", "03_final_preparation")
-const ARTIFACT1_DIR = joinpath(ROOT_DIR, "data", "artifacts", "01_initial_data")
+const IO_DIR = joinpath(ROOT_DIR, "data", "artifacts", "04b_symmetric_io")
+const SUT_DIR = joinpath(ROOT_DIR, "data", "artifacts", "04_balanced_sut")
+const SECTOR_DIR = joinpath(ROOT_DIR, "data", "artifacts", "03_final_preparation")
 const OUTDIR = joinpath(ROOT_DIR, "data", "artifacts", "05_core_sam")
 
-const IN_SUPPLY = joinpath(ARTIFACT4_DIR, "balanced_supply.tsv")
-const IN_USE = joinpath(ARTIFACT4_DIR, "balanced_use.tsv")
-const SECTOR_REGISTRY = joinpath(ARTIFACT3_DIR, "explicit_final_sector_registry.tsv")
-const CODE_MAP = joinpath(ARTIFACT1_DIR, "figaro_reference_code_map.tsv")
+const IN_INTERMEDIATE = joinpath(IO_DIR, "industry_by_industry_intermediate.tsv")
+const IN_FINAL = joinpath(IO_DIR, "industry_by_final_demand.tsv")
+const IN_VALUE_ADDED = joinpath(IO_DIR, "value_added_by_industry.tsv")
+const IN_BALANCED_USE = joinpath(SUT_DIR, "balanced_use.tsv")
+const IN_SECTORS = joinpath(SECTOR_DIR, "explicit_final_sector_registry.tsv")
 
 const OUT_ACCOUNTS = joinpath(OUTDIR, "core_sam_accounts.tsv")
 const OUT_FLOWS = joinpath(OUTDIR, "core_sam_flows.tsv")
@@ -37,32 +28,16 @@ const OUT_BALANCES = joinpath(OUTDIR, "core_sam_account_balances.tsv")
 const OUT_BLOCKS = joinpath(OUTDIR, "core_sam_block_totals.tsv")
 const OUT_VALIDATION = joinpath(OUTDIR, "core_sam_validation.tsv")
 
-const SPECIAL_CODES = Set(["B2A3G", "D1", "D21X31", "D29X39", "OP_NRES", "OP_RES"])
 const EU_REGIONS = ["DE", "FR", "IT", "PL", "SK", "REU"]
 const EU_REGION_SET = Set(EU_REGIONS)
-const TYPE_ORDER = Dict(
-    "activity" => 1,
-    "commodity" => 2,
-    "final_demand" => 3,
-    "satellite" => 4,
-    "external" => 5,
-)
+const ROW_REGION = "ROW"
+const TOL = 1.0e-10
 
-struct SupplyEntry
-    product_region::String
-    product_sector::String
-    activity_region::String
-    activity_sector::String
-    value::Float64
-end
-
-struct UseEntry
-    product_region::String
-    product_sector::String
-    use_region::String
-    use_code::String
-    value::Float64
-end
+industry_id(region, code) = "IND:$region:$code"
+factor_id(region, code) = "FAC:$region:$code"
+institution_id(region, code) = "INS:$region:$code"
+external_id(region) = "EXT:$region:EXT"
+investment_pool_id() = "INS:GLOBAL:INV_POOL"
 
 function ensure_dir(path::AbstractString)
     isdir(path) || mkpath(path)
@@ -88,404 +63,199 @@ function write_tsv(path::AbstractString, header::Vector{String}, rows::Vector{Ve
     end
 end
 
-function load_sector_labels(path::AbstractString)
-    rows = read_tsv(path)
-    labels = Dict{String,String}()
-    for row in rows[2:end]
-        labels[row[1]] = row[2]
+function load_sector_rows()
+    rows = read_tsv(IN_SECTORS)
+    return [(code = row[1], label = row[2]) for row in rows[2:end]]
+end
+
+function final_demand_account(region::String, code::String)
+    if code == "P3_S13"
+        return institution_id(region, "GOV"), "institution"
+    elseif code == "P3_S14" || code == "P3_S15"
+        return institution_id(region, "HH"), "institution"
+    elseif code == "P51G" || code == "P5M"
+        return institution_id(region, "INV"), "institution"
     end
-    return labels
+    error("Unexpected final-demand code $code")
 end
-
-function load_code_labels(path::AbstractString)
-    rows = read_tsv(path)
-    labels = Dict{String,String}()
-    for row in rows
-        length(row) < 3 && continue
-        code = row[2]
-        label = row[3]
-        labels[code] = label
-    end
-    return labels
-end
-
-function load_supply_entries(path::AbstractString)
-    rows = read_tsv(path)
-    return [
-        SupplyEntry(row[1], row[2], row[3], row[4], parse(Float64, row[5]))
-        for row in rows[2:end]
-    ]
-end
-
-function load_use_entries(path::AbstractString)
-    rows = read_tsv(path)
-    return [
-        UseEntry(row[1], row[2], row[3], row[4], parse(Float64, row[5]))
-        for row in rows[2:end]
-    ]
-end
-
-activity_id(region::AbstractString, code::AbstractString) = "ACT:$region:$code"
-commodity_id(region::AbstractString, code::AbstractString) = "COM:$region:$code"
-final_demand_id(region::AbstractString, code::AbstractString) = "FD:$region:$code"
-satellite_id(region::AbstractString, code::AbstractString) = "SAT:$region:$code"
-external_id(region::AbstractString) = "EXT:$region"
 
 function add_flow!(
-    flows::Dict{Tuple{String,String,String,String,String,String,String},Float64},
-    from_id::String,
-    to_id::String,
-    from_type::String,
-    to_type::String,
-    flow_kind::String,
-    source_table::String,
-    source_code::String,
+    flows::Dict{NTuple{7,String},Float64},
+    row::String,
+    col::String,
+    row_type::String,
+    col_type::String,
+    kind::String,
+    source::String,
+    code::String,
     value::Float64,
 )
-    abs(value) <= 1.0e-12 && return
-    key = (from_id, to_id, from_type, to_type, flow_kind, source_table, source_code)
+    abs(value) <= TOL && return
+    key = (row, col, row_type, col_type, kind, source, code)
     flows[key] = get(flows, key, 0.0) + value
 end
 
-function sorted_rows(dict::Dict{Tuple{String,String,String,String,String,String,String},Float64})
+function account_rows(sectors)
     rows = Vector{Vector{String}}()
-    for key in sort!(collect(keys(dict)))
-        push!(rows, [
-            key[1],
-            key[2],
-            key[3],
-            key[4],
-            key[5],
-            key[6],
-            key[7],
-            string(dict[key]),
-        ])
+    for region in EU_REGIONS
+        for sector in sectors
+            push!(rows, [industry_id(region, sector.code), "industry", region, sector.code, "$region industry: $(sector.label)"])
+        end
+        push!(rows, [factor_id(region, "LAB"), "factor", region, "LAB", "$region factor: Labour"])
+        push!(rows, [factor_id(region, "CAP"), "factor", region, "CAP", "$region factor: Capital"])
+        push!(rows, [institution_id(region, "HH"), "institution", region, "HH", "$region institution: Households (+ NPISH)"])
+        push!(rows, [institution_id(region, "GOV"), "institution", region, "GOV", "$region institution: Government"])
+        push!(rows, [institution_id(region, "INV"), "institution", region, "INV", "$region institution: Investment"])
+        push!(rows, [external_id(region), "external", region, "EXT", "$region external account"])
+    end
+    push!(rows, [investment_pool_id(), "investment_pool", "GLOBAL", "INV_POOL", "Global interregional investment pool"])
+    return rows
+end
+
+function add_intermediate_flows!(flows)
+    rows = read_tsv(IN_INTERMEDIATE)
+    for row in rows[2:end]
+        origin_region, origin_sector, use_region, use_sector, value_text = row
+        value = parse(Float64, value_text)
+        if origin_region in EU_REGION_SET && use_region in EU_REGION_SET
+            add_flow!(flows, industry_id(origin_region, origin_sector), industry_id(use_region, use_sector), "industry", "industry", "intermediate_demand", "symmetric_io", origin_sector, value)
+        elseif origin_region in EU_REGION_SET && use_region == ROW_REGION
+            add_flow!(flows, industry_id(origin_region, origin_sector), external_id(origin_region), "industry", "external", "export_to_row", "symmetric_io", origin_sector, value)
+        elseif origin_region == ROW_REGION && use_region in EU_REGION_SET
+            add_flow!(flows, external_id(use_region), industry_id(use_region, use_sector), "external", "industry", "import_from_row_intermediate", "symmetric_io", use_sector, value)
+        end
+    end
+end
+
+function add_final_demand_flows!(flows)
+    rows = read_tsv(IN_FINAL)
+    for row in rows[2:end]
+        origin_region, origin_sector, demand_region, demand_code, value_text = row
+        value = parse(Float64, value_text)
+        if origin_region in EU_REGION_SET && demand_region in EU_REGION_SET
+            account, account_type = final_demand_account(demand_region, demand_code)
+            add_flow!(flows, industry_id(origin_region, origin_sector), account, "industry", account_type, "final_demand", "symmetric_io", demand_code, value)
+        elseif origin_region in EU_REGION_SET && demand_region == ROW_REGION
+            add_flow!(flows, industry_id(origin_region, origin_sector), external_id(origin_region), "industry", "external", "export_to_row", "symmetric_io", demand_code, value)
+        elseif origin_region == ROW_REGION && demand_region in EU_REGION_SET
+            account, account_type = final_demand_account(demand_region, demand_code)
+            add_flow!(flows, external_id(demand_region), account, "external", account_type, "import_from_row_$(lowercase(account_type))", "symmetric_io", demand_code, value)
+        end
+    end
+end
+
+function add_value_added_flows!(flows)
+    rows = read_tsv(IN_VALUE_ADDED)
+    for row in rows[2:end]
+        value_added_region, value_added_code, industry_region, industry_sector, value_text = row
+        industry_region in EU_REGION_SET || continue
+        value_added_region == industry_region || continue
+        value = parse(Float64, value_text)
+        row_id, row_type, kind =
+            value_added_code == "D1" ? (factor_id(industry_region, "LAB"), "factor", "labour_income") :
+            value_added_code == "B2A3G" ? (factor_id(industry_region, "CAP"), "factor", "capital_income") :
+            value_added_code == "D21X31" ? (institution_id(industry_region, "GOV"), "institution", "product_taxes_less_subsidies") :
+            value_added_code == "D29X39" ? (institution_id(industry_region, "GOV"), "institution", "production_taxes_less_subsidies") :
+            error("Unexpected value-added row $value_added_code")
+        add_flow!(flows, row_id, industry_id(industry_region, industry_sector), row_type, "industry", kind, "symmetric_io", value_added_code, value)
+    end
+end
+
+function add_tourism_flows!(flows)
+    rows = read_tsv(IN_BALANCED_USE)
+    for row in rows[2:end]
+        product_region, product_sector, use_region, _, value_text = row
+        product_region in EU_REGION_SET || continue
+        use_region in EU_REGION_SET || continue
+        value = parse(Float64, value_text)
+        if product_sector == "OP_NRES"
+            add_flow!(flows, institution_id(use_region, "HH"), external_id(use_region), "institution", "external", "tourism_inbound_adjustment", "balanced_sut", product_sector, value)
+        elseif product_sector == "OP_RES"
+            add_flow!(flows, external_id(use_region), institution_id(use_region, "HH"), "external", "institution", "tourism_outbound_adjustment", "balanced_sut", product_sector, value)
+        end
+    end
+end
+
+function account_ids(account_rows)
+    return [row[1] for row in account_rows]
+end
+
+function rowcol_sums(flows, accounts)
+    rowsums = Dict(account => 0.0 for account in accounts)
+    colsums = Dict(account => 0.0 for account in accounts)
+    for (key, value) in flows
+        rowsums[key[1]] = get(rowsums, key[1], 0.0) + value
+        colsums[key[2]] = get(colsums, key[2], 0.0) + value
+    end
+    return rowsums, colsums
+end
+
+function flow_rows(flows)
+    rows = Vector{Vector{String}}()
+    for key in sort!(collect(keys(flows)))
+        push!(rows, [key[1], key[2], key[3], key[4], key[5], key[6], key[7], string(flows[key])])
     end
     return rows
 end
 
-function account_label(prefix::String, region::String, code::String, sector_labels, code_labels)
-    if prefix == "ACT"
-        return "$region activity: $(get(sector_labels, code, code))"
-    elseif prefix == "COM"
-        return "$region commodity: $(get(sector_labels, code, code))"
-    elseif prefix == "FD"
-        return "$region final demand: $(get(code_labels, code, code))"
-    elseif prefix == "EXT"
-        return "$region external: Rest of world"
-    else
-        return "$region satellite: $(get(code_labels, code, code))"
+function matrix_rows(accounts, flows)
+    values = Dict{Tuple{String,String},Float64}()
+    for (key, value) in flows
+        pair = (key[1], key[2])
+        values[pair] = get(values, pair, 0.0) + value
     end
-end
-
-function build_account_registry(supply_entries, use_entries, sector_labels, code_labels)
     rows = Vector{Vector{String}}()
-    seen = Set{String}()
-
-    activity_codes = sort!(unique(entry.activity_sector for entry in supply_entries))
-    commodity_codes = sort!(unique(entry.product_sector for entry in supply_entries))
-    regions = copy(EU_REGIONS)
-
-    for region in regions
-        for code in activity_codes
-            id = activity_id(region, code)
-            id in seen && continue
-            push!(seen, id)
-            push!(rows, [id, "activity", region, code, account_label("ACT", region, code, sector_labels, code_labels)])
+    for row_account in accounts
+        row = [row_account]
+        for col_account in accounts
+            push!(row, string(get(values, (row_account, col_account), 0.0)))
         end
-    end
-
-    for region in regions
-        for code in commodity_codes
-            id = commodity_id(region, code)
-            id in seen && continue
-            push!(seen, id)
-            push!(rows, [id, "commodity", region, code, account_label("COM", region, code, sector_labels, code_labels)])
-        end
-    end
-
-    final_demand_codes = sort!(unique(entry.use_code for entry in use_entries if (entry.use_region in EU_REGION_SET) && !(entry.use_code in activity_codes) && !(entry.product_sector in SPECIAL_CODES)))
-    for region in regions
-        for code in final_demand_codes
-            id = final_demand_id(region, code)
-            id in seen && continue
-            push!(seen, id)
-            push!(rows, [id, "final_demand", region, code, account_label("FD", region, code, sector_labels, code_labels)])
-        end
-    end
-
-    satellite_pairs = Set{Tuple{String,String}}()
-    for entry in use_entries
-        if (entry.use_region in EU_REGION_SET) && (entry.product_sector in SPECIAL_CODES)
-            push!(satellite_pairs, (entry.use_region, entry.product_sector))
-        end
-    end
-    for pair in sort!(collect(satellite_pairs))
-        region = pair[1]
-        code = pair[2]
-        id = satellite_id(region, code)
-        id in seen && continue
-        push!(seen, id)
-        push!(rows, [id, "satellite", region, code, account_label("SAT", region, code, sector_labels, code_labels)])
-    end
-
-    for region in regions
-        id = external_id(region)
-        push!(rows, [id, "external", region, "EXT", account_label("EXT", region, "EXT", sector_labels, code_labels)])
-    end
-
-    sort!(rows, by = row -> (TYPE_ORDER[row[2]], row[3], row[4]))
-    return rows, Set(activity_codes)
-end
-
-function build_flow_table(supply_entries, use_entries, activity_codes::Set{String})
-    flows = Dict{Tuple{String,String,String,String,String,String,String},Float64}()
-
-    for entry in supply_entries
-        (entry.product_region in EU_REGION_SET && entry.activity_region in EU_REGION_SET) || continue
-        add_flow!(
-            flows,
-            activity_id(entry.activity_region, entry.activity_sector),
-            commodity_id(entry.product_region, entry.product_sector),
-            "activity",
-            "commodity",
-            "make",
-            "balanced_supply",
-            entry.product_sector,
-            entry.value,
-        )
-    end
-
-    for entry in use_entries
-        use_region_eu = entry.use_region in EU_REGION_SET
-        product_region_eu = entry.product_region in EU_REGION_SET
-
-        if !use_region_eu
-            if product_region_eu && !(entry.product_sector in SPECIAL_CODES)
-                add_flow!(
-                    flows,
-                    commodity_id(entry.product_region, entry.product_sector),
-                    external_id(entry.product_region),
-                    "commodity",
-                    "external",
-                    "export_to_row",
-                    "balanced_use",
-                    entry.product_sector,
-                    entry.value,
-                )
-            end
-            continue
-        end
-
-        if entry.product_sector in SPECIAL_CODES
-            product_region_eu || continue
-            target_id = entry.use_code in activity_codes ?
-                activity_id(entry.use_region, entry.use_code) :
-                final_demand_id(entry.use_region, entry.use_code)
-
-            target_type = entry.use_code in activity_codes ? "activity" : "final_demand"
-
-            flow_kind =
-                entry.product_sector == "D1" ? "compensation_of_employees" :
-                entry.product_sector == "B2A3G" ? "operating_surplus_mixed_income" :
-                entry.product_sector == "D29X39" ? "other_taxes_less_subsidies_on_production" :
-                entry.product_sector == "D21X31" ? "taxes_less_subsidies_on_products" :
-                entry.product_sector == "OP_NRES" ? "purchases_on_domestic_territory_by_non_residents" :
-                "direct_purchases_abroad_by_residents"
-
-            add_flow!(
-                flows,
-                satellite_id(entry.use_region, entry.product_sector),
-                target_id,
-                "satellite",
-                target_type,
-                flow_kind,
-                "balanced_use_special_rows",
-                entry.product_sector,
-                entry.value,
-            )
-        else
-            if product_region_eu
-                if entry.use_code in activity_codes
-                    add_flow!(
-                        flows,
-                        commodity_id(entry.product_region, entry.product_sector),
-                        activity_id(entry.use_region, entry.use_code),
-                        "commodity",
-                        "activity",
-                        "intermediate_demand",
-                        "balanced_use",
-                        entry.product_sector,
-                        entry.value,
-                    )
-                else
-                    add_flow!(
-                        flows,
-                        commodity_id(entry.product_region, entry.product_sector),
-                        final_demand_id(entry.use_region, entry.use_code),
-                        "commodity",
-                        "final_demand",
-                        "final_demand",
-                        "balanced_use",
-                        entry.product_sector,
-                        entry.value,
-                    )
-                end
-            else
-                add_flow!(
-                    flows,
-                    external_id(entry.use_region),
-                    entry.use_code in activity_codes ?
-                        activity_id(entry.use_region, entry.use_code) :
-                        final_demand_id(entry.use_region, entry.use_code),
-                    "external",
-                    entry.use_code in activity_codes ? "activity" : "final_demand",
-                    entry.use_code in activity_codes ? "import_from_row_intermediate" : "import_from_row_final",
-                    "balanced_use",
-                    entry.product_sector,
-                    entry.value,
-                )
-            end
-        end
-    end
-
-    return flows
-end
-
-function build_matrix(accounts::Vector{Vector{String}}, flows::Dict{Tuple{String,String,String,String,String,String,String},Float64})
-    account_ids = [row[1] for row in accounts]
-    index = Dict{String,Int}()
-    for (i, id) in enumerate(account_ids)
-        index[id] = i
-    end
-
-    n = length(account_ids)
-    matrix = zeros(Float64, n, n)
-    for key in keys(flows)
-        i = index[key[1]]
-        j = index[key[2]]
-        matrix[i, j] += flows[key]
-    end
-
-    rows = Vector{Vector{String}}()
-    for i in 1:n
-        push!(rows, vcat([account_ids[i]], [string(matrix[i, j]) for j in 1:n]))
-    end
-    header = vcat(["account_id"], account_ids)
-    return header, rows, matrix, account_ids
-end
-
-function balance_rows(accounts::Vector{Vector{String}}, matrix, account_ids)
-    rows = Vector{Vector{String}}()
-    for i in eachindex(account_ids)
-        row_sum = sum(matrix[i, :])
-        col_sum = sum(matrix[:, i])
-        push!(rows, [
-            account_ids[i],
-            accounts[i][2],
-            accounts[i][3],
-            accounts[i][4],
-            string(row_sum),
-            string(col_sum),
-            string(row_sum - col_sum),
-        ])
+        push!(rows, row)
     end
     return rows
 end
 
-function block_rows(accounts::Vector{Vector{String}}, matrix, account_ids)
-    types = [row[2] for row in accounts]
-    rows = Vector{Vector{String}}()
-    uniq_types = ["activity", "commodity", "final_demand", "satellite"]
-    push!(uniq_types, "external")
-    idx_by_type = Dict{String,Vector{Int}}()
-    for t in uniq_types
-        idx_by_type[t] = [i for i in eachindex(types) if types[i] == t]
-    end
-    for from_type in uniq_types
-        for to_type in uniq_types
-            total = 0.0
-            for i in idx_by_type[from_type], j in idx_by_type[to_type]
-                total += matrix[i, j]
-            end
-            push!(rows, [from_type, to_type, string(total)])
-        end
-    end
-    return rows
-end
-
-function validation_rows(accounts::Vector{Vector{String}}, balance_rows_data::Vector{Vector{String}})
-    counts = Dict{String,Int}()
-    for row in accounts
-        counts[row[2]] = get(counts, row[2], 0) + 1
-    end
-
-    commodity_imbalances = Float64[]
-    activity_imbalances = Float64[]
-    final_demand_imbalances = Float64[]
-    satellite_imbalances = Float64[]
-
-    for row in balance_rows_data
-        imbalance = parse(Float64, row[7])
-        if row[2] == "commodity"
-            push!(commodity_imbalances, imbalance)
-        elseif row[2] == "activity"
-            push!(activity_imbalances, imbalance)
-        elseif row[2] == "final_demand"
-            push!(final_demand_imbalances, imbalance)
-        else
-            push!(satellite_imbalances, imbalance)
-        end
-    end
-
-    return [
-        ["n_activity_accounts", string(get(counts, "activity", 0))],
-        ["n_commodity_accounts", string(get(counts, "commodity", 0))],
-        ["n_final_demand_accounts", string(get(counts, "final_demand", 0))],
-        ["n_satellite_accounts", string(get(counts, "satellite", 0))],
-        ["n_external_accounts", string(get(counts, "external", 0))],
-        ["max_abs_commodity_imbalance", string(maximum(abs.(commodity_imbalances)))],
-        ["max_abs_activity_imbalance", string(maximum(abs.(activity_imbalances)))],
-        ["total_final_demand_net_position", string(sum(final_demand_imbalances))],
-        ["total_satellite_net_position", string(sum(satellite_imbalances))],
-        ["stage5_status", "incomplete_by_design"],
-        ["stage5_boundary", "no_income_allocation_or_macro_closure_yet"],
-    ]
+function balance_rows(account_rows, flows)
+    accounts = account_ids(account_rows)
+    rowsums, colsums = rowcol_sums(flows, accounts)
+    return [[row[1], row[2], row[3], row[4], string(rowsums[row[1]]), string(colsums[row[1]]), string(rowsums[row[1]] - colsums[row[1]])] for row in account_rows]
 end
 
 function main()
     ensure_dir(OUTDIR)
+    sectors = load_sector_rows()
+    accounts = account_rows(sectors)
+    flows = Dict{NTuple{7,String},Float64}()
 
-    sector_labels = load_sector_labels(SECTOR_REGISTRY)
-    code_labels = load_code_labels(CODE_MAP)
-    supply_entries = load_supply_entries(IN_SUPPLY)
-    use_entries = load_use_entries(IN_USE)
+    add_intermediate_flows!(flows)
+    add_final_demand_flows!(flows)
+    add_value_added_flows!(flows)
+    add_tourism_flows!(flows)
 
-    accounts, activity_codes = build_account_registry(supply_entries, use_entries, sector_labels, code_labels)
-    flows = build_flow_table(supply_entries, use_entries, activity_codes)
-    flow_rows = sorted_rows(flows)
+    ids = account_ids(accounts)
+    rowsums, colsums = rowcol_sums(flows, ids)
+    preliminary_gaps = [abs(rowsums[id] - colsums[id]) for id in ids]
+    blocks = [
+        ["intermediate_industry_flows", string(sum(value for (key, value) in flows if key[5] == "intermediate_demand"))],
+        ["final_demand_flows", string(sum(value for (key, value) in flows if key[5] == "final_demand"))],
+        ["extra_europe_exports", string(sum(value for (key, value) in flows if key[5] == "export_to_row"))],
+        ["extra_europe_imports", string(sum(value for (key, value) in flows if startswith(key[5], "import_from_row")))],
+    ]
+    validation = [
+        ["account_structure", "industry_by_industry"],
+        ["n_industries_per_region", string(length(sectors))],
+        ["n_regions", string(length(EU_REGIONS))],
+        ["n_accounts", string(length(ids))],
+        ["max_abs_preclosure_balance", string(maximum(preliminary_gaps))],
+    ]
 
-    matrix_header, matrix_rows, matrix, account_ids = build_matrix(accounts, flows)
-    account_balance_rows = balance_rows(accounts, matrix, account_ids)
-    block_total_rows = block_rows(accounts, matrix, account_ids)
-    validation = validation_rows(accounts, account_balance_rows)
-
-    write_tsv(OUT_ACCOUNTS, ["account_id", "account_type", "region", "source_code", "account_label"], accounts)
-    write_tsv(
-        OUT_FLOWS,
-        ["from_account", "to_account", "from_type", "to_type", "flow_kind", "source_table", "source_code", "value_meur"],
-        flow_rows,
-    )
-    write_tsv(OUT_MATRIX, matrix_header, matrix_rows)
-    write_tsv(
-        OUT_BALANCES,
-        ["account_id", "account_type", "region", "source_code", "row_sum_meur", "column_sum_meur", "imbalance_meur"],
-        account_balance_rows,
-    )
-    write_tsv(OUT_BLOCKS, ["from_type", "to_type", "value_meur"], block_total_rows)
+    write_tsv(OUT_ACCOUNTS, ["account_id", "account_type", "region", "code", "label"], accounts)
+    write_tsv(OUT_FLOWS, ["row_account_id", "column_account_id", "row_type", "column_type", "flow_kind", "source_table", "source_code", "value"], flow_rows(flows))
+    write_tsv(OUT_MATRIX, vcat(["account_id"], ids), matrix_rows(ids, flows))
+    write_tsv(OUT_BALANCES, ["account_id", "account_type", "region", "code", "row_sum", "column_sum", "balance"], balance_rows(accounts, flows))
+    write_tsv(OUT_BLOCKS, ["block", "value_meur"], blocks)
     write_tsv(OUT_VALIDATION, ["key", "value"], validation)
-
-    println("Wrote stage-5 artifacts to ", OUTDIR)
+    println("Wrote stage-5 industry-by-industry core SAM artifacts to ", OUTDIR)
 end
 
 main()

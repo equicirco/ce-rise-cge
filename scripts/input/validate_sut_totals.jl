@@ -44,7 +44,7 @@ const STAGE4B_DIR = joinpath(ARTIFACT_DIR, "04b_symmetric_io")
 const STAGE5_DIR = joinpath(ARTIFACT_DIR, "05_core_sam")
 const STAGE6_DIR = joinpath(ARTIFACT_DIR, "06_closed_sam")
 const STAGE7_DIR = joinpath(ARTIFACT_DIR, "07_model_scaffold")
-const STAGE8_DIR = joinpath(ARTIFACT_DIR, "08_eu_single_region_bundle")
+const STAGE8_DIR = joinpath(ARTIFACT_DIR, "08_six_region_bundle")
 
 const STAGE1_FILES = [
     "figaro_reference_supply.tsv",
@@ -64,6 +64,7 @@ const STAGE6_BALANCES = joinpath(STAGE6_DIR, "closed_sam_account_balances.tsv")
 const STAGE6_MACRO_SUMMARY = joinpath(STAGE6_DIR, "closed_sam_macro_summary.tsv")
 const STAGE7_VALIDATION = joinpath(STAGE7_DIR, "stage7_validation.tsv")
 const STAGE8_VALIDATION = joinpath(STAGE8_DIR, "bundle_validation.tsv")
+const STAGE8_MODEL_CONFIGURATION = joinpath(STAGE8_DIR, "model_configuration.tsv")
 
 const TOL = 1.0e-8
 const LATE_TOL = 1.0e-6
@@ -420,13 +421,9 @@ function append_stage5_checks!(rows)
 
     values = read_key_value_file(STAGE5_VALIDATION)
     checks = [
-        ("status_boundary", get(values, "stage5_status", "") == "incomplete_by_design", get(values, "stage5_status", "missing"), "incomplete_by_design", "Stage 5 should remain an intentionally incomplete bridge SAM."),
-        ("commodity_balance", abs(parse_float(values, "max_abs_commodity_imbalance")) <= LATE_TOL, values["max_abs_commodity_imbalance"], "<= $(LATE_TOL)", "Commodity accounts in the bridge SAM should already balance."),
-        ("activity_accounts_present", parse_int(values, "n_activity_accounts") > 0, values["n_activity_accounts"], "> 0", "Activity accounts must be present in the bridge SAM."),
-        ("commodity_accounts_present", parse_int(values, "n_commodity_accounts") > 0, values["n_commodity_accounts"], "> 0", "Commodity accounts must be present in the bridge SAM."),
-        ("final_demand_accounts_present", parse_int(values, "n_final_demand_accounts") > 0, values["n_final_demand_accounts"], "> 0", "Final-demand accounts must be present in the bridge SAM."),
-        ("satellite_accounts_present", parse_int(values, "n_satellite_accounts") > 0, values["n_satellite_accounts"], "> 0", "Satellite accounts must be present before closure."),
-        ("external_accounts_present", parse_int(values, "n_external_accounts") > 0, values["n_external_accounts"], "> 0", "Region-specific external accounts should already be present in the bridge SAM."),
+        ("account_structure", get(values, "account_structure", "") == "industry_by_industry", get(values, "account_structure", "missing"), "industry_by_industry", "Stage 5 should use one account for each industry and region."),
+        ("industries_per_region", parse_int(values, "n_industries_per_region") == 25, values["n_industries_per_region"], "25", "The core SAM should retain the 25-industry sector structure."),
+        ("account_count", parse_int(values, "n_accounts") == 187, values["n_accounts"], "187", "The six-region core account structure should include industries, factors, institutions, external accounts, and the investment pool."),
     ]
 
     for (check, ok, observed, expected, notes) in checks
@@ -444,19 +441,19 @@ function closed_sam_calibration_ready()
     matrix_square = length(matrix) == n_accounts + 1 && length(matrix[1]) == n_accounts + 1
 
     types = Set(row[2] for row in accounts[2:end])
-    required_types = Set(["activity", "commodity", "factor", "institution", "external"])
+    required_types = Set(["industry", "factor", "institution", "external", "investment_pool"])
     type_ok = required_types == types
 
     external_count = count(row -> row[2] == "external", accounts[2:end])
-    activity_regions = Set(row[3] for row in accounts[2:end] if row[2] == "activity")
+    industry_regions = Set(row[3] for row in accounts[2:end] if row[2] == "industry")
     external_regions = Set(row[3] for row in accounts[2:end] if row[2] == "external")
     macro_region_rows = length(macro_rows_tsv) - 1
     max_abs_balance = maximum(abs(parse(Float64, row[7])) for row in balances[2:end])
     type_list = join(sort!(collect(types)), ",")
 
-    ok = matrix_square && type_ok && external_count == length(activity_regions) && external_regions == activity_regions && macro_region_rows == length(activity_regions) && max_abs_balance <= LATE_TOL
+    ok = matrix_square && type_ok && external_count == length(industry_regions) && external_regions == industry_regions && macro_region_rows == length(industry_regions) && max_abs_balance <= LATE_TOL
     observed = "square=$(matrix_square); types=$(type_list); external_count=$(external_count); external_regions=$(join(sort!(collect(external_regions)), ",")); macro_rows=$(macro_region_rows); max_abs_balance=$(max_abs_balance)"
-    expected = "square=true; types=activity,commodity,external,factor,institution; external_count=$(length(activity_regions)); external_regions=$(join(sort!(collect(activity_regions)), ",")); macro_rows=$(length(activity_regions)); max_abs_balance<=$(LATE_TOL)"
+    expected = "square=true; types=industry,external,factor,institution,investment_pool; external_count=$(length(industry_regions)); external_regions=$(join(sort!(collect(industry_regions)), ",")); macro_rows=$(length(industry_regions)); max_abs_balance<=$(LATE_TOL)"
     notes = "Closed SAM should be square, exactly balanced, and institutionally complete enough to serve as the benchmark calibration base."
     return ok, observed, expected, notes
 end
@@ -474,7 +471,8 @@ function append_stage6_checks!(rows)
         ("max_abs_balance", abs(parse_float(values, "max_abs_balance")) <= LATE_TOL, values["max_abs_balance"], "<= $(LATE_TOL)", "The closed SAM should balance exactly up to numerical tolerance."),
         ("total_abs_balance", abs(parse_float(values, "total_abs_balance")) <= 1.0e-5, values["total_abs_balance"], "<= 1.0e-5", "Total balance error across all accounts should remain negligible."),
         ("household_npish_rule", get(values, "household_npish_rule", "") == "P3_S15 merged into households", get(values, "household_npish_rule", "missing"), "P3_S15 merged into households", "The intended household/NPISH closure rule should be recorded."),
-        ("activity_residual_rule", get(values, "activity_residual_rule", "") == "residual assigned to regional capital", get(values, "activity_residual_rule", "missing"), "residual assigned to regional capital", "The intended residual-claimant rule should be recorded."),
+        ("account_structure", get(values, "account_structure", "") == "industry_by_industry", get(values, "account_structure", "missing"), "industry_by_industry", "The closed SAM should retain one account for each industry and region."),
+        ("industry_account_count", parse_int(values, "n_industry_accounts") == 150, values["n_industry_accounts"], "150", "The six-region SAM should contain 25 industry accounts in each region."),
     ]
 
     for (check, ok, observed, expected, notes) in checks
@@ -493,16 +491,15 @@ function append_stage7_checks!(rows)
 
     values = read_key_value_file(STAGE7_VALIDATION)
     checks = [
-        ("single_region_scope", get(values, "single_region_scope", "missing") == "aggregate_europe_only", get(values, "single_region_scope", "missing"), "aggregate_europe_only", "The first empirical calibration bundle should aggregate the European system into one region rather than collapse ROW into the same benchmark."),
-        ("future_external_extension", get(values, "future_external_extension", "missing") == "row_separate_later", get(values, "future_external_extension", "missing"), "row_separate_later", "ROW should remain outside the first single-region benchmark and return in the later external or multi-region extension."),
-        ("required_sut_sectors_present", get(values, "missing_required_sut_sectors", "missing") == "none", get(values, "missing_required_sut_sectors", "missing"), "none", "All sectors required by the stylized-consistent single-region scaffold should be present in the explicit SUT registry."),
-        ("family_registry_rows", parse_int(values, "n_families") == 3, values["n_families"], "3", "The empirical single-region scaffold should cover the three CE-RISE product families."),
+        ("model_scope", get(values, "model_scope", "missing") == "six_european_regions_with_regional_external_accounts", get(values, "model_scope", "missing"), "six_european_regions_with_regional_external_accounts", "The model templates must be usable independently in each of the six European regions."),
+        ("required_sut_sectors_present", get(values, "missing_required_sut_sectors", "missing") == "none", get(values, "missing_required_sut_sectors", "missing"), "none", "All sectors required by the stylized-consistent circular route structure should be present in the SUT."),
+        ("family_registry_rows", parse_int(values, "n_families") == 3, values["n_families"], "3", "The empirical model should cover the three CE-RISE product families."),
         ("route_registry_rows", parse_int(values, "n_route_rows") == 18, values["n_route_rows"], "18", "The route registry should contain six routes per family: NEW, REF, REP, REU, REC, and INC."),
         ("service_route_rows", parse_int(values, "n_service_routes") == 12, values["n_service_routes"], "12", "Each family should have four service-supplying routes: NEW, REF, REP, and REU."),
         ("eol_route_rows", parse_int(values, "n_eol_routes") == 6, values["n_eol_routes"], "6", "Each family should map end-of-life flows to REC and INC in addition to life-extension routes."),
         ("quantity_bridge_rows", parse_int(values, "n_quantity_rows") == 22, values["n_quantity_rows"], "22", "The physical quantity bridge should cover family service, route, and end-of-life anchors plus common material and disposal pools."),
         ("coefficient_rows", parse_int(values, "n_coefficient_rows") == 23, values["n_coefficient_rows"], "23", "The physical coefficient template should cover family-specific route coefficients plus shared recycling/material parameters."),
-        ("service_alignment", get(values, "service_alignment", "missing") == "TST uses NEW,REF,REP,REU by family", get(values, "service_alignment", "missing"), "TST uses NEW,REF,REP,REU by family", "The single-region service composite should mirror the stylized route nest."),
+        ("service_alignment", get(values, "service_alignment", "missing") == "TST uses NEW,REF,REP,REU by family", get(values, "service_alignment", "missing"), "TST uses NEW,REF,REP,REU by family", "Each regional service composite should mirror the stylized route nest."),
         ("physical_quantity_rule", get(values, "physical_quantity_rule", "missing") == "Q_t = Q0 * q_t; fallback uses value divided by benchmark unit value and relative price", get(values, "physical_quantity_rule", "missing"), "Q_t = Q0 * q_t; fallback uses value divided by benchmark unit value and relative price", "Physical reporting should follow model quantity indices and only fall back to value/price conversion when needed."),
     ]
 
@@ -518,30 +515,52 @@ function append_stage8_checks!(rows)
         joinpath(STAGE8_DIR, "labels.csv"),
         joinpath(STAGE8_DIR, "subsets.csv"),
         joinpath(STAGE8_DIR, "mappings.csv"),
+        STAGE8_MODEL_CONFIGURATION,
         STAGE8_VALIDATION,
     ]
     missing = [path for path in required_files if !isfile(path)]
     if !isempty(missing)
-        push!(rows, artifact_row("08_eu_single_region_bundle", "required_files", "FAIL", STAGE8_DIR, join(missing, ";"), "all canonical bundle files present", "EU single-region canonical bundle is incomplete."))
+        push!(rows, artifact_row("08_six_region_bundle", "required_files", "FAIL", STAGE8_DIR, join(missing, ";"), "all canonical bundle files present", "Six-region canonical calibration bundle is incomplete."))
         return
     end
 
     values = read_key_value_file(STAGE8_VALIDATION)
     checks = [
-        ("single_region_scope", get(values, "single_region_scope", "missing") == "aggregate_europe_only", get(values, "single_region_scope", "missing"), "aggregate_europe_only", "The bundle should aggregate the European benchmark regions only."),
-        ("external_account_rule", get(values, "external_account_rule", "missing") == "aggregate_regional_external_accounts_then_close_residual_gap", get(values, "external_account_rule", "missing"), "aggregate_regional_external_accounts_then_close_residual_gap", "Regional external accounts should be aggregated into one bundle external account before any tiny residual-gap closure."),
-        ("bundle_activity_count", parse_int(values, "bundle_activity_count") > 0, values["bundle_activity_count"], "> 0", "Bundle must contain explicit activity accounts."),
-        ("bundle_commodity_count", parse_int(values, "bundle_commodity_count") > 0, values["bundle_commodity_count"], "> 0", "Bundle must contain explicit commodity accounts."),
-        ("bundle_factor_count", parse_int(values, "bundle_factor_count") == 2, values["bundle_factor_count"], "2", "Bundle should retain labor and capital as factors."),
-        ("bundle_institution_count", parse_int(values, "bundle_institution_count") == 3, values["bundle_institution_count"], "3", "Bundle should retain households, government, and investment institutions."),
-        ("bundle_external_count", parse_int(values, "bundle_external_count") == 1, values["bundle_external_count"], "1", "Bundle should collapse omitted non-European interactions into one external account."),
+        ("model_scope", get(values, "model_scope", "missing") == "six_european_regions_with_regional_external_accounts", get(values, "model_scope", "missing"), "six_european_regions_with_regional_external_accounts", "The bundle must retain the six European regions and their regional external accounts."),
+        ("regional_industry_count", parse_int(values, "regional_industry_count") == 25, values["regional_industry_count"], "25", "Every region must contain the 25 retained industries."),
+        ("bundle_industry_count", parse_int(values, "bundle_industry_count") == 150, values["bundle_industry_count"], "150", "Six regions with 25 industries must yield 150 industry accounts."),
+        ("bundle_factor_count", parse_int(values, "bundle_factor_count") == 12, values["bundle_factor_count"], "12", "Six regions must retain labour and capital separately."),
+        ("bundle_institution_count", parse_int(values, "bundle_institution_count") == 18, values["bundle_institution_count"], "18", "Six regions must retain household, government, and investment institutions."),
+        ("bundle_external_count", parse_int(values, "bundle_external_count") == 6, values["bundle_external_count"], "6", "Each region must retain its own external account."),
+        ("bundle_investment_pool_count", parse_int(values, "bundle_investment_pool_count") == 1, values["bundle_investment_pool_count"], "1", "The closed SAM must retain the global investment-pool account."),
         ("sam_square", get(values, "sam_square", "missing") == "true", get(values, "sam_square", "missing"), "true", "Canonical SAM must be square."),
-        ("max_abs_balance", abs(parse_float(values, "max_abs_balance")) <= LATE_TOL, values["max_abs_balance"], "<= $(LATE_TOL)", "Canonical EU bundle SAM should balance exactly up to numerical tolerance."),
+        ("max_abs_balance", abs(parse_float(values, "max_abs_balance")) <= LATE_TOL, values["max_abs_balance"], "<= $(LATE_TOL)", "Canonical six-region SAM should balance exactly up to numerical tolerance."),
     ]
 
     for (check, ok, observed, expected, notes) in checks
-        push!(rows, artifact_row("08_eu_single_region_bundle", check, artifact_status(ok), STAGE8_VALIDATION, observed, expected, notes))
+        push!(rows, artifact_row("08_six_region_bundle", check, artifact_status(ok), STAGE8_VALIDATION, observed, expected, notes))
     end
+
+    configuration_rows = read_tsv(STAGE8_MODEL_CONFIGURATION)
+    configuration = Dict{Tuple{String,String},String}()
+    if !isempty(configuration_rows) && configuration_rows[1] == ["component", "key", "value", "description"]
+        for row in configuration_rows[2:end]
+            length(row) == 4 || continue
+            configuration[(row[1], row[2])] = row[3]
+        end
+    end
+    closure_label = get(configuration, ("closure", "numeraire_label"), "missing")
+    closure_kind = get(configuration, ("closure", "numeraire_kind"), "missing")
+    closure_ok = closure_label == "P_HH_COMMON" && closure_kind == "price_index"
+    push!(rows, artifact_row(
+        "08_six_region_bundle",
+        "numeraire_configuration",
+        artifact_status(closure_ok),
+        STAGE8_MODEL_CONFIGURATION,
+        "label=$(closure_label); kind=$(closure_kind)",
+        "label=P_HH_COMMON; kind=price_index",
+        "The calibration bundle must declare the model-defined household-consumption price-index numeraire.",
+    ))
 
     sets_rows = read_simple_csv(joinpath(STAGE8_DIR, "sets.csv"))
     mappings_rows = read_simple_csv(joinpath(STAGE8_DIR, "mappings.csv"))
@@ -558,19 +577,18 @@ function append_stage8_checks!(rows)
     end
 
     mapping_specs = Dict(
-        "activity_to_commodity" => ("activities", "commodities"),
-        "activity_to_route" => ("activities", "routes"),
-        "commodity_to_route" => ("commodities", "routes"),
-        "activity_to_family" => ("activities", "families"),
-        "commodity_to_family" => ("commodities", "families"),
-        "activity_to_service_target" => ("activities", "service_targets"),
-        "commodity_to_service_target" => ("commodities", "service_targets"),
-        "activity_to_eol_target" => ("activities", "eol_targets"),
-        "commodity_to_eol_target" => ("commodities", "eol_targets"),
-        "family_to_service_target" => ("families", "service_targets"),
-        "family_to_eol_target" => ("families", "eol_targets"),
-        "activity_to_material_target" => ("activities", "material_targets"),
-        "commodity_to_material_target" => ("commodities", "material_targets"),
+        "industry_to_region" => ("industries", "regions"),
+        "factor_to_region" => ("factors", "regions"),
+        "institution_to_region" => ("institutions", "regions"),
+        "external_to_region" => ("externals", "regions"),
+        "industry_to_route" => ("industries", "routes"),
+        "industry_to_family" => ("industries", "families"),
+        "industry_to_regional_family" => ("industries", "regional_families"),
+        "industry_to_service_target" => ("industries", "service_targets"),
+        "industry_to_eol_target" => ("industries", "eol_targets"),
+        "regional_family_to_service_target" => ("regional_families", "service_targets"),
+        "regional_family_to_eol_target" => ("regional_families", "eol_targets"),
+        "industry_to_material_target" => ("industries", "material_targets"),
     )
 
     bad_mapping_refs = 0
@@ -602,7 +620,7 @@ function append_stage8_checks!(rows)
     end
 
     push!(rows, artifact_row(
-        "08_eu_single_region_bundle",
+        "08_six_region_bundle",
         "mapping_reference_integrity",
         artifact_status(bad_mapping_refs == 0 && unknown_mapping_types == 0),
         joinpath(STAGE8_DIR, "mappings.csv"),
@@ -611,7 +629,7 @@ function append_stage8_checks!(rows)
         "All mapping rows should reference items that exist in the declared canonical sets.",
     ))
     push!(rows, artifact_row(
-        "08_eu_single_region_bundle",
+        "08_six_region_bundle",
         "subset_reference_integrity",
         artifact_status(bad_subset_refs == 0 && unknown_subset_parents == 0),
         joinpath(STAGE8_DIR, "subsets.csv"),
