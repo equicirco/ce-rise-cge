@@ -1,7 +1,7 @@
 #!/usr/bin/env julia
 
 """
-Run the CE-RISE empirical workflow through the benchmark SAM stages.
+Run the CE-RISE empirical workflow through the calibration SAM and physical-satellite stages.
 """
 
 const ROOT_DIR = normpath(joinpath(@__DIR__, "..", ".."))
@@ -33,6 +33,7 @@ function main()
         "build_stage6_closed_sam.jl",
         "build_stage7_model_scaffold.jl",
         "build_stage8_six_region_bundle.jl",
+        "build_stage9_physical_satellite.jl",
         "validate_sut_totals.jl",
     ]
         run_script(script_name)

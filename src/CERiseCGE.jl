@@ -31,6 +31,10 @@ export MULTI_REGION_BLOCK_KINDS, multi_region_blocks
 export MultiRegionModelSpec, multi_region_model, solver_configuration, run_spec, baseline, run_baseline, default_optimizer
 export summary_row
 export coefficient_template_status, quantity_bridge_status, route_family_table
+export PhysicalSatelliteSpec, PhysicalSatelliteReadiness, physical_satellite_spec, physical_satellite_readiness
+export PhysicalFlowReference, observed_physical_flows, physical_quantity_indices
+export physical_flow_reference, physical_calibration_driver_report, physical_flow_projection
+export physical_mass_balance_requirements, physical_baseline_report
 export write_rows_csv
 
 include("common/calibration.jl")
@@ -42,5 +46,6 @@ include("multi_region/model.jl")
 include("multi_region/results.jl")
 include("multi_region/analytics.jl")
 include("multi_region/io.jl")
+include("multi_region/physical_satellite.jl")
 
 end

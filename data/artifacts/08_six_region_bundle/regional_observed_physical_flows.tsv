@@ -1,0 +1,79 @@
+region	family	route	flow_kind	physical_unit	value_tonnes	source_flow_count	status	source	source_rule
+DE	ELMA	NEW	new_product_output	tonnes	1.8112873667117427e6	1	observed	BONSAI-derived CE-RISE disaggregation	family parent activity to matching family parent product
+DE	ELMA	REC	route_input_mass	tonnes	1857.9903443317414	4	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+DE	ELMA	REP	route_input_mass	tonnes	315789.7230510781	8	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+DE	OFMA	INC	route_input_mass	tonnes	90.14418953513515	100	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+DE	OFMA	NEW	new_product_output	tonnes	673.2708434081098	1	observed	BONSAI-derived CE-RISE disaggregation	family parent activity to matching family parent product
+DE	OFMA	REC	route_input_mass	tonnes	55.88016654951204	40	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+DE	OFMA	REP	route_input_mass	tonnes	6075.814972707744	8	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+DE	OFMA	REU	route_input_mass	tonnes	8.500031836147084	4	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+DE	RATV	INC	route_input_mass	tonnes	8709.630250152353	104	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+DE	RATV	NEW	new_product_output	tonnes	1.7479625322844323e7	1	observed	BONSAI-derived CE-RISE disaggregation	family parent activity to matching family parent product
+DE	RATV	REC	route_input_mass	tonnes	5034.57539372914	40	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+DE	RATV	REP	route_input_mass	tonnes	704665.1479794881	8	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+DE	RATV	REU	route_input_mass	tonnes	808.0584619496223	4	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+FR	ELMA	INC	route_input_mass	tonnes	1374.049838571015	100	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+FR	ELMA	NEW	new_product_output	tonnes	746187.515705774	1	observed	BONSAI-derived CE-RISE disaggregation	family parent activity to matching family parent product
+FR	ELMA	REC	route_input_mass	tonnes	2066.7506553868225	36	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+FR	ELMA	REP	route_input_mass	tonnes	60072.32964797192	8	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+FR	ELMA	REU	route_input_mass	tonnes	3.0641432910103292	4	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+FR	OFMA	INC	route_input_mass	tonnes	67.09914506263009	120	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+FR	OFMA	NEW	new_product_output	tonnes	98.47018884716	1	observed	BONSAI-derived CE-RISE disaggregation	family parent activity to matching family parent product
+FR	OFMA	REC	route_input_mass	tonnes	71.03697970954018	45	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+FR	OFMA	REP	route_input_mass	tonnes	5834.116670252924	10	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+FR	OFMA	REU	route_input_mass	tonnes	0.5766452351370597	5	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+FR	RATV	INC	route_input_mass	tonnes	1214.8253730569343	100	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+FR	RATV	NEW	new_product_output	tonnes	1.784814985377208e6	1	observed	BONSAI-derived CE-RISE disaggregation	family parent activity to matching family parent product
+FR	RATV	REC	route_input_mass	tonnes	1391.0671661513136	36	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+FR	RATV	REP	route_input_mass	tonnes	122911.46659974399	8	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+FR	RATV	REU	route_input_mass	tonnes	2.823434648629947	4	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+IT	ELMA	INC	route_input_mass	tonnes	71.04455341879004	96	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+IT	ELMA	NEW	new_product_output	tonnes	1.3131959206424595e6	1	observed	BONSAI-derived CE-RISE disaggregation	family parent activity to matching family parent product
+IT	ELMA	REC	route_input_mass	tonnes	2316.069832769578	40	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+IT	ELMA	REP	route_input_mass	tonnes	7488.184223661845	8	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+IT	ELMA	REU	route_input_mass	tonnes	1.5583024589611507	4	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+IT	OFMA	NEW	new_product_output	tonnes	1.193551640820311e6	1	observed	BONSAI-derived CE-RISE disaggregation	family parent activity to matching family parent product
+IT	OFMA	REP	route_input_mass	tonnes	25165.49627860997	10	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+IT	RATV	NEW	new_product_output	tonnes	4.1559391030456913e6	1	observed	BONSAI-derived CE-RISE disaggregation	family parent activity to matching family parent product
+IT	RATV	REP	route_input_mass	tonnes	84275.5723346144	8	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+PL	ELMA	INC	route_input_mass	tonnes	2103.468650086622	96	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+PL	ELMA	NEW	new_product_output	tonnes	517610.20591140667	1	observed	BONSAI-derived CE-RISE disaggregation	family parent activity to matching family parent product
+PL	ELMA	REC	route_input_mass	tonnes	1417.0829843113465	40	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+PL	ELMA	REP	route_input_mass	tonnes	67964.69054876111	8	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+PL	OFMA	INC	route_input_mass	tonnes	81.30346662085455	120	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+PL	OFMA	NEW	new_product_output	tonnes	450546.12293334905	1	observed	BONSAI-derived CE-RISE disaggregation	family parent activity to matching family parent product
+PL	OFMA	REC	route_input_mass	tonnes	40.516049801688204	45	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+PL	OFMA	REP	route_input_mass	tonnes	10163.904263147817	10	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+PL	RATV	INC	route_input_mass	tonnes	3207.156053850924	100	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+PL	RATV	NEW	new_product_output	tonnes	1.7143343368568625e7	1	observed	BONSAI-derived CE-RISE disaggregation	family parent activity to matching family parent product
+PL	RATV	REC	route_input_mass	tonnes	1432.4317215629908	36	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+PL	RATV	REP	route_input_mass	tonnes	435612.3304156291	8	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+REU	ELMA	INC	route_input_mass	tonnes	149324.95313308283	1877	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+REU	ELMA	NEW	new_product_output	tonnes	8.232636819096194e7	28	observed	BONSAI-derived CE-RISE disaggregation	family parent activity to matching family parent product
+REU	ELMA	REC	route_input_mass	tonnes	47883.19696578902	603	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+REU	ELMA	REP	route_input_mass	tonnes	1.7694824637987132e6	234	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+REU	ELMA	REU	route_input_mass	tonnes	201.46696809717497	67	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+REU	OFMA	INC	route_input_mass	tonnes	2426.8524468885616	1809	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+REU	OFMA	NEW	new_product_output	tonnes	1.7343723473997738e6	27	observed	BONSAI-derived CE-RISE disaggregation	family parent activity to matching family parent product
+REU	OFMA	REC	route_input_mass	tonnes	956.0851065539104	628	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+REU	OFMA	REP	route_input_mass	tonnes	42866.11345507777	231	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+REU	OFMA	REU	route_input_mass	tonnes	26.343513706193832	73	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+REU	RATV	INC	route_input_mass	tonnes	22626.691162605188	1736	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+REU	RATV	NEW	new_product_output	tonnes	3.08799452591266e7	28	observed	BONSAI-derived CE-RISE disaggregation	family parent activity to matching family parent product
+REU	RATV	REC	route_input_mass	tonnes	6245.947978917448	548	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+REU	RATV	REP	route_input_mass	tonnes	1.1461591479907876e6	188	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+REU	RATV	REU	route_input_mass	tonnes	483.03330952923204	60	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+SK	ELMA	INC	route_input_mass	tonnes	145.82152392470766	120	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+SK	ELMA	NEW	new_product_output	tonnes	111281.59243290928	1	observed	BONSAI-derived CE-RISE disaggregation	family parent activity to matching family parent product
+SK	ELMA	REC	route_input_mass	tonnes	42.96098184775198	45	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+SK	ELMA	REP	route_input_mass	tonnes	5273.826215941875	10	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+SK	ELMA	REU	route_input_mass	tonnes	3.846949003144826	5	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+SK	OFMA	INC	route_input_mass	tonnes	0.18033814518381905	25	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+SK	OFMA	NEW	new_product_output	tonnes	105.80070434890077	1	observed	BONSAI-derived CE-RISE disaggregation	family parent activity to matching family parent product
+SK	OFMA	REC	route_input_mass	tonnes	0.08330199928755128	20	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+SK	OFMA	REP	route_input_mass	tonnes	3.382652784369149	10	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+SK	RATV	INC	route_input_mass	tonnes	251.79430172479235	96	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+SK	RATV	NEW	new_product_output	tonnes	8.69336016489549e6	1	observed	BONSAI-derived CE-RISE disaggregation	family parent activity to matching family parent product
+SK	RATV	REC	route_input_mass	tonnes	70.62035046274096	36	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+SK	RATV	REP	route_input_mass	tonnes	215631.008054486	8	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity
+SK	RATV	REU	route_input_mass	tonnes	6.003737014326223	4	observed	BONSAI-derived CE-RISE disaggregation	selected family market to identified circular-route activity

@@ -9,5 +9,6 @@ function summary_row(model::MultiRegionModelSpec = multi_region_model())
         routes = summary.routes,
         coefficient_rows = summary.coefficient_rows,
         quantity_bridge_rows = summary.quantity_bridge_rows,
+        observed_physical_flow_rows = summary.observed_physical_flow_rows,
     )
 end

@@ -1,0 +1,5 @@
+check	status	observed	expected	notes
+new_product_output_coverage	pass	18	18	All region-family new-product mass anchors are present.
+positive_mass_flows	pass	all_positive	all_positive	Observed physical flows must be strictly positive.
+tonnes_only	pass	tonnes	tonnes	The first satellite retains the observed mass basis without product-count conversion.
+observed_only	pass	observed	observed	This stage does not construct physical values.

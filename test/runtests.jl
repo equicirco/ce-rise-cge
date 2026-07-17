@@ -138,6 +138,59 @@ baseline_result = run_baseline(model)
 @test JuMP.primal_status(baseline_result.context.model) == JuMP.MOI.FEASIBLE_POINT
 @test baseline_result.summary.above_tol == 0
 
+physical_spec = physical_satellite_spec(model)
+@test nrow(physical_spec.quantity_bridge) == 132
+@test nrow(physical_spec.coefficients) == 138
+@test nrow(physical_spec.observed_flows) == 78
+physical_readiness = physical_satellite_readiness(model)
+@test !physical_readiness.ready
+@test !physical_readiness.quantity_value_column
+@test !physical_readiness.coefficient_value_column
+@test physical_readiness.template_quantity_rows == 132
+@test physical_readiness.template_coefficient_rows == 138
+@test physical_readiness.model_anchor_rows == 84
+@test physical_readiness.unbound_anchor_rows == 48
+@test physical_readiness.observed_flow_rows == 78
+@test physical_readiness.observed_new_output_rows == 18
+@test physical_readiness.observed_anchor_ready
+physical_indices = physical_quantity_indices(baseline_result, model)
+@test nrow(physical_indices) == 132
+@test count(==( :index_available), physical_indices.status) == 84
+@test count(==( :requires_ce_account), physical_indices.status) == 48
+@test all(value -> isfinite(value) && value > 0.0, skipmissing(physical_indices.model_quantity_index))
+physical_requirements = physical_mass_balance_requirements(model)
+@test nrow(physical_requirements) == 78
+@test count(==( :end_of_life_allocation), physical_requirements.balance) == 18
+@test count(==( :life_extension_yield), physical_requirements.balance) == 54
+@test count(==( :recovery_yield), physical_requirements.balance) == 6
+physical_flows = observed_physical_flows(model)
+@test nrow(physical_flows) == 78
+@test count(row -> row.route == "NEW" && row.flow_kind == "new_product_output", eachrow(physical_flows)) == 18
+@test all(row -> row.physical_unit == "tonnes" && row.status == "observed" && row.value_tonnes > 0.0, eachrow(physical_flows))
+physical_projection = physical_flow_projection(baseline_result, model)
+@test nrow(physical_projection) == 78
+@test all(==( :projected), physical_projection.status)
+@test all(value -> isfinite(value) && value > 0.0, physical_projection.projected_tonnes)
+@test all(isapprox(row.model_quantity_index, 1.0; atol = 1.0e-12, rtol = 0.0)
+    for row in eachrow(physical_projection))
+@test all(isapprox(row.projected_tonnes, row.benchmark_tonnes; atol = 1.0e-9, rtol = 1.0e-12)
+    for row in eachrow(physical_projection))
+physical_reference = physical_flow_reference(baseline_result, model)
+@test physical_reference.scenario == :baseline
+@test length(physical_reference.activity_level) == length(unique(physical_projection.route_activity))
+physical_driver_report = physical_calibration_driver_report(baseline_result, model)
+@test nrow(physical_driver_report) == length(physical_reference.activity_level)
+@test all(isfinite, physical_driver_report.relative_difference)
+physical_report = physical_baseline_report(baseline_result, model)
+@test physical_report.readiness == physical_readiness
+@test nrow(physical_report.observed_flows) == 78
+@test nrow(physical_report.quantity_indices) == 132
+@test nrow(physical_report.flow_projection) == 78
+@test physical_report.flow_reference.scenario == physical_reference.scenario
+@test physical_report.flow_reference.activity_level == physical_reference.activity_level
+@test nrow(physical_report.calibration_driver_report) == length(physical_reference.activity_level)
+
 summary = summary_row(model)
 @test summary.regions == 6
 @test summary.industries == 150
+@test summary.observed_physical_flow_rows == 78
