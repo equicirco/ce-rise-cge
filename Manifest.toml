@@ -2,7 +2,7 @@
 
 julia_version = "1.12.5"
 manifest_format = "2.0"
-project_hash = "6313d9a219ab10930ae4344b92a26a9592a1a41e"
+project_hash = "7d80bea40d852d177adc21d9f06bdb970b14abf5"
 
 [[deps.ASL_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -302,9 +302,9 @@ version = "1.0.0"
 
 [[deps.JCGEBlocks]]
 deps = ["JCGECore", "JCGERuntime", "JuMP", "MathOptInterface", "Test"]
-git-tree-sha1 = "ee7e09853cca99b60643af60ff03546dc0883847"
+git-tree-sha1 = "1ec8654dc4bcdf2ef30b41c95f0236640e62088b"
 uuid = "e7e2410e-b632-4869-8943-8241db0dfb31"
-version = "0.1.6"
+version = "0.1.7"
 
 [[deps.JCGECalibrate]]
 deps = ["CSV", "DataFrames", "Test"]
@@ -320,9 +320,9 @@ version = "0.1.3"
 
 [[deps.JCGEOutput]]
 deps = ["Arrow", "CSV", "Dates", "DualSignals", "JCGECalibrate", "JCGECore", "JCGERuntime", "JSON3", "JuMP", "Parquet", "Tables", "Test"]
-git-tree-sha1 = "bfbaddecc3fc3aafe8813a9678bf0a6bc0f4639c"
+git-tree-sha1 = "48ff2c6ec90f252971cbd8f754dc9a654cc9bd1e"
 uuid = "d375a7b0-530a-4732-94fc-3dc39a3a1ffd"
-version = "0.1.3"
+version = "0.1.4"
 
 [[deps.JCGERuntime]]
 deps = ["Distributed", "DualSignals", "JCGECore", "JuMP", "Test"]

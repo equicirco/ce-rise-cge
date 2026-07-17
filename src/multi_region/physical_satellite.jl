@@ -1,12 +1,11 @@
 """
 Physical-accounting interface for the CE-RISE model.
 
-The monetary CGE model and the physical satellite remain separate.  This file
-does not introduce physical constraints into the equilibrium problem.  It
-instead records the supplied physical-accounting structure, exposes the volume
-indices that can already be recovered from a solved model, and states the
-anchors and flows still required before physical levels and mass balances can
-be validated.
+Observed physical flows are represented in the model by generic, normalized
+volume-index variables. They do not yet feed back into production, demand, or
+market clearing. `JCGEOutput` converts those indices to physical quantities
+through observed anchors and remains responsible for baseline-referenced
+projection and post-solution diagnostics.
 """
 
 struct PhysicalSatelliteSpec
@@ -31,18 +30,7 @@ struct PhysicalSatelliteReadiness
     ready::Bool
 end
 
-"""
-Reference activity levels for a physical satellite.
-
-Physical observations are anchored to the solved zero-policy equilibrium, not
-to an independently rounded monetary input.  This preserves the supplied mass
-observation at the base equilibrium and gives scenario indices a common,
-reproducible denominator.
-"""
-struct PhysicalFlowReference
-    scenario::Symbol
-    activity_level::Dict{Symbol,Float64}
-end
+const _PHYSICAL_FLOW_VARIABLE = :physical_flow
 
 """Return the model-side physical-accounting specification without altering it."""
 function physical_satellite_spec(model::MultiRegionModelSpec = multi_region_model())
@@ -59,109 +47,159 @@ function observed_physical_flows(model::MultiRegionModelSpec = multi_region_mode
     return copy(model.outline.bundle.physical_flows)
 end
 
+_physical_flow_id(row) = Symbol(
+    :physical_, Symbol(row.region), :_, Symbol(row.family), :_, Symbol(row.route),
+    :_, Symbol(row.flow_kind),
+)
+
+function _route_activity_by_flow(bundle::CalibrationBundle)
+    return Dict(
+        (Symbol(row.region), Symbol(row.family), Symbol(row.route)) => Symbol(row.route_activity)
+        for row in eachrow(bundle.route_registry)
+    )
+end
+
+"""Return structural mappings and calibrated volume-index coefficients for observed flows."""
+function _physical_flow_link_data(bundle::CalibrationBundle,
+    calibration::MultiRegionCalibration)
+    route_accounts = _route_activity_by_flow(bundle)
+    quantities = Symbol[]
+    driver_by_quantity = Dict{Symbol,Symbol}()
+    coefficient = Dict{Symbol,Float64}()
+    base_quantity = Dict{Symbol,Float64}()
+    activity_by_quantity = Dict{Symbol,Symbol}()
+
+    for row in eachrow(bundle.physical_flows)
+        id = _physical_flow_id(row)
+        id in quantities && error("Observed physical-flow identifier $(id) is duplicated.")
+        key = (Symbol(row.region), Symbol(row.family), Symbol(row.route))
+        activity = get(route_accounts, key, nothing)
+        activity === nothing && error("No route activity is registered for observed physical flow $(key).")
+        activity_output = get(calibration.activity_output, activity, nothing)
+        activity_output === nothing && error("No calibrated activity output is available for $(activity).")
+        activity_output > 0.0 || error("Calibrated activity output for $(activity) must be strictly positive.")
+        quantity = Float64(row.value_tonnes)
+        quantity > 0.0 || error("Observed physical flow $(id) must be strictly positive.")
+        push!(quantities, id)
+        driver_by_quantity[id] = JCGEBlocks.global_var(:Z, activity)
+        coefficient[id] = 1.0 / activity_output
+        base_quantity[id] = quantity
+        activity_by_quantity[id] = activity
+    end
+
+    return (
+        quantities = quantities,
+        driver_by_quantity = driver_by_quantity,
+        coefficient = coefficient,
+        base_quantity = base_quantity,
+        activity_by_quantity = activity_by_quantity,
+    )
+end
+
+"""
+    observed_physical_quantity_links(bundle, calibration)
+
+Create generic JCGE links for the normalized volume index of each observed
+physical flow. Each coefficient is derived from calibrated monetary activity
+output; the observed physical quantity remains the `JCGEOutput` anchor. No
+numerical coefficient is hard-coded here.
+"""
+function observed_physical_quantity_links(bundle::CalibrationBundle,
+    calibration::MultiRegionCalibration)
+    links = _physical_flow_link_data(bundle, calibration)
+    return JCGEBlocks.quantity_link(
+        :observed_physical_flow_links,
+        links.quantities,
+        links.driver_by_quantity;
+        quantity_var = _PHYSICAL_FLOW_VARIABLE,
+        lower = 0.0,
+        params = (coefficient = links.coefficient,),
+    )
+end
+
+"""Return the `JCGEOutput` anchors for directly observed physical flows."""
+function physical_flow_anchors(model::MultiRegionModelSpec = multi_region_model())
+    links = _physical_flow_link_data(model.outline.bundle, model.calibration)
+    anchors = SatelliteAnchor[]
+    for row in eachrow(model.outline.bundle.physical_flows)
+        id = _physical_flow_id(row)
+        quantity = links.base_quantity[id]
+        push!(anchors, SatelliteAnchor(
+            id,
+            String(row.physical_unit),
+            quantity,
+            JCGEBlocks.global_var(_PHYSICAL_FLOW_VARIABLE, id),
+            1.0,
+        ))
+    end
+    return anchors
+end
+
 """
     physical_flow_reference(result, model)
 
-Record the solved activity level behind each directly observed physical flow.
-The reference must be constructed from the zero-policy model and supplied to
-all later scenario projections.
+Capture the solved generic physical-flow variables through `JCGEOutput`. The
+reference must be constructed from the zero-policy model and supplied to all
+later scenario projections. This keeps the observed base-year tonne anchor
+separate from small rounding differences in the calibrated monetary system.
 """
 function physical_flow_reference(result,
     model::MultiRegionModelSpec = multi_region_model())
     model.scenario.name === :baseline ||
         error("A physical-flow reference must be constructed from the zero-policy baseline.")
-    hasproperty(result, :context) || error("Physical reporting requires a solved result with a KernelContext.")
-    context = result.context
-    JuMP.has_values(context.model) || error("Physical reporting requires a solved JuMP model.")
-
-    route_accounts = Dict(
-        (Symbol(row.region), Symbol(row.family), Symbol(row.route)) => Symbol(row.route_activity)
-        for row in eachrow(model.outline.bundle.route_registry)
-    )
-    levels = Dict{Symbol,Float64}()
-    for row in eachrow(model.outline.bundle.physical_flows)
-        key = (Symbol(row.region), Symbol(row.family), Symbol(row.route))
-        activity = get(route_accounts, key, nothing)
-        activity === nothing && error("No route activity is registered for observed physical flow $(key).")
-        variable = get(context.variables, JCGEBlocks.global_var(:Z, activity), nothing)
-        variable isa JuMP.VariableRef || error("Observed physical flow $(key) is not linked to an activity-output variable.")
-        level = JuMP.value(variable)
-        isfinite(level) && level > 0.0 || error("Baseline activity $(activity) must be finite and strictly positive.")
-        levels[activity] = level
-    end
-    return PhysicalFlowReference(:baseline, levels)
+    return satellite_reference(result, physical_flow_anchors(model); id = :baseline)
 end
 
 """
     physical_calibration_driver_report(result, model)
 
-Report the difference between a solved zero-policy activity level and its
-monetary calibration input for every observed physical anchor.  This is kept
-separate from the physical projection so numerical replication diagnostics are
-visible rather than folded into the mass accounting.
+Report the difference between each calibrated physical driver and its solved
+baseline reference. This is diagnostic only and does not modify projections.
 """
 function physical_calibration_driver_report(result,
     model::MultiRegionModelSpec = multi_region_model())
     reference = physical_flow_reference(result, model)
-    rows = NamedTuple[]
-    for (activity, solved) in sort!(collect(reference.activity_level); by=first)
-        calibrated = get(model.calibration.activity_output, activity, nothing)
-        calibrated === nothing && error("No calibrated output is available for $(activity).")
-        push!(rows, (
-            route_activity = activity,
-            calibrated_model_level = calibrated,
-            solved_baseline_level = solved,
-            absolute_difference = solved - calibrated,
-            relative_difference = (solved - calibrated) / calibrated,
-        ))
-    end
-    return DataFrame(rows)
+    return DataFrame(satellite_calibration_report(reference, physical_flow_anchors(model)))
 end
 
 """
     physical_flow_projection(result, model; reference)
 
-Scale each directly observed physical anchor by the solved volume index of its
-linked route activity, relative to the solved zero-policy reference.  This
-retains the supplied mass basis and makes no claim about route yields or
-unobserved product stocks.
+Project each observed flow through `JCGEOutput` relative to a solved
+zero-policy reference. The returned table retains CE-RISE route metadata while
+the driver, index, and projected quantity come directly from the standard
+satellite API.
 """
 function physical_flow_projection(result,
     model::MultiRegionModelSpec = multi_region_model();
-    reference::PhysicalFlowReference = physical_flow_reference(result, model))
-    hasproperty(result, :context) || error("Physical reporting requires a solved result with a KernelContext.")
-    context = result.context
-    JuMP.has_values(context.model) || error("Physical reporting requires a solved JuMP model.")
-    reference.scenario === :baseline ||
-        error("Physical-flow projections require a zero-policy baseline reference.")
-
-    route_accounts = Dict(
-        (Symbol(row.region), Symbol(row.family), Symbol(row.route)) => Symbol(row.route_activity)
-        for row in eachrow(model.outline.bundle.route_registry)
-    )
+    reference::SatelliteReference = physical_flow_reference(result, model))
+    reference.id === :baseline || error("Physical-flow projections require a zero-policy baseline reference.")
+    links = _physical_flow_link_data(model.outline.bundle, model.calibration)
+    projection = satellite_projection(result, physical_flow_anchors(model); reference = reference)
+    projected_by_id = Dict(Symbol(row.id) => row for row in projection)
     rows = NamedTuple[]
     for row in eachrow(model.outline.bundle.physical_flows)
-        key = (Symbol(row.region), Symbol(row.family), Symbol(row.route))
-        activity = get(route_accounts, key, nothing)
-        variable = activity === nothing ? nothing : get(context.variables, JCGEBlocks.global_var(:Z, activity), nothing)
-        baseline_level = activity === nothing ? nothing : get(reference.activity_level, activity, nothing)
-        available = variable !== nothing && baseline_level !== nothing && baseline_level > 0.0
-        solved_level = available ? JuMP.value(variable) : missing
-        index = available ? solved_level / baseline_level : missing
-        base_mass = Float64(row.value_tonnes)
+        id = _physical_flow_id(row)
+        item = get(projected_by_id, id, nothing)
+        item === nothing && error("Satellite projection is missing observed physical flow $(id).")
+        activity = links.activity_by_quantity[id]
         push!(rows, (
             region = Symbol(row.region),
             family = Symbol(row.family),
             route = Symbol(row.route),
             flow_kind = Symbol(row.flow_kind),
+            physical_anchor = id,
             physical_unit = String(row.physical_unit),
-            benchmark_tonnes = base_mass,
+            benchmark_tonnes = item.base_quantity,
             route_activity = activity,
-            baseline_model_level = baseline_level,
-            solved_model_level = solved_level,
-            model_quantity_index = index,
-            projected_tonnes = available ? base_mass * index : missing,
-            status = available ? :projected : :unbound,
+            model_volume_driver = links.driver_by_quantity[id],
+            physical_driver = item.driver,
+            calibration_volume_index = item.calibration_driver,
+            reference_volume_index = item.reference_driver,
+            solved_volume_index = item.solved_driver,
+            model_quantity_index = item.volume_index,
+            projected_tonnes = item.projected_quantity,
+            status = item.status,
         ))
     end
     return DataFrame(rows)

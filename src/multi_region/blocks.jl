@@ -8,6 +8,7 @@ multi-region baseline replicates the calibration data.
 
 const MULTI_REGION_BLOCK_KINDS = (
     :production,
+    :physical_quantity_links,
     :factor_availability,
     :price_index,
     :private_saving,
@@ -102,6 +103,11 @@ function _initial_value_parameters(outline::MultiRegionOutline,
         start[JCGEBlocks.global_var(:Tz, good)] =
             calibration.production_tax_value[good]
     end
+    physical_links = _physical_flow_link_data(outline.bundle, calibration)
+    for quantity in physical_links.quantities
+        start[JCGEBlocks.global_var(:physical_flow, quantity)] =
+            1.0
+    end
     start[:P_HH_COMMON] = base_price
     return (start = start,)
 end
@@ -145,6 +151,10 @@ function multi_region_blocks(outline::MultiRegionOutline,
         )
         for region in regions
     ]
+    physical_quantity_links = observed_physical_quantity_links(
+        outline.bundle,
+        calibration,
+    )
 
     price_index = JCGEBlocks.regional_price_index(
         :household_price_index,
@@ -314,6 +324,7 @@ function multi_region_blocks(outline::MultiRegionOutline,
 
     return (
         production = production,
+        physical_quantity_links = physical_quantity_links,
         factor_availability = factor_availability,
         price_index = price_index,
         private_saving = private_saving,

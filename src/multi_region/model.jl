@@ -96,7 +96,8 @@ function run_spec(model::MultiRegionModelSpec = multi_region_model())
         ),
     )
     sections = [
-        JCGECore.section(:production, blocks.production),
+        JCGECore.section(:production,
+            vcat(blocks.production, Any[blocks.physical_quantity_links])),
         JCGECore.section(:factors, Any[blocks.factor_availability]),
         JCGECore.section(:government, Any[blocks.government_demand]),
         JCGECore.section(:savings, Any[blocks.private_saving, blocks.fixed_investment, blocks.investment_pool]),

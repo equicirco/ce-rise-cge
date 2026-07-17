@@ -10,8 +10,8 @@ solver	equation_scaling_floor	1.0	Minimum equation scale in the calibrated monet
 solver	ipopt_hessian_approximation	limited-memory	Ipopt Hessian treatment for the large nonlinear feasibility system.
 solver	ipopt_bound_mult_init_method	mu-based	Ipopt bound-multiplier initialization consistent with a feasible calibrated start point.
 solver	ipopt_mu_init	1.0e-8	Initial Ipopt barrier parameter for the calibrated feasibility solve.
-solver	ipopt_tolerance	1.0e-6	Ipopt convergence tolerance used for calibration replication.
-solver	ipopt_acceptable_tolerance	1.0e-6	Ipopt acceptable convergence tolerance used for calibration replication.
+solver	ipopt_tolerance	1.0e-8	Ipopt convergence tolerance used for calibration replication.
+solver	ipopt_acceptable_tolerance	1.0e-8	Ipopt acceptable convergence tolerance used for calibration replication.
 normalization	base_price	1.0	Common calibration price used to express the monetary SAM as model quantities at the reference point.
 trade	armington_elasticity	1.0	Initial Armington elasticity for observed product sourcing; retained as a sensitivity parameter until product-specific evidence is selected.
 trade	cet_transformation_elasticity	1.0	Initial CET transformation elasticity for observed product sales; retained as a sensitivity parameter until product-specific evidence is selected.

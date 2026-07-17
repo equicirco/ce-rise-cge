@@ -3,6 +3,7 @@ using DataFrames: nrow
 using CERiseCGE
 using JCGEBlocks
 using JCGECore
+using JCGEOutput
 using JCGERuntime
 using JuMP
 
@@ -40,8 +41,8 @@ solver = solver_configuration(model)
 @test solver.ipopt_hessian_approximation == "limited-memory"
 @test solver.ipopt_bound_mult_init_method == "mu-based"
 @test solver.ipopt_mu_init == 1.0e-8
-@test solver.ipopt_tolerance == 1.0e-6
-@test solver.ipopt_acceptable_tolerance == 1.0e-6
+@test solver.ipopt_tolerance == 1.0e-8
+@test solver.ipopt_acceptable_tolerance == 1.0e-8
 @test length(model.calibration.inventory_change) == 150
 @test all(haskey(model.calibration.inventory_change, activity) for activity in outline.industries)
 @test all(
@@ -87,6 +88,8 @@ blocks = multi_region_blocks(model.outline, model.calibration, model.scenario)
 @test blocks.trade isa JCGEBlocks.MultiRegionTradeBlock
 @test blocks.market_clearing isa JCGEBlocks.RegionalCompositeMarketClearingBlock
 @test blocks.numeraire isa JCGEBlocks.NumeraireBlock
+@test blocks.physical_quantity_links isa JCGEBlocks.QuantityLinkBlock
+@test length(blocks.physical_quantity_links.quantities) == 78
 @test JCGEBlocks.inventory_treatment(blocks.trade) == JCGEBlocks.inventory_treatment(blocks.investment_pool)
 @test JCGEBlocks.inventory_treatment(blocks.trade) == JCGEBlocks.inventory_treatment(blocks.market_clearing)
 @test JCGEBlocks.inventory_treatment(blocks.trade).mode == :stock_change
@@ -112,6 +115,8 @@ end
 @test JuMP.lower_bound(
     ctx.variables[JCGEBlocks.global_var(:Z, :IND_SK_REP_OFMA)],
 ) == model.calibration.positive_lower
+@test haskey(ctx.variables,
+    JCGEBlocks.global_var(:physical_flow, first(blocks.physical_quantity_links.quantities)))
 bounded_starts = [
     (JuMP.lower_bound(variable), JuMP.start_value(variable))
     for variable in values(ctx.variables)
@@ -132,6 +137,7 @@ checked_equations = [
     for equation in checked_equations
 )
 @test any(get(equation.payload, :constraint, nothing) !== nothing for equation in ctx.equations)
+@test count(equation -> equation.tag == :quantity_link, ctx.equations) == 78
 
 baseline_result = run_baseline(model)
 @test JuMP.termination_status(baseline_result.context.model) == JuMP.MOI.LOCALLY_SOLVED
@@ -167,6 +173,10 @@ physical_flows = observed_physical_flows(model)
 @test nrow(physical_flows) == 78
 @test count(row -> row.route == "NEW" && row.flow_kind == "new_product_output", eachrow(physical_flows)) == 18
 @test all(row -> row.physical_unit == "tonnes" && row.status == "observed" && row.value_tonnes > 0.0, eachrow(physical_flows))
+physical_anchors = physical_flow_anchors(model)
+@test length(physical_anchors) == 78
+@test all(anchor -> anchor isa SatelliteAnchor && anchor.unit == "tonnes" &&
+    anchor.base_quantity > 0.0 && anchor.base_driver == 1.0, physical_anchors)
 physical_projection = physical_flow_projection(baseline_result, model)
 @test nrow(physical_projection) == 78
 @test all(==( :projected), physical_projection.status)
@@ -176,19 +186,20 @@ physical_projection = physical_flow_projection(baseline_result, model)
 @test all(isapprox(row.projected_tonnes, row.benchmark_tonnes; atol = 1.0e-9, rtol = 1.0e-12)
     for row in eachrow(physical_projection))
 physical_reference = physical_flow_reference(baseline_result, model)
-@test physical_reference.scenario == :baseline
-@test length(physical_reference.activity_level) == length(unique(physical_projection.route_activity))
+@test physical_reference isa SatelliteReference
+@test physical_reference.id == :baseline
+@test length(physical_reference.drivers) == nrow(physical_projection)
 physical_driver_report = physical_calibration_driver_report(baseline_result, model)
-@test nrow(physical_driver_report) == length(physical_reference.activity_level)
+@test nrow(physical_driver_report) == nrow(physical_projection)
 @test all(isfinite, physical_driver_report.relative_difference)
 physical_report = physical_baseline_report(baseline_result, model)
 @test physical_report.readiness == physical_readiness
 @test nrow(physical_report.observed_flows) == 78
 @test nrow(physical_report.quantity_indices) == 132
 @test nrow(physical_report.flow_projection) == 78
-@test physical_report.flow_reference.scenario == physical_reference.scenario
-@test physical_report.flow_reference.activity_level == physical_reference.activity_level
-@test nrow(physical_report.calibration_driver_report) == length(physical_reference.activity_level)
+@test physical_report.flow_reference.id == physical_reference.id
+@test physical_report.flow_reference.drivers == physical_reference.drivers
+@test nrow(physical_report.calibration_driver_report) == nrow(physical_projection)
 
 summary = summary_row(model)
 @test summary.regions == 6
