@@ -55,7 +55,7 @@ const CANDIDATES = [
         role_label = "Waste treatment, disposal, and materials recovery services",
         product_code = "CPA_E37-39",
         activity_code = "E37-E39",
-        intended_accounts = "RMTL_EE;INC_EE",
+        intended_accounts = "REC_EE;INC_EE",
         confidence = "direct_mixed",
         notes = "Contains both recycling/materials recovery and disposal activities, so it can anchor the recycling/disposal monetary parent sector before finer splits are introduced.",
     ),

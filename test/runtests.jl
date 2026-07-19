@@ -28,8 +28,8 @@ outline = multi_region_outline(; bundle = bundle)
 @test all(length(outline.externals_by_region[region]) == 1 for region in outline.regions)
 
 model = multi_region_model(; bundle = bundle)
-@test nrow(model.coefficient_template) == 138
-@test nrow(model.quantity_template) == 132
+@test nrow(model.coefficient_template) == 132
+@test nrow(model.quantity_template) == 126
 @test length(model.calibration.products) == 25
 @test length(model.calibration.trade_routes) == 1132
 @test model.calibration.positive_lower == 1.0e-8
@@ -145,22 +145,22 @@ baseline_result = run_baseline(model)
 @test baseline_result.summary.above_tol == 0
 
 physical_spec = physical_satellite_spec(model)
-@test nrow(physical_spec.quantity_bridge) == 132
-@test nrow(physical_spec.coefficients) == 138
+@test nrow(physical_spec.quantity_bridge) == 126
+@test nrow(physical_spec.coefficients) == 132
 @test nrow(physical_spec.observed_flows) == 78
 physical_readiness = physical_satellite_readiness(model)
 @test !physical_readiness.ready
 @test !physical_readiness.quantity_value_column
 @test !physical_readiness.coefficient_value_column
-@test physical_readiness.template_quantity_rows == 132
-@test physical_readiness.template_coefficient_rows == 138
+@test physical_readiness.template_quantity_rows == 126
+@test physical_readiness.template_coefficient_rows == 132
 @test physical_readiness.model_anchor_rows == 84
-@test physical_readiness.unbound_anchor_rows == 48
+@test physical_readiness.unbound_anchor_rows == 42
 @test physical_readiness.observed_flow_rows == 78
 @test physical_readiness.observed_new_output_rows == 18
 @test physical_readiness.observed_anchor_ready
 physical_indices = physical_quantity_indices(baseline_result, model)
-@test nrow(physical_indices) == 132
+@test nrow(physical_indices) == 126
 @test count(==( :index_available), physical_indices.status) == 84
 @test count(==( :requires_ce_account), physical_indices.status) == 48
 @test all(value -> isfinite(value) && value > 0.0, skipmissing(physical_indices.model_quantity_index))
@@ -168,7 +168,7 @@ physical_requirements = physical_mass_balance_requirements(model)
 @test nrow(physical_requirements) == 78
 @test count(==( :end_of_life_allocation), physical_requirements.balance) == 18
 @test count(==( :life_extension_yield), physical_requirements.balance) == 54
-@test count(==( :recovery_yield), physical_requirements.balance) == 6
+@test count(==( :recycling_metal_yield), physical_requirements.balance) == 6
 physical_flows = observed_physical_flows(model)
 @test nrow(physical_flows) == 78
 @test count(row -> row.route == "NEW" && row.flow_kind == "new_product_output", eachrow(physical_flows)) == 18
@@ -195,7 +195,7 @@ physical_driver_report = physical_calibration_driver_report(baseline_result, mod
 physical_report = physical_baseline_report(baseline_result, model)
 @test physical_report.readiness == physical_readiness
 @test nrow(physical_report.observed_flows) == 78
-@test nrow(physical_report.quantity_indices) == 132
+@test nrow(physical_report.quantity_indices) == 126
 @test nrow(physical_report.flow_projection) == 78
 @test physical_report.flow_reference.id == physical_reference.id
 @test physical_report.flow_reference.drivers == physical_reference.drivers

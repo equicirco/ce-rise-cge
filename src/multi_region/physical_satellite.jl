@@ -348,8 +348,8 @@ function physical_mass_balance_requirements(model::MultiRegionModelSpec = multi_
         push!(rows, (
             region = region,
             family = :ALL,
-            balance = :recovery_yield,
-            required_flows = join(vcat(["recycled_metal_output"], ["eol_to_REC_" * family for family in families]), ";"),
+            balance = :recycling_metal_yield,
+            required_flows = join(vcat(["metal_output_from_recycling"], ["eol_to_REC_" * family for family in families]), ";"),
             required_coefficients = "recovery_yield:REC",
         ))
     end

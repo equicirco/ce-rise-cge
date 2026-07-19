@@ -240,7 +240,7 @@ function base_sets(account_rows, families)
     regional_families = ["$(region)__$(family)" for region in REGIONS for family in families]
     service_targets = ["TST_$(region)_$(family)" for region in REGIONS for family in families]
     eol_targets = ["EOL_$(region)_$(family)" for region in REGIONS for family in families]
-    material_targets = vcat(["VMTL_$(region)_EE" for region in REGIONS], ["RMTL_$(region)_EE" for region in REGIONS])
+    material_targets = ["METAL"]
     return (; industries, factors, institutions, investment_pools, externals,
         regional_families, service_targets, eol_targets, material_targets)
 end
@@ -297,10 +297,7 @@ function labels_rows(account_rows, families, family_rows, sets)
         region, family = split(replace(target, "EOL_" => ""), "_"; limit = 2)
         push!(rows, ["eol_targets", target, "$(region) end-of-life flow: $(family_labels[family])", "Family-specific end-of-life flow"])
     end
-    for region in REGIONS
-        push!(rows, ["material_targets", "VMTL_$(region)_EE", "$(region) primary metal pool", "Primary metal input to CE-RISE routes"])
-        push!(rows, ["material_targets", "RMTL_$(region)_EE", "$(region) recycled metal pool", "Secondary metal supplied by recycling"])
-    end
+    push!(rows, ["material_targets", "METAL", "Metal", "Single metal commodity supplied by primary production, recycling, and trade"])
     return rows
 end
 
@@ -381,10 +378,10 @@ function mapping_rows(account_rows, route_rows, families)
         if row["eol_account"] != ""
             push!(rows, ["industry_to_eol_target", industry, "EOL_$(region)_$(family)"])
         end
-        if row["route_activity"] in ("BASIC_METALS", "METAL_COMPONENTS")
-            push!(rows, ["industry_to_material_target", industry, "VMTL_$(region)_EE"])
+        if row["route_activity"] == "BASIC_METALS"
+            push!(rows, ["industry_to_material_target", industry, "METAL"])
         elseif row["route_activity"] == "REC_EE"
-            push!(rows, ["industry_to_material_target", industry, "RMTL_$(region)_EE"])
+            push!(rows, ["industry_to_material_target", industry, "METAL"])
         end
     end
     for region in REGIONS, family in families
@@ -393,10 +390,8 @@ function mapping_rows(account_rows, route_rows, families)
         push!(rows, ["regional_family_to_eol_target", regional_family, "EOL_$(region)_$(family)"])
     end
     for region in REGIONS
-        for code in ("BASIC_METALS", "METAL_COMPONENTS")
-            push!(rows, ["industry_to_material_target", "IND_$(region)_$(code)", "VMTL_$(region)_EE"])
-        end
-        push!(rows, ["industry_to_material_target", "IND_$(region)_REC_EE", "RMTL_$(region)_EE"])
+        push!(rows, ["industry_to_material_target", "IND_$(region)_BASIC_METALS", "METAL"])
+        push!(rows, ["industry_to_material_target", "IND_$(region)_REC_EE", "METAL"])
     end
     return unique(rows)
 end
@@ -416,8 +411,8 @@ function regional_family_rows(source_header, family_rows)
             "reuse_route" => "IND_$(region)_$(row["reuse_route"])",
             "recycling_activity" => "IND_$(region)_$(row["recycling_activity"])",
             "disposal_activity" => "IND_$(region)_$(row["disposal_activity"])",
-            "primary_material_pool" => "VMTL_$(region)_EE",
-            "secondary_material_pool" => "RMTL_$(region)_EE",
+            "metal_commodity" => "METAL",
+            "primary_metal_activity" => "IND_$(region)_BASIC_METALS",
         )
         for (i, key) in enumerate(header[2:end])
             haskey(replacements, key) && (values[i] = replacements[key])
@@ -438,7 +433,9 @@ function regional_route_rows(source_header, route_rows)
                 values[i] = "TST_$(region)_$(family)"
             elseif key == "eol_account" && values[i] != ""
                 values[i] = "EOL_$(region)_$(family)"
-            elseif key in ("route_activity", "route_commodity") && values[i] != ""
+            elseif key == "route_activity" && values[i] != ""
+                values[i] = "IND_$(region)_$(values[i])"
+            elseif key == "route_commodity" && values[i] != "" && values[i] != "METAL"
                 values[i] = "IND_$(region)_$(values[i])"
             elseif key == "source_sector_id" && values[i] != ""
                 values[i] = "IND_$(region)_$(values[i])"
@@ -455,10 +452,6 @@ function regional_template_target(region, value)
         return "P_" * regional_template_target(region, value[3:end])
     elseif startswith(value, "TST_") || startswith(value, "EOL_")
         return replace(value, "_" => "_$(region)_"; count = 1)
-    elseif value == "VMTL_EE"
-        return "VMTL_$(region)_EE"
-    elseif value == "RMTL_EE"
-        return "RMTL_$(region)_EE"
     elseif startswith(value, "NEW_") || startswith(value, "REF_") ||
            startswith(value, "REP_") || startswith(value, "REU_") ||
            value in ("REC_EE", "INC_EE")
