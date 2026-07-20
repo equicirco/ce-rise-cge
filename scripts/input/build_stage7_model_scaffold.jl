@@ -347,6 +347,18 @@ function coefficient_rows()
 
     for row in [
         [
+            "ALL_METAL_external_price",
+            "ALL",
+            "METAL",
+            "external_price",
+            "external_metal_price",
+            "model_value_per_tonne_METAL",
+            "to_fill",
+            "Common fixed external price of METAL, used to convert monetary BASIC_METALS use into physical METAL demand.",
+            "template",
+            "The same value is required in every European region because METAL has one EU-wide market price.",
+        ],
+        [
             "ALL_RECOVERY_yield_metal_ee",
             "ALL",
             "REC",

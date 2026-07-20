@@ -12,6 +12,7 @@ solver	ipopt_bound_mult_init_method	mu-based	Ipopt bound-multiplier initializati
 solver	ipopt_mu_init	1.0e-8	Initial Ipopt barrier parameter for the calibrated feasibility solve.
 solver	ipopt_tolerance	1.0e-8	Ipopt convergence tolerance used for calibration replication.
 solver	ipopt_acceptable_tolerance	1.0e-8	Ipopt acceptable convergence tolerance used for calibration replication.
+diagnostics	baseline_absolute_residual_tolerance	1.0e-4	Absolute residual threshold for reporting the baseline replication. The physical METAL quantities are expressed in tonnes, so this corresponds to 0.1 kg and is far below the resolution of the source accounts.
 normalization	base_price	1.0	Common calibration price used to express the monetary SAM as model quantities at the reference point.
 trade	armington_elasticity	1.0	Initial Armington elasticity for observed product sourcing; retained as a sensitivity parameter until product-specific evidence is selected.
 trade	cet_transformation_elasticity	1.0	Initial CET transformation elasticity for observed product sales; retained as a sensitivity parameter until product-specific evidence is selected.

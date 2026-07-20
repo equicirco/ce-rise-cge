@@ -24,6 +24,7 @@ const IN_FAMILY_REGISTRY = joinpath(STAGE7_DIR, "family_registry.tsv")
 const IN_ROUTE_REGISTRY = joinpath(STAGE7_DIR, "route_registry.tsv")
 const IN_PHYSICAL_BRIDGE = joinpath(STAGE7_DIR, "physical_quantity_bridge_template.tsv")
 const IN_PHYSICAL_COEFFS = joinpath(STAGE7_DIR, "physical_coefficient_template.tsv")
+const IN_CIRCULAR_METAL_BASELINE = joinpath(MAPPING_DIR, "circular_metal_baseline.tsv")
 const IN_MODEL_CONFIGURATION = joinpath(MAPPING_DIR, "model_configuration.tsv")
 const IN_IO_INTERMEDIATE = joinpath(STAGE4B_DIR, "industry_by_industry_intermediate.tsv")
 const IN_IO_FINAL = joinpath(STAGE4B_DIR, "industry_by_final_demand.tsv")
@@ -41,6 +42,7 @@ const OUT_FAMILY_REGISTRY = joinpath(OUTDIR, "regional_family_registry.tsv")
 const OUT_ROUTE_REGISTRY = joinpath(OUTDIR, "regional_route_registry.tsv")
 const OUT_PHYSICAL_BRIDGE = joinpath(OUTDIR, "regional_physical_quantity_bridge_template.tsv")
 const OUT_PHYSICAL_COEFFS = joinpath(OUTDIR, "regional_physical_coefficient_template.tsv")
+const OUT_CIRCULAR_METAL_BASELINE = joinpath(OUTDIR, "regional_circular_metal_baseline.tsv")
 const OUT_MODEL_CONFIGURATION = joinpath(OUTDIR, "model_configuration.tsv")
 const OUT_PRODUCT_USE_REGISTRY = joinpath(OUTDIR, "regional_product_use_registry.tsv")
 const OUT_TRADE_REGISTRY = joinpath(OUTDIR, "regional_trade_registry.tsv")
@@ -480,6 +482,40 @@ function regional_template_rows(header, template_rows)
     return out_header, rows
 end
 
+function regional_circular_metal_baseline_rows(coefficient_rows, baseline_rows)
+    required_kinds = Set(["external_price", "recovery_yield"])
+    baseline = Dict{String,Dict{String,String}}()
+    for row in baseline_rows
+        kind = row["coefficient_kind"]
+        kind in required_kinds || error("Unknown circular-metal baseline coefficient kind $(kind).")
+        haskey(baseline, kind) && error("Circular-metal baseline repeats coefficient kind $(kind).")
+        value = tryparse(Float64, row["value"])
+        value === nothing && error("Circular-metal baseline value for $(kind) must be numeric.")
+        value > 0.0 || error("Circular-metal baseline value for $(kind) must be strictly positive.")
+        baseline[kind] = row
+    end
+    Set(keys(baseline)) == required_kinds ||
+        error("Circular-metal baseline must define external_price and recovery_yield exactly once.")
+
+    rows = Vector{Vector{String}}()
+    for coefficient in coefficient_rows
+        kind = coefficient["coefficient_kind"]
+        kind in required_kinds || continue
+        value = baseline[kind]
+        coefficient["physical_unit"] == value["physical_unit"] ||
+            error("Circular-metal baseline unit for $(kind) does not match the coefficient template.")
+        push!(rows, [
+            coefficient["coefficient_id"],
+            value["value"],
+            value["physical_unit"],
+            value["calibration_basis"],
+            value["notes"],
+        ])
+    end
+    length(rows) == 12 || error("The six-region circular-metal baseline must contain 12 coefficient values.")
+    return rows
+end
+
 function configuration_value(configuration_rows, component::String, key::String)
     matches = [row for row in configuration_rows if row["component"] == component && row["key"] == key]
     length(matches) == 1 || error("Expected one model-configuration row for $(component).$(key).")
@@ -612,6 +648,7 @@ function main()
     family_source_header, family_rows = table_rows(IN_FAMILY_REGISTRY)
     route_source_header, route_rows = table_rows(IN_ROUTE_REGISTRY)
     coefficient_header, coefficient_rows = table_rows(IN_PHYSICAL_COEFFS)
+    _, circular_metal_baseline_rows = table_rows(IN_CIRCULAR_METAL_BASELINE)
     quantity_header, quantity_rows = table_rows(IN_PHYSICAL_BRIDGE)
     configuration_header, configuration_rows = table_rows(IN_MODEL_CONFIGURATION)
     _, io_intermediate_rows = table_rows(IN_IO_INTERMEDIATE)
@@ -627,6 +664,9 @@ function main()
     route_header, route_table = regional_route_rows(route_source_header, route_rows)
     quantity_out_header, quantity_table = regional_template_rows(quantity_header, quantity_rows)
     coefficient_out_header, coefficient_table = regional_template_rows(coefficient_header, coefficient_rows)
+    circular_metal_baseline_table = regional_circular_metal_baseline_rows(
+        [Dict(name => row[i + 1] for (i, name) in enumerate(coefficient_header))
+            for row in coefficient_table], circular_metal_baseline_rows)
     roles = final_demand_roles(configuration_rows)
     product_use_table = regional_product_use_rows(io_intermediate_rows, io_final_rows, roles)
     trade_table = regional_trade_rows(io_intermediate_rows, io_final_rows, roles)
@@ -644,6 +684,9 @@ function main()
     write_tsv(OUT_ROUTE_REGISTRY, route_header, route_table)
     write_tsv(OUT_PHYSICAL_BRIDGE, quantity_out_header, quantity_table)
     write_tsv(OUT_PHYSICAL_COEFFS, coefficient_out_header, coefficient_table)
+    write_tsv(OUT_CIRCULAR_METAL_BASELINE,
+        ["coefficient_id", "value", "physical_unit", "calibration_basis", "notes"],
+        circular_metal_baseline_table)
     write_tsv(OUT_MODEL_CONFIGURATION, configuration_header, [[row[key] for key in configuration_header] for row in configuration_rows])
     write_tsv(OUT_PRODUCT_USE_REGISTRY, ["product", "origin", "destination", "use_kind", "use_target", "value_meur"], product_use_table)
     write_tsv(OUT_TRADE_REGISTRY, ["product", "origin", "destination", "intermediate_value_meur", "household_value_meur", "government_value_meur", "fixed_investment_value_meur", "inventory_change_value_meur", "marketed_value_meur"], trade_table)

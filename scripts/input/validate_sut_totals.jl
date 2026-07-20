@@ -45,6 +45,7 @@ const STAGE5_DIR = joinpath(ARTIFACT_DIR, "05_core_sam")
 const STAGE6_DIR = joinpath(ARTIFACT_DIR, "06_closed_sam")
 const STAGE7_DIR = joinpath(ARTIFACT_DIR, "07_model_scaffold")
 const STAGE8_DIR = joinpath(ARTIFACT_DIR, "08_six_region_bundle")
+const STAGE8_CIRCULAR_METAL_BASELINE = joinpath(STAGE8_DIR, "regional_circular_metal_baseline.tsv")
 
 const STAGE1_FILES = [
     "figaro_reference_supply.tsv",
@@ -498,7 +499,7 @@ function append_stage7_checks!(rows)
         ("service_route_rows", parse_int(values, "n_service_routes") == 12, values["n_service_routes"], "12", "Each family should have four service-supplying routes: NEW, REF, REP, and REU."),
         ("eol_route_rows", parse_int(values, "n_eol_routes") == 6, values["n_eol_routes"], "6", "Each family should map end-of-life flows to REC and INC in addition to life-extension routes."),
         ("quantity_bridge_rows", parse_int(values, "n_quantity_rows") == 21, values["n_quantity_rows"], "21", "The physical quantity bridge should cover family service, route, and end-of-life anchors plus the single METAL commodity and disposal activity."),
-        ("coefficient_rows", parse_int(values, "n_coefficient_rows") == 22, values["n_coefficient_rows"], "22", "The physical coefficient template should cover family-specific route coefficients plus the shared recycling yield for METAL output."),
+        ("coefficient_rows", parse_int(values, "n_coefficient_rows") == 23, values["n_coefficient_rows"], "23", "The physical coefficient template should cover family-specific route coefficients plus the shared METAL price and recycling yield."),
         ("service_alignment", get(values, "service_alignment", "missing") == "TST uses NEW,REF,REP,REU by family", get(values, "service_alignment", "missing"), "TST uses NEW,REF,REP,REU by family", "Each regional service composite should mirror the stylized route nest."),
         ("physical_quantity_rule", get(values, "physical_quantity_rule", "missing") == "Q_t = Q0 * q_t; fallback uses value divided by benchmark unit value and relative price", get(values, "physical_quantity_rule", "missing"), "Q_t = Q0 * q_t; fallback uses value divided by benchmark unit value and relative price", "Physical reporting should follow model quantity indices and only fall back to value/price conversion when needed."),
     ]
@@ -517,6 +518,7 @@ function append_stage8_checks!(rows)
         joinpath(STAGE8_DIR, "mappings.csv"),
         STAGE8_MODEL_CONFIGURATION,
         STAGE8_VALIDATION,
+        STAGE8_CIRCULAR_METAL_BASELINE,
     ]
     missing = [path for path in required_files if !isfile(path)]
     if !isempty(missing)
@@ -560,6 +562,42 @@ function append_stage8_checks!(rows)
         "label=$(closure_label); kind=$(closure_kind)",
         "label=P_HH_COMMON; kind=price_index",
         "The calibration bundle must declare the model-defined household-consumption price-index numeraire.",
+    ))
+    residual_tolerance = get(configuration, ("diagnostics", "baseline_absolute_residual_tolerance"), "missing")
+    residual_tolerance_value = tryparse(Float64, residual_tolerance)
+    residual_tolerance_ok = residual_tolerance_value !== nothing && residual_tolerance_value > 0.0
+    push!(rows, artifact_row(
+        "08_six_region_bundle",
+        "baseline_residual_tolerance",
+        artifact_status(residual_tolerance_ok),
+        STAGE8_MODEL_CONFIGURATION,
+        residual_tolerance,
+        "strictly positive",
+        "The baseline residual-reporting tolerance must account for the tonne-scaled physical METAL equations.",
+    ))
+
+    circular_metal_rows = read_tsv(STAGE8_CIRCULAR_METAL_BASELINE)
+    circular_metal_header_ok = !isempty(circular_metal_rows) &&
+        circular_metal_rows[1] == ["coefficient_id", "value", "physical_unit", "calibration_basis", "notes"]
+    circular_metal_values = circular_metal_header_ok ? circular_metal_rows[2:end] : Vector{Vector{String}}()
+    circular_metal_ids = [row[1] for row in circular_metal_values if length(row) == 5]
+    circular_metal_prices = [parse(Float64, row[2]) for row in circular_metal_values
+        if length(row) == 5 && endswith(row[1], "ALL_METAL_external_price")]
+    circular_metal_yields = [parse(Float64, row[2]) for row in circular_metal_values
+        if length(row) == 5 && endswith(row[1], "ALL_RECOVERY_yield_metal_ee")]
+    circular_metal_ok = circular_metal_header_ok && length(circular_metal_values) == 12 &&
+        length(unique(circular_metal_ids)) == 12 && length(circular_metal_prices) == 6 &&
+        length(circular_metal_yields) == 6 && all(>(0.0), circular_metal_prices) &&
+        all(>=(0.0), circular_metal_yields) && length(unique(circular_metal_prices)) == 1 &&
+        length(unique(circular_metal_yields)) == 1
+    push!(rows, artifact_row(
+        "08_six_region_bundle",
+        "circular_metal_baseline",
+        artifact_status(circular_metal_ok),
+        STAGE8_CIRCULAR_METAL_BASELINE,
+        "rows=$(length(circular_metal_values)); prices=$(join(circular_metal_prices, ";")); yields=$(join(circular_metal_yields, ";"))",
+        "12 rows; six equal positive prices; six equal non-negative yields",
+        "The physical METAL market must use one EU-wide price and the declared common recycling yield.",
     ))
 
     sets_rows = read_simple_csv(joinpath(STAGE8_DIR, "sets.csv"))

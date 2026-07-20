@@ -24,9 +24,7 @@ export account_region_lookup
 export MultiRegionOutline, multi_region_outline, outline_summary
 export MultiRegionCalibration, multi_region_calibration, calibration_consistency
 export calibration_option, calibration_option_number
-export PolicyScenario, baseline_scenario, virgin_material_tax_scenario
-export recycling_support_scenario, refurbishment_support_scenario
-export repair_support_scenario, reuse_support_scenario
+export PolicyScenario, baseline_scenario
 export MULTI_REGION_BLOCK_KINDS, multi_region_blocks
 export MultiRegionModelSpec, multi_region_model, solver_configuration, run_spec, baseline, run_baseline, default_optimizer
 export summary_row
@@ -35,11 +33,15 @@ export PhysicalSatelliteSpec, PhysicalSatelliteReadiness, physical_satellite_spe
 export observed_physical_flows, physical_flow_anchors, observed_physical_quantity_links, physical_quantity_indices
 export physical_flow_reference, physical_calibration_driver_report, physical_flow_projection
 export physical_mass_balance_requirements, physical_baseline_report
+export CircularMetalProfile, circular_metal_parameter_schema, circular_metal_profile, circular_metal_baseline_profile
+export circular_metal_blocks, circular_metal_initial_values, circular_metal_coverage, circular_metal_projection
+export circular_metal_calibration_report
 export write_rows_csv
 
 include("common/calibration.jl")
 include("multi_region/core.jl")
 include("multi_region/calibration.jl")
+include("multi_region/circular_metal_types.jl")
 include("multi_region/scenarios.jl")
 include("multi_region/blocks.jl")
 include("multi_region/model.jl")
@@ -47,5 +49,6 @@ include("multi_region/results.jl")
 include("multi_region/analytics.jl")
 include("multi_region/io.jl")
 include("multi_region/physical_satellite.jl")
+include("multi_region/circular_metal.jl")
 
 end

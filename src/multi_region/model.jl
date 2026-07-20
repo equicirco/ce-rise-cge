@@ -7,20 +7,32 @@ struct MultiRegionModelSpec
     scenario::PolicyScenario
     coefficient_template::DataFrame
     quantity_template::DataFrame
+    circular_metal::Union{Nothing,CircularMetalProfile}
 end
 
 function multi_region_model(; label::AbstractString = "eu-2016-six-region",
     bundle::CalibrationBundle = default_calibration_bundle(),
     calibration::MultiRegionCalibration = multi_region_calibration(bundle),
-    scenario::PolicyScenario = baseline_scenario())
-    return MultiRegionModelSpec(
+    scenario::PolicyScenario = baseline_scenario(),
+    circular_metal::Union{Nothing,CircularMetalProfile} = nothing,
+    include_circular_metal::Bool = true)
+    outline = multi_region_outline(; bundle = bundle)
+    draft = MultiRegionModelSpec(
         String(label),
-        multi_region_outline(; bundle = bundle),
+        outline,
         calibration,
         scenario,
         copy(bundle.physical_coefficients),
         copy(bundle.physical_quantities),
+        nothing,
     )
+    include_circular_metal || circular_metal === nothing ||
+        error("A circular-metal profile cannot be supplied when include_circular_metal is false.")
+    profile = include_circular_metal ?
+        (circular_metal === nothing ? circular_metal_baseline_profile(draft) : circular_metal) : nothing
+    return MultiRegionModelSpec(
+        String(label), outline, calibration, scenario,
+        copy(bundle.physical_coefficients), copy(bundle.physical_quantities), profile)
 end
 
 """
@@ -36,6 +48,7 @@ function solver_configuration(model::MultiRegionModelSpec = multi_region_model()
     mu_init = calibration_option_number(bundle, "solver", "ipopt_mu_init")
     tolerance = calibration_option_number(bundle, "solver", "ipopt_tolerance")
     acceptable_tolerance = calibration_option_number(bundle, "solver", "ipopt_acceptable_tolerance")
+    baseline_residual_tolerance = calibration_option_number(bundle, "diagnostics", "baseline_absolute_residual_tolerance")
     0.0 < push_share < 1.0 ||
         error("solver.ipopt_bound_push_share must lie strictly between zero and one.")
     equation_scaling_floor > 0.0 ||
@@ -44,6 +57,8 @@ function solver_configuration(model::MultiRegionModelSpec = multi_region_model()
     tolerance > 0.0 || error("solver.ipopt_tolerance must be strictly positive.")
     acceptable_tolerance > 0.0 ||
         error("solver.ipopt_acceptable_tolerance must be strictly positive.")
+    baseline_residual_tolerance > 0.0 ||
+        error("diagnostics.baseline_absolute_residual_tolerance must be strictly positive.")
     starts = _initial_value_parameters(model.outline, model.calibration).start
     positive = [value for value in values(starts) if value > 0.0]
     isempty(positive) && error("The calibrated model has no positive starting value for solver initialization.")
@@ -56,6 +71,7 @@ function solver_configuration(model::MultiRegionModelSpec = multi_region_model()
         ipopt_mu_init = mu_init,
         ipopt_tolerance = tolerance,
         ipopt_acceptable_tolerance = acceptable_tolerance,
+        baseline_residual_tolerance = baseline_residual_tolerance,
     )
 end
 
@@ -75,7 +91,8 @@ function default_optimizer(model::MultiRegionModelSpec = multi_region_model())
 end
 
 function run_spec(model::MultiRegionModelSpec = multi_region_model())
-    blocks = multi_region_blocks(model.outline, model.calibration, model.scenario)
+    blocks = multi_region_blocks(model.outline, model.calibration, model.scenario;
+        circular_metal = model.circular_metal)
     targets = closure_accounting_targets(model.outline.bundle)
     length(model.outline.investment_pools) == 1 && only(model.outline.investment_pools) == targets.investment_pool ||
         error("The calibration-defined accounting investment pool must be the model's sole investment pool.")
@@ -97,7 +114,7 @@ function run_spec(model::MultiRegionModelSpec = multi_region_model())
     )
     sections = [
         JCGECore.section(:production,
-            vcat(blocks.production, Any[blocks.physical_quantity_links])),
+            vcat(blocks.production, Any[blocks.physical_quantity_links], blocks.circular_metal_physical)),
         JCGECore.section(:factors, Any[blocks.factor_availability]),
         JCGECore.section(:government, Any[blocks.government_demand]),
         JCGECore.section(:savings, Any[blocks.private_saving, blocks.fixed_investment, blocks.investment_pool]),
@@ -105,7 +122,7 @@ function run_spec(model::MultiRegionModelSpec = multi_region_model())
         JCGECore.section(:prices, Any[blocks.price_index]),
         JCGECore.section(:external, Any[blocks.external_account]),
         JCGECore.section(:trade, Any[blocks.trade]),
-        JCGECore.section(:markets, Any[blocks.market_clearing]),
+        JCGECore.section(:markets, vcat(Any[blocks.market_clearing], blocks.circular_metal_market)),
         JCGECore.section(:objective, Any[blocks.utility]),
         JCGECore.section(:init, Any[blocks.initial_values]),
         JCGECore.section(:closure, Any[blocks.numeraire]),
@@ -127,21 +144,25 @@ end
 baseline(model::MultiRegionModelSpec = multi_region_model()) = run_spec(model)
 
 """
-    run_baseline(model=multi_region_model(); tol=1e-6)
+    run_baseline(model=multi_region_model(); tol=nothing)
 
 Compile and solve the zero-policy six-region calibration replication. Equation
-scales and Ipopt settings are read from the calibration bundle so that
-small-account rounding differences do not destabilize the feasibility solve.
+scales, Ipopt settings, and the residual-reporting tolerance are read from the
+calibration bundle so that small-account rounding differences do not
+destabilize the feasibility solve.
 """
-function run_baseline(model::MultiRegionModelSpec = multi_region_model(); tol::Real=1.0e-6)
+function run_baseline(model::MultiRegionModelSpec = multi_region_model();
+    tol::Union{Nothing,Real}=nothing)
     model.scenario.name === :baseline ||
         error("run_baseline requires the zero-policy baseline scenario.")
+    configuration = solver_configuration(model)
+    reporting_tolerance = tol === nothing ? configuration.baseline_residual_tolerance : Float64(tol)
+    reporting_tolerance > 0.0 || error("Baseline residual tolerance must be strictly positive.")
     spec = run_spec(model)
     ctx = JCGERuntime.KernelContext(model=JuMP.Model())
     for block in spec.model.blocks
         JCGECore.build!(block, ctx, spec)
     end
-    configuration = solver_configuration(model)
     scaling = JCGERuntime.calibrated_equation_scaling(
         ctx;
         floor=configuration.equation_scaling_floor,
@@ -154,7 +175,7 @@ function run_baseline(model::MultiRegionModelSpec = multi_region_model(); tol::R
     )
     JCGERuntime.solve!(ctx; optimizer=default_optimizer(model))
     JCGERuntime.evaluate_residuals!(ctx)
-    summary = JCGERuntime.summarize_residuals(ctx; tol=tol)
-    signals = JCGERuntime.to_dualsignals(ctx; dataset_id="ce-rise-cge-baseline", tol=tol)
+    summary = JCGERuntime.summarize_residuals(ctx; tol=reporting_tolerance)
+    signals = JCGERuntime.to_dualsignals(ctx; dataset_id="ce-rise-cge-baseline", tol=reporting_tolerance)
     return (context=ctx, summary=summary, signals=signals)
 end

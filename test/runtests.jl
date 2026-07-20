@@ -28,7 +28,8 @@ outline = multi_region_outline(; bundle = bundle)
 @test all(length(outline.externals_by_region[region]) == 1 for region in outline.regions)
 
 model = multi_region_model(; bundle = bundle)
-@test nrow(model.coefficient_template) == 132
+@test nrow(model.coefficient_template) == 138
+@test nrow(bundle.circular_metal_baseline) == 12
 @test nrow(model.quantity_template) == 126
 @test length(model.calibration.products) == 25
 @test length(model.calibration.trade_routes) == 1132
@@ -43,6 +44,7 @@ solver = solver_configuration(model)
 @test solver.ipopt_mu_init == 1.0e-8
 @test solver.ipopt_tolerance == 1.0e-8
 @test solver.ipopt_acceptable_tolerance == 1.0e-8
+@test solver.baseline_residual_tolerance == 1.0e-4
 @test length(model.calibration.inventory_change) == 150
 @test all(haskey(model.calibration.inventory_change, activity) for activity in outline.industries)
 @test all(
@@ -82,7 +84,8 @@ accounting_targets = closure_accounting_targets(bundle)
     :DE,
 )
 @test length(JCGECore.accounting_checks(spec.closure)) == 2
-blocks = multi_region_blocks(model.outline, model.calibration, model.scenario)
+blocks = multi_region_blocks(model.outline, model.calibration, model.scenario;
+    circular_metal = model.circular_metal)
 @test length(blocks.production) == 6
 @test blocks.factor_availability isa JCGEBlocks.RegionalFactorAvailabilityBlock
 @test blocks.trade isa JCGEBlocks.MultiRegionTradeBlock
@@ -106,7 +109,8 @@ initial_values = blocks.initial_values.params.start
     )
     for region in outline.regions
 )
-@test length(spec.model.blocks) == length(blocks.production) + length(MULTI_REGION_BLOCK_KINDS) - 1
+@test length(spec.model.blocks) ==
+    length(blocks.production) + length(MULTI_REGION_BLOCK_KINDS) + length(blocks.circular_metal) - 1
 
 ctx = JCGERuntime.KernelContext(model = JuMP.Model())
 for block in spec.model.blocks
@@ -137,7 +141,10 @@ checked_equations = [
     for equation in checked_equations
 )
 @test any(get(equation.payload, :constraint, nothing) !== nothing for equation in ctx.equations)
-@test count(equation -> equation.tag == :quantity_link, ctx.equations) == 78
+expected_quantity_links = length(blocks.physical_quantity_links.quantities) +
+    sum(length(block.quantities) for block in blocks.circular_metal
+        if block isa JCGEBlocks.QuantityLinkBlock)
+@test count(equation -> equation.tag == :quantity_link, ctx.equations) == expected_quantity_links
 
 baseline_result = run_baseline(model)
 @test JuMP.termination_status(baseline_result.context.model) == JuMP.MOI.LOCALLY_SOLVED
@@ -146,14 +153,14 @@ baseline_result = run_baseline(model)
 
 physical_spec = physical_satellite_spec(model)
 @test nrow(physical_spec.quantity_bridge) == 126
-@test nrow(physical_spec.coefficients) == 132
+@test nrow(physical_spec.coefficients) == 138
 @test nrow(physical_spec.observed_flows) == 78
 physical_readiness = physical_satellite_readiness(model)
 @test !physical_readiness.ready
 @test !physical_readiness.quantity_value_column
 @test !physical_readiness.coefficient_value_column
 @test physical_readiness.template_quantity_rows == 126
-@test physical_readiness.template_coefficient_rows == 132
+@test physical_readiness.template_coefficient_rows == 138
 @test physical_readiness.model_anchor_rows == 84
 @test physical_readiness.unbound_anchor_rows == 42
 @test physical_readiness.observed_flow_rows == 78
@@ -162,7 +169,7 @@ physical_readiness = physical_satellite_readiness(model)
 physical_indices = physical_quantity_indices(baseline_result, model)
 @test nrow(physical_indices) == 126
 @test count(==( :index_available), physical_indices.status) == 84
-@test count(==( :requires_ce_account), physical_indices.status) == 48
+@test count(==( :requires_ce_account), physical_indices.status) == 42
 @test all(value -> isfinite(value) && value > 0.0, skipmissing(physical_indices.model_quantity_index))
 physical_requirements = physical_mass_balance_requirements(model)
 @test nrow(physical_requirements) == 78
@@ -200,6 +207,49 @@ physical_report = physical_baseline_report(baseline_result, model)
 @test physical_report.flow_reference.id == physical_reference.id
 @test physical_report.flow_reference.drivers == physical_reference.drivers
 @test nrow(physical_report.calibration_driver_report) == nrow(physical_projection)
+
+metal_schema = circular_metal_parameter_schema(model)
+@test nrow(metal_schema) == 12
+metal_profile = circular_metal_baseline_profile(model)
+@test metal_profile isa CircularMetalProfile
+@test all(value == 0.001 for (id, value) in metal_profile.value if endswith(String(id), "ALL_METAL_external_price"))
+@test all(value == 0.25 for (id, value) in metal_profile.value if endswith(String(id), "ALL_RECOVERY_yield_metal_ee"))
+@test_throws ErrorException circular_metal_profile(model,
+    Dict(first(keys(metal_profile.value)) => 0.5))
+metal_model = multi_region_model(; bundle = bundle, circular_metal = metal_profile)
+metal_spec = run_spec(metal_model)
+metal_blocks = multi_region_blocks(metal_model.outline, metal_model.calibration,
+    metal_model.scenario; circular_metal = metal_profile)
+@test length(metal_blocks.circular_metal) == 5
+@test length(metal_spec.model.blocks) == length(spec.model.blocks)
+metal_coverage = circular_metal_coverage(metal_model)
+@test metal_coverage.complete == Bool[true, false, true, false, false]
+metal_result = run_baseline(metal_model; tol = 1.0e-4)
+@test JuMP.termination_status(metal_result.context.model) == JuMP.MOI.LOCALLY_SOLVED
+@test metal_result.summary.above_tol == 0
+metal_projection = circular_metal_projection(metal_result, metal_model)
+@test all(isfinite, metal_projection.tonnes)
+@test all(row -> row.quantity_kind === :metal_inventory_change || row.tonnes >= 0.0,
+    eachrow(metal_projection))
+@test count(==( :recycled_metal_output), metal_projection.quantity_kind) == 6
+@test count(==( :primary_metal_output), metal_projection.quantity_kind) == 6
+@test sum(metal_projection.tonnes[metal_projection.quantity_kind .== :primary_metal_output]) > 0.0
+@test count(==( :external_metal_import), metal_projection.quantity_kind) == 1
+@test count(==( :other_industry_metal_demand), metal_projection.quantity_kind) > 0
+@test count(==( :ce_route_metal_demand), metal_projection.quantity_kind) > 0
+@test count(==( :external_metal_export), metal_projection.quantity_kind) > 0
+metal_supply = sum(metal_projection.tonnes[in.(metal_projection.quantity_kind,
+    Ref([:external_metal_import, :primary_metal_output, :recycled_metal_output]))])
+metal_demand = sum(metal_projection.tonnes[in.(metal_projection.quantity_kind,
+    Ref([:ce_route_metal_demand, :other_industry_metal_demand, :final_metal_demand,
+        :external_metal_export, :metal_inventory_change]))])
+@test isapprox(metal_supply, metal_demand; atol = 1.0e-6, rtol = 1.0e-10)
+metal_report = circular_metal_calibration_report(metal_result, metal_model)
+@test nrow(metal_report) > 160
+@test maximum(abs, metal_report.absolute_error_tonnes) < 1.0
+metal_physical_report = physical_baseline_report(metal_result, metal_model)
+@test metal_physical_report.circular_metal !== nothing
+@test nrow(metal_physical_report.circular_metal.projection) == nrow(metal_projection)
 
 summary = summary_row(model)
 @test summary.regions == 6

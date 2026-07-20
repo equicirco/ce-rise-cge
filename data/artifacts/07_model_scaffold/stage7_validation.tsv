@@ -6,7 +6,7 @@ n_route_rows	18
 n_service_routes	12
 n_eol_routes	6
 n_quantity_rows	21
-n_coefficient_rows	22
+n_coefficient_rows	23
 service_alignment	TST uses NEW,REF,REP,REU by family
 eol_alignment	EOL allocates across REF,REP,REU,REC,INC by family
 physical_quantity_rule	Q_t = Q0 * q_t; fallback uses value divided by benchmark unit value and relative price

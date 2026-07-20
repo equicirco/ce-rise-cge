@@ -1,0 +1,13 @@
+coefficient_id	value	physical_unit	calibration_basis	notes
+DE_ALL_METAL_external_price	0.001	model_value_per_tonne_METAL	sensitivity_calibration_assumption	Common EU-wide METAL price of EUR 1,000 per tonne, expressed in the model monetary unit of million EUR per tonne.
+DE_ALL_RECOVERY_yield_metal_ee	0.25	kg_METAL_per_kg_eol	sensitivity_calibration_assumption	Common output yield of 0.25 kg generic METAL per kg end-of-life electronics entering recycling.
+FR_ALL_METAL_external_price	0.001	model_value_per_tonne_METAL	sensitivity_calibration_assumption	Common EU-wide METAL price of EUR 1,000 per tonne, expressed in the model monetary unit of million EUR per tonne.
+FR_ALL_RECOVERY_yield_metal_ee	0.25	kg_METAL_per_kg_eol	sensitivity_calibration_assumption	Common output yield of 0.25 kg generic METAL per kg end-of-life electronics entering recycling.
+IT_ALL_METAL_external_price	0.001	model_value_per_tonne_METAL	sensitivity_calibration_assumption	Common EU-wide METAL price of EUR 1,000 per tonne, expressed in the model monetary unit of million EUR per tonne.
+IT_ALL_RECOVERY_yield_metal_ee	0.25	kg_METAL_per_kg_eol	sensitivity_calibration_assumption	Common output yield of 0.25 kg generic METAL per kg end-of-life electronics entering recycling.
+PL_ALL_METAL_external_price	0.001	model_value_per_tonne_METAL	sensitivity_calibration_assumption	Common EU-wide METAL price of EUR 1,000 per tonne, expressed in the model monetary unit of million EUR per tonne.
+PL_ALL_RECOVERY_yield_metal_ee	0.25	kg_METAL_per_kg_eol	sensitivity_calibration_assumption	Common output yield of 0.25 kg generic METAL per kg end-of-life electronics entering recycling.
+SK_ALL_METAL_external_price	0.001	model_value_per_tonne_METAL	sensitivity_calibration_assumption	Common EU-wide METAL price of EUR 1,000 per tonne, expressed in the model monetary unit of million EUR per tonne.
+SK_ALL_RECOVERY_yield_metal_ee	0.25	kg_METAL_per_kg_eol	sensitivity_calibration_assumption	Common output yield of 0.25 kg generic METAL per kg end-of-life electronics entering recycling.
+REU_ALL_METAL_external_price	0.001	model_value_per_tonne_METAL	sensitivity_calibration_assumption	Common EU-wide METAL price of EUR 1,000 per tonne, expressed in the model monetary unit of million EUR per tonne.
+REU_ALL_RECOVERY_yield_metal_ee	0.25	kg_METAL_per_kg_eol	sensitivity_calibration_assumption	Common output yield of 0.25 kg generic METAL per kg end-of-life electronics entering recycling.

@@ -14,6 +14,7 @@ struct CalibrationBundle
     route_registry::DataFrame
     family_registry::DataFrame
     physical_coefficients::DataFrame
+    circular_metal_baseline::DataFrame
     physical_quantities::DataFrame
     physical_flows::DataFrame
     configuration::DataFrame
@@ -53,6 +54,7 @@ function load_calibration_bundle(name::Symbol = :eu_2016_six_region; data_dir::A
         _load_tsv(joinpath(dir, "regional_route_registry.tsv")),
         _load_tsv(joinpath(dir, "regional_family_registry.tsv")),
         _load_tsv(joinpath(dir, "regional_physical_coefficient_template.tsv")),
+        _load_tsv(joinpath(dir, "regional_circular_metal_baseline.tsv")),
         _load_tsv(joinpath(dir, "regional_physical_quantity_bridge_template.tsv")),
         _load_tsv(joinpath(dir, "regional_observed_physical_flows.tsv")),
         _load_tsv(joinpath(dir, "model_configuration.tsv")),
@@ -124,6 +126,7 @@ function calibration_summary(bundle::CalibrationBundle = default_calibration_bun
         routes = length(get(bundle.sets, :routes, Symbol[])),
         sam_accounts = size(bundle.sam.data, 1),
         coefficient_rows = nrow(bundle.physical_coefficients),
+        circular_metal_baseline_rows = nrow(bundle.circular_metal_baseline),
         quantity_bridge_rows = nrow(bundle.physical_quantities),
         observed_physical_flow_rows = nrow(bundle.physical_flows),
         configuration_rows = nrow(bundle.configuration),

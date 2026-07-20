@@ -1,9 +1,9 @@
 """
 Standard JCGE block assembly for the calibrated six-region model.
 
-All coefficients and initial values are derived from `MultiRegionCalibration`.
-The circular-economy route extensions are added only after this standard
-multi-region baseline replicates the calibration data.
+All monetary coefficients and initial values are derived from
+`MultiRegionCalibration`.  An optional `CircularMetalProfile` adds the
+observed physical metal transformations with values supplied by the profile.
 """
 
 const MULTI_REGION_BLOCK_KINDS = (
@@ -35,7 +35,8 @@ function _output_tax_by_good(calibration::MultiRegionCalibration)
 end
 
 function _initial_value_parameters(outline::MultiRegionOutline,
-    calibration::MultiRegionCalibration)
+    calibration::MultiRegionCalibration,
+    circular_metal::Union{Nothing,CircularMetalProfile} = nothing)
     base_price = calibration_option_number(calibration.bundle, "normalization", "base_price")
     start = Dict{Symbol,Float64}()
 
@@ -109,6 +110,18 @@ function _initial_value_parameters(outline::MultiRegionOutline,
             1.0
     end
     start[:P_HH_COMMON] = base_price
+    if circular_metal !== nothing
+        profile_model = MultiRegionModelSpec(
+            "circular-metal-initialization",
+            outline,
+            calibration,
+            baseline_scenario(),
+            copy(calibration.bundle.physical_coefficients),
+            copy(calibration.bundle.physical_quantities),
+            circular_metal,
+        )
+        merge!(start, circular_metal_initial_values(profile_model, circular_metal))
+    end
     return (start = start,)
 end
 
@@ -116,12 +129,14 @@ end
     multi_region_blocks(outline, calibration, scenario)
 
 Return the standard six-region model as a named collection of generic JCGE
-blocks. The policy scenarios are declared in this repository but become
-solvable only once their circular-economy extension blocks are added.
+blocks.  A supplied circular-metal profile adds physical metal accounting;
+policy scenarios remain unavailable until their circular-economy extensions
+are assembled.
 """
 function multi_region_blocks(outline::MultiRegionOutline,
     calibration::MultiRegionCalibration,
-    scenario::PolicyScenario)
+    scenario::PolicyScenario;
+    circular_metal::Union{Nothing,CircularMetalProfile} = nothing)
     calibration.bundle.name == outline.bundle.name ||
         error("Model outline and calibration bundle differ.")
     scenario.name === :baseline ||
@@ -155,6 +170,21 @@ function multi_region_blocks(outline::MultiRegionOutline,
         outline.bundle,
         calibration,
     )
+    profile_model = circular_metal === nothing ? nothing : MultiRegionModelSpec(
+        "circular-metal-blocks",
+        outline,
+        calibration,
+        scenario,
+        copy(outline.bundle.physical_coefficients),
+        copy(outline.bundle.physical_quantities),
+        circular_metal,
+    )
+    circular_metal_extensions = circular_metal === nothing ? Any[] :
+        circular_metal_blocks(profile_model, circular_metal)
+    circular_metal_physical = circular_metal === nothing ? Any[] :
+        circular_metal_extensions[1:(end - 2)]
+    circular_metal_market = circular_metal === nothing ? Any[] :
+        circular_metal_extensions[(end - 1):end]
 
     price_index = JCGEBlocks.regional_price_index(
         :household_price_index,
@@ -313,7 +343,7 @@ function multi_region_blocks(outline::MultiRegionOutline,
     )
     initial_values = JCGEBlocks.initial_values(
         :calibrated_initial_values,
-        _initial_value_parameters(outline, calibration),
+        _initial_value_parameters(outline, calibration, circular_metal),
     )
     numeraire = JCGEBlocks.numeraire(
         :numeraire,
@@ -325,6 +355,9 @@ function multi_region_blocks(outline::MultiRegionOutline,
     return (
         production = production,
         physical_quantity_links = physical_quantity_links,
+        circular_metal = circular_metal_extensions,
+        circular_metal_physical = circular_metal_physical,
+        circular_metal_market = circular_metal_market,
         factor_availability = factor_availability,
         price_index = price_index,
         private_saving = private_saving,

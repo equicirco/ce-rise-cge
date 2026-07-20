@@ -1,11 +1,12 @@
 """
 Physical-accounting interface for the CE-RISE model.
 
-Observed physical flows are represented in the model by generic, normalized
-volume-index variables. They do not yet feed back into production, demand, or
-market clearing. `JCGEOutput` converts those indices to physical quantities
-through observed anchors and remains responsible for baseline-referenced
-projection and post-solution diagnostics.
+Observed physical flows are represented by generic, normalized volume-index
+variables. `JCGEOutput` converts those indices to physical quantities through
+observed anchors and remains responsible for baseline-referenced projection
+and post-solution diagnostics.  When a `CircularMetalProfile` is supplied,
+additional tonne-level quantities transform observed route masses into metal
+use and recycled-metal output.
 """
 
 struct PhysicalSatelliteSpec
@@ -368,5 +369,10 @@ function physical_baseline_report(result,
         calibration_driver_report = physical_calibration_driver_report(result, model),
         flow_projection = physical_flow_projection(result, model; reference = reference),
         mass_balance_requirements = physical_mass_balance_requirements(model),
+        circular_metal = model.circular_metal === nothing ? nothing : (
+            coverage = circular_metal_coverage(model),
+            projection = circular_metal_projection(result, model),
+            calibration_report = circular_metal_calibration_report(result, model),
+        ),
     )
 end
