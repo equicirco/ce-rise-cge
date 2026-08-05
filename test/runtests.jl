@@ -39,6 +39,7 @@ unit_bundle = sensitivity_bundle(unit_profile; bundle=bundle)
 @test calibration_option_number(unit_bundle, "circular_metal", "material_substitution_elasticity") == 1.0
 recycling_scenarios = policy_sweep_scenarios(:recycling_support; bundle=bundle)
 @test policy_wedge.(recycling_scenarios, :recycling_support) == [-0.0025, -0.005, -0.01, -0.02]
+@test length(unique(scenario.name for scenario in recycling_scenarios)) == 4
 @test region_codes(bundle) == [:DE, :FR, :IT, :PL, :SK, :REU]
 @test length(industry_codes(bundle)) == 150
 @test length(factor_codes(bundle)) == 12
@@ -61,6 +62,15 @@ recycling_sweep_models = policy_sweep_models(:recycling_support; bundle=bundle)
 @test length(recycling_sweep_models) == 4
 @test [policy_wedge(model.scenario, :recycling_support)
     for model in recycling_sweep_models] == [-0.0025, -0.005, -0.01, -0.02]
+tax_sweep_models = policy_sweep_models(:virgin_metal_tax; bundle=bundle)
+@test all(isapprox.(CERiseCGE._policy_continuation_wedges(tax_sweep_models),
+    [0.0025, 0.005, 0.0075, 0.01, 0.0125, 0.015, 0.0175, 0.02];
+    atol=1.0e-12, rtol=0.0))
+failure_rows = CERiseCGE._sensitivity_failure_table(
+    unit_profile, bundle, collect(CIRCULAR_POLICY_INSTRUMENTS), ErrorException("test failure"))
+@test nrow(failure_rows) == 20
+@test all(.!failure_rows.solver_valid)
+@test all(failure_rows.solver_message .== "test failure")
 @test nrow(model.coefficient_template) == 138
 @test nrow(bundle.circular_metal_baseline) == 12
 @test nrow(model.quantity_template) == 126

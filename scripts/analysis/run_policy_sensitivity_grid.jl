@@ -45,6 +45,8 @@ function main()
     )
     size(results, 1) == expected_rows || error(
         "Sensitivity grid returned $(size(results, 1)) rows; expected $(expected_rows).")
+    valid_rows = count(results.solver_valid)
+    println("Solver-valid policy rows: ", valid_rows, " of ", expected_rows)
     CSV.write(OUTPUT_FILE, results)
     println("Wrote ", OUTPUT_FILE)
     return nothing

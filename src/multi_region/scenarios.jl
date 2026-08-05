@@ -58,8 +58,9 @@ accepted at this stage.
 function eu_wide_policy_scenario(instrument::Symbol, wedge::Real;
     bundle::CalibrationBundle=default_calibration_bundle())
     value = _policy_wedge_value(instrument, wedge)
+    magnitude = replace(string(abs(value)), "." => "_")
     label = iszero(value) ? :policy_zero :
-        Symbol(instrument, value < 0.0 ? :_support : :_tax)
+        Symbol(instrument, value < 0.0 ? :_support_ : :_tax_, magnitude)
     description = "EU-wide $(replace(String(instrument), '_' => ' ')) wedge of $(value)."
     return PolicyScenario(
         label,

@@ -410,28 +410,70 @@ function _valid_policy_solution(result)
     return result.scaled_summary.above_tol == 0 && result.bound_summary.above_tol == 0
 end
 
+"""Return the policy wedges used internally to continue between reported points."""
+function _policy_continuation_wedges(models::AbstractVector{<:MultiRegionModelSpec})
+    instrument = _validate_policy_path(models)
+    reported_wedges = Float64[policy_wedge(model.scenario, instrument) for model in models]
+    strengths = abs.(reported_wedges)
+    increment = minimum(diff(vcat(0.0, strengths)))
+    increment > 0.0 || error("The policy continuation increment must be positive.")
+
+    wedges = Float64[]
+    previous_strength = 0.0
+    for (target_wedge, target_strength) in zip(reported_wedges, strengths)
+        sign_target = sign(target_wedge)
+        next_strength = previous_strength + increment
+        while next_strength < target_strength - eps(target_strength)
+            push!(wedges, sign_target * next_strength)
+            next_strength += increment
+        end
+        push!(wedges, target_wedge)
+        previous_strength = target_strength
+    end
+    return wedges
+end
+
+"""Create one structurally identical model at an internal continuation wedge."""
+function _policy_continuation_model(model::MultiRegionModelSpec,
+    instrument::Symbol, wedge::Real)
+    scenario = eu_wide_policy_scenario(instrument, wedge; bundle=model.outline.bundle)
+    return multi_region_model(; label=model.label, bundle=model.outline.bundle,
+        calibration=model.calibration, scenario=scenario,
+        circular_metal=model.circular_metal)
+end
+
 """
-    run_policy_path(models; tol=nothing)
+    run_policy_path(models; tol=nothing, start_values=nothing)
 
 Solve a sequence of structurally compatible, single-instrument policy models
-from the weakest to the strongest explicitly supplied wedge. Every point after
-the first is initialized from the preceding accepted solution. The function
-does not define policy rates, create results files, or combine instruments.
+from the weakest to the strongest explicitly supplied wedge. Where the declared
+ladder contains a larger jump, the smallest declared increment is used to solve
+unreported intermediate points. Every solve is initialized from the preceding
+accepted solution; only the explicitly supplied policy points are returned. The
+function does not define policy rates, create results files, or combine instruments.
 """
 function run_policy_path(models::AbstractVector{<:MultiRegionModelSpec};
-    tol::Union{Nothing,Real}=nothing)
-    _validate_policy_path(models)
+    tol::Union{Nothing,Real}=nothing,
+    start_values::Union{Nothing,AbstractDict{Symbol,<:Real}}=nothing)
+    instrument = _validate_policy_path(models)
+    continuation_wedges = _policy_continuation_wedges(models)
     runs = NamedTuple[]
-    start_values = nothing
-    for model in models
-        result = run_policy_scenario(model; tol=tol, start_values=start_values)
+    continuation_start = start_values
+    target_models = Dict(
+        policy_wedge(model.scenario, instrument) => model
+        for model in models
+    )
+    for wedge in continuation_wedges
+        model = get(target_models, wedge, nothing)
+        model === nothing && (model = _policy_continuation_model(first(models), instrument, wedge))
+        result = run_policy_scenario(model; tol=tol, start_values=continuation_start)
         _valid_policy_solution(result) || error(
             "Policy continuation failed at $(model.scenario.name): " *
             "status $(JuMP.termination_status(result.context.model)), " *
             "scaled residuals above tolerance $(result.scaled_summary.above_tol), " *
             "bound violations above tolerance $(result.bound_summary.above_tol).")
-        push!(runs, (model=model, result=result))
-        start_values = solution_start_values(result)
+        haskey(target_models, wedge) && push!(runs, (model=model, result=result))
+        continuation_start = solution_start_values(result)
     end
     return runs
 end
@@ -467,7 +509,8 @@ function run_configured_policy_sweep(instrument::Symbol;
     baseline_result = run_baseline(baseline_model; tol=tol)
     models = policy_sweep_models(instrument; bundle=bundle,
         calibration=calibration, circular_metal=circular_metal)
-    policy_runs = run_policy_path(models; tol=tol)
+    policy_runs = run_policy_path(models; tol=tol,
+        start_values=solution_start_values(baseline_result))
     summary = policy_sweep_summary(baseline_result, baseline_model, policy_runs)
     return (
         baseline_model = baseline_model,
@@ -486,16 +529,48 @@ function _run_configured_sensitivity_profile(profile::SensitivityProfile,
     baseline_result = run_baseline(baseline_model; tol=tol)
     tables = DataFrame[]
     for instrument in requested_instruments
-        policy_runs = run_policy_path(policy_sweep_models(instrument;
-            bundle=profile_bundle, calibration=calibration); tol=tol)
+        policy_runs = try
+            run_policy_path(policy_sweep_models(instrument;
+                bundle=profile_bundle, calibration=calibration); tol=tol,
+                start_values=solution_start_values(baseline_result))
+        catch err
+            error("Sensitivity profile $(profile.name) failed for $(instrument): " *
+                sprint(showerror, err))
+        end
         table = policy_sweep_summary(baseline_result, baseline_model, policy_runs)
         table.sensitivity_profile = fill(profile.name, nrow(table))
         for (component, key) in SENSITIVITY_PARAMETER_KEYS
             table[!, Symbol(key)] = fill(profile.values[(component, key)], nrow(table))
         end
+        table.solver_valid = trues(nrow(table))
+        table.solver_message = fill(missing, nrow(table))
         push!(tables, table)
     end
     return vcat(tables...; cols=:setequal)
+end
+
+"""Return declared grid rows for a sensitivity profile rejected by solver validity."""
+function _sensitivity_failure_table(profile::SensitivityProfile,
+    bundle::CalibrationBundle, requested_instruments::AbstractVector{Symbol}, err)
+    message = sprint(showerror, err)
+    rows = NamedTuple[]
+    for instrument in requested_instruments
+        for scenario in policy_sweep_scenarios(instrument; bundle=bundle)
+            push!(rows, (
+                scenario = scenario.name,
+                instrument = instrument,
+                wedge = policy_wedge(scenario, instrument),
+                sensitivity_profile = profile.name,
+                solver_valid = false,
+                solver_message = message,
+            ))
+        end
+    end
+    table = DataFrame(rows)
+    for (component, key) in SENSITIVITY_PARAMETER_KEYS
+        table[!, Symbol(key)] = fill(profile.values[(component, key)], nrow(table))
+    end
+    return table
 end
 
 """
@@ -506,7 +581,9 @@ combination of the declared behavioural sensitivity ladder. Each profile has
 one common baseline, and all policy paths start from that profile's calibrated
 zero-policy solution. Profiles are independent and can therefore use
 JCGERuntime's process-based execution; wedges within one profile remain in
-their ordered continuation path. The returned table is in memory only.
+their ordered continuation path. Every declared grid point is retained in the
+returned table: profiles that fail the numerical acceptance criteria are marked
+`solver_valid = false` and carry the corresponding diagnostic message.
 """
 function run_configured_policy_sensitivity_grid(;
     bundle::CalibrationBundle = default_calibration_bundle(),
@@ -526,6 +603,8 @@ function run_configured_policy_sensitivity_grid(;
         execution = execution,
         workers = workers,
         worker_modules = [:CERiseCGE],
+        on_error = (profile, err) -> _sensitivity_failure_table(
+            profile, bundle, requested_instruments, err),
     )
     return vcat(profile_tables...; cols=:setequal)
 end
