@@ -11,8 +11,14 @@ solver	ipopt_hessian_approximation	limited-memory	Ipopt Hessian treatment for th
 solver	ipopt_bound_mult_init_method	mu-based	Ipopt bound-multiplier initialization consistent with a feasible calibrated start point.
 solver	ipopt_mu_init	1.0e-8	Initial Ipopt barrier parameter for the calibrated feasibility solve.
 solver	ipopt_tolerance	1.0e-8	Ipopt convergence tolerance used for calibration replication.
-solver	ipopt_acceptable_tolerance	1.0e-8	Ipopt acceptable convergence tolerance used for calibration replication.
+solver	ipopt_acceptable_tolerance	10.0	Ipopt overall acceptable-iteration threshold for the feasibility solve; original equation residuals remain subject to the separate validation tolerance below.
+solver	ipopt_acceptable_dual_infeasibility_tolerance	10.0	Ipopt acceptable dual-infeasibility threshold for a residual-validated feasibility solve.
+solver	ipopt_acceptable_constraint_violation_tolerance	1.0e-4	Ipopt acceptable scaled constraint violation; matches the independent original-equation validation threshold below.
+solver	ipopt_acceptable_complementarity_tolerance	10.0	Ipopt acceptable complementarity threshold for a residual-validated feasibility solve.
+solver	ipopt_acceptable_iterations	1	Number of consecutive acceptable feasibility iterations required before Ipopt returns an acceptable solution.
 diagnostics	baseline_absolute_residual_tolerance	1.0e-4	Absolute residual threshold for reporting the baseline replication. The physical METAL quantities are expressed in tonnes, so this corresponds to 0.1 kg and is far below the resolution of the source accounts.
+diagnostics	scaled_equation_residual_tolerance	1.0e-4	Maximum residual relative to the equation's calibrated scale used to validate policy-scenario feasibility across monetary and physical units.
+diagnostics	bound_violation_tolerance	1.0e-8	Maximum post-solution variable-bound violation in model units used alongside scaled equation residuals to validate policy-scenario feasibility independently of solver status.
 normalization	base_price	1.0	Common calibration price used to express the monetary SAM as model quantities at the reference point.
 trade	armington_elasticity	1.0	Initial Armington elasticity for observed product sourcing; retained as a sensitivity parameter until product-specific evidence is selected.
 trade	cet_transformation_elasticity	1.0	Initial CET transformation elasticity for observed product sales; retained as a sensitivity parameter until product-specific evidence is selected.
@@ -22,3 +28,7 @@ final_demand	household_codes	P3_S14;P3_S15	Final-demand codes aggregated into re
 final_demand	government_code	P3_S13	Final-demand code for regional government consumption.
 final_demand	fixed_investment_code	P51G	Final-demand code for gross fixed capital formation.
 final_demand	inventory_change_code	P5M	Final-demand code for changes in inventories, retained from gross output before trade allocation and financed through saving-investment rather than treated as goods-market demand or fixed investment.
+circular_routes	service_elasticity	1.0	Initial CES elasticity across new production, refurbishment, repair, and reuse within each regional-family service composite; varied later in sensitivity analysis.
+circular_routes	eol_allocation_elasticity	1.0	Initial CES elasticity allocating each family-specific end-of-life resource across European circular-route lines; varied later in sensitivity analysis.
+circular_routes	eol_productivity_elasticity	1.0	Initial elasticity of circular-route productivity with respect to its normalized end-of-life availability index; varied later in sensitivity analysis.
+circular_metal	material_substitution_elasticity	1.0	Initial CES elasticity between virgin BASIC_METALS and constructed recycled-metal inputs with equal material effectiveness; varied later in sensitivity analysis.

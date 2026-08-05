@@ -1,0 +1,7 @@
+key	value
+industry_count	175
+allocation_rule	proportional_basic_metals_intermediate_use
+total_recycled_metal_allocation_meur	697.9150554357394
+max_abs_row_gap	3.725290298461914e-9
+max_abs_column_gap	2.7939677238464355e-9
+max_constraint_residual	3.725290298461914e-9

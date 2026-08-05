@@ -2,6 +2,6 @@ key	value
 account_structure	industry_by_industry
 n_accounts	187
 n_industry_accounts	150
-max_abs_balance	2.0227162167429924e-8
-total_abs_balance	5.838203899097985e-8
+max_abs_balance	1.3882527127861977e-8
+total_abs_balance	4.2632534450176716e-8
 household_npish_rule	P3_S15 merged into households

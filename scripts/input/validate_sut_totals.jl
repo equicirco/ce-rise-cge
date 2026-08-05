@@ -41,6 +41,7 @@ const STAGE2_DIR = joinpath(ARTIFACT_DIR, "02_integrated_sut")
 const STAGE3_DIR = joinpath(ARTIFACT_DIR, "03_final_preparation")
 const STAGE4_DIR = joinpath(ARTIFACT_DIR, "04_balanced_sut")
 const STAGE4B_DIR = joinpath(ARTIFACT_DIR, "04b_symmetric_io")
+const STAGE4C_DIR = joinpath(ARTIFACT_DIR, "04c_recycled_metal_io")
 const STAGE5_DIR = joinpath(ARTIFACT_DIR, "05_core_sam")
 const STAGE6_DIR = joinpath(ARTIFACT_DIR, "06_closed_sam")
 const STAGE7_DIR = joinpath(ARTIFACT_DIR, "07_model_scaffold")
@@ -57,6 +58,9 @@ const STAGE2_VALIDATION = joinpath(STAGE2_DIR, "integrated_validation.tsv")
 const STAGE3_VALIDATION = joinpath(STAGE3_DIR, "final_validation.tsv")
 const STAGE4_VALIDATION = joinpath(STAGE4_DIR, "balancing_validation.tsv")
 const STAGE4B_VALIDATION = joinpath(STAGE4B_DIR, "symmetric_io_validation.tsv")
+const STAGE4C_VALIDATION = joinpath(STAGE4C_DIR, "symmetric_io_validation.tsv")
+const STAGE4C_ALLOCATION = joinpath(STAGE4C_DIR, "recycled_metal_allocation.tsv")
+const STAGE4C_SUMMARY = joinpath(STAGE4C_DIR, "recycled_metal_balance_summary.tsv")
 const STAGE5_VALIDATION = joinpath(STAGE5_DIR, "core_sam_validation.tsv")
 const STAGE6_VALIDATION = joinpath(STAGE6_DIR, "closed_sam_validation.tsv")
 const STAGE6_ACCOUNTS = joinpath(STAGE6_DIR, "closed_sam_accounts.tsv")
@@ -66,6 +70,7 @@ const STAGE6_MACRO_SUMMARY = joinpath(STAGE6_DIR, "closed_sam_macro_summary.tsv"
 const STAGE7_VALIDATION = joinpath(STAGE7_DIR, "stage7_validation.tsv")
 const STAGE8_VALIDATION = joinpath(STAGE8_DIR, "bundle_validation.tsv")
 const STAGE8_MODEL_CONFIGURATION = joinpath(STAGE8_DIR, "model_configuration.tsv")
+const STAGE8_SENSITIVITY_PARAMETER_GRID = joinpath(STAGE8_DIR, "sensitivity_parameter_grid.tsv")
 
 const TOL = 1.0e-8
 const LATE_TOL = 1.0e-6
@@ -414,6 +419,40 @@ function append_stage4b_checks!(rows)
     end
 end
 
+function append_stage4c_checks!(rows)
+    required_files = [STAGE4C_VALIDATION, STAGE4C_ALLOCATION, STAGE4C_SUMMARY]
+    missing = [path for path in required_files if !isfile(path)]
+    if !isempty(missing)
+        push!(rows, artifact_row("04c_recycled_metal_io", "required_files", "FAIL", STAGE4C_DIR,
+            join(missing, ";"), "all required files present",
+            "The recycled-metal allocation artifact set is incomplete."))
+        return
+    end
+    values = read_key_value_file(STAGE4C_VALIDATION)
+    summary = read_key_value_file(STAGE4C_SUMMARY)
+    checks = [
+        ("allocation_rule", get(values, "allocation_rule", "") == "proportional_basic_metals_intermediate_use",
+            get(values, "allocation_rule", "missing"), "proportional_basic_metals_intermediate_use",
+            "Recycled-metal inputs should be allocated proportionally across observed BASIC_METALS intermediate uses."),
+        ("allocated_value", parse_float(values, "total_recycled_metal_allocation_meur") > 0.0,
+            values["total_recycled_metal_allocation_meur"], "> 0",
+            "The constructed recycled-metal allocation should be positive."),
+        ("row_gap", abs(parse_float(values, "max_abs_row_gap")) <= LATE_TOL,
+            values["max_abs_row_gap"], "<= $(LATE_TOL)",
+            "EU industry output rows should remain balanced after reclassification."),
+        ("column_gap", abs(parse_float(values, "max_abs_column_gap")) <= LATE_TOL,
+            values["max_abs_column_gap"], "<= $(LATE_TOL)",
+            "EU industry input columns should remain balanced after reclassification."),
+        ("quadratic_constraint_residual", abs(parse_float(summary, "max_constraint_residual")) <= LATE_TOL,
+            summary["max_constraint_residual"], "<= $(LATE_TOL)",
+            "The quadratic minimum-distance balance must satisfy its fixed output and input identities."),
+    ]
+    for (check, ok, observed, expected, notes) in checks
+        push!(rows, artifact_row("04c_recycled_metal_io", check, artifact_status(ok),
+            STAGE4C_VALIDATION, observed, expected, notes))
+    end
+end
+
 function append_stage5_checks!(rows)
     if !isfile(STAGE5_VALIDATION)
         push!(rows, artifact_row("05_core_sam", "validation_file", "FAIL", STAGE5_VALIDATION, "missing", "file exists", "Stage-5 validation file is missing."))
@@ -519,6 +558,7 @@ function append_stage8_checks!(rows)
         STAGE8_MODEL_CONFIGURATION,
         STAGE8_VALIDATION,
         STAGE8_CIRCULAR_METAL_BASELINE,
+        STAGE8_SENSITIVITY_PARAMETER_GRID,
     ]
     missing = [path for path in required_files if !isfile(path)]
     if !isempty(missing)
@@ -574,6 +614,47 @@ function append_stage8_checks!(rows)
         residual_tolerance,
         "strictly positive",
         "The baseline residual-reporting tolerance must account for the tonne-scaled physical METAL equations.",
+    ))
+
+    sensitivity_rows = read_tsv(STAGE8_SENSITIVITY_PARAMETER_GRID)
+    sensitivity_header_ok = !isempty(sensitivity_rows) &&
+        sensitivity_rows[1] == ["component", "key", "sequence", "value", "description"]
+    sensitivity_values = sensitivity_header_ok ? sensitivity_rows[2:end] : Vector{Vector{String}}()
+    sensitivity_by_parameter = Dict{Tuple{String,String},Vector{Float64}}()
+    sensitivity_parse_ok = true
+    for row in sensitivity_values
+        if length(row) != 5
+            sensitivity_parse_ok = false
+            continue
+        end
+        value = tryparse(Float64, row[4])
+        if value === nothing || value <= 0.0
+            sensitivity_parse_ok = false
+            continue
+        end
+        push!(get!(sensitivity_by_parameter, (row[1], row[2]), Float64[]), value)
+    end
+    expected_sensitivity_parameters = Set([
+        ("trade", "armington_elasticity"),
+        ("trade", "cet_transformation_elasticity"),
+        ("circular_routes", "service_elasticity"),
+        ("circular_routes", "eol_allocation_elasticity"),
+        ("circular_routes", "eol_productivity_elasticity"),
+        ("circular_metal", "material_substitution_elasticity"),
+    ])
+    sensitivity_ladder = [0.5, 1.0, 2.0]
+    sensitivity_ok = sensitivity_header_ok && sensitivity_parse_ok &&
+        Set(keys(sensitivity_by_parameter)) == expected_sensitivity_parameters &&
+        all(sort(parameter_values) == sensitivity_ladder
+            for parameter_values in Base.values(sensitivity_by_parameter))
+    push!(rows, artifact_row(
+        "08_six_region_bundle",
+        "behavioural_sensitivity_grid",
+        artifact_status(sensitivity_ok),
+        STAGE8_SENSITIVITY_PARAMETER_GRID,
+        "parameters=$(length(sensitivity_by_parameter)); rows=$(length(sensitivity_values))",
+        "six parameters; 18 rows; common values 0.5;1.0;2.0",
+        "The policy analysis must use one data-defined shared behavioural ladder across trade and circular-economy response parameters.",
     ))
 
     circular_metal_rows = read_tsv(STAGE8_CIRCULAR_METAL_BASELINE)
@@ -689,6 +770,7 @@ function artifact_report_rows()
     append_stage_table_status!(rows, "03_final_preparation", STAGE3_VALIDATION, "final_table")
     append_stage4_checks!(rows)
     append_stage4b_checks!(rows)
+    append_stage4c_checks!(rows)
     append_stage5_checks!(rows)
     append_stage6_checks!(rows)
     append_stage7_checks!(rows)

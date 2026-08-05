@@ -8,6 +8,7 @@ observed physical metal transformations with values supplied by the profile.
 
 const MULTI_REGION_BLOCK_KINDS = (
     :production,
+    :circular_policy,
     :physical_quantity_links,
     :factor_availability,
     :price_index,
@@ -36,6 +37,8 @@ end
 
 function _initial_value_parameters(outline::MultiRegionOutline,
     calibration::MultiRegionCalibration,
+    circular_routes::CircularRouteCalibration,
+    scenario::PolicyScenario,
     circular_metal::Union{Nothing,CircularMetalProfile} = nothing)
     base_price = calibration_option_number(calibration.bundle, "normalization", "base_price")
     start = Dict{Symbol,Float64}()
@@ -79,7 +82,7 @@ function _initial_value_parameters(outline::MultiRegionOutline,
         end
         start[JCGEBlocks.global_var(:UU, region)] = prod(
             calibration.household_demand[good]^calibration.household_share[good]
-            for good in activities
+            for good in activities if calibration.household_demand[good] > 0.0
         )
         start[JCGEBlocks.global_var(:P_HH, region)] = base_price
         start[JCGEBlocks.global_var(:Td, region)] = calibration.direct_tax_value[region]
@@ -115,13 +118,18 @@ function _initial_value_parameters(outline::MultiRegionOutline,
             "circular-metal-initialization",
             outline,
             calibration,
-            baseline_scenario(),
+            scenario,
             copy(calibration.bundle.physical_coefficients),
             copy(calibration.bundle.physical_quantities),
+            circular_routes,
             circular_metal,
         )
         merge!(start, circular_metal_initial_values(profile_model, circular_metal))
+        material = circular_material_blocks(profile_model, circular_routes)
+        merge!(start, circular_material_initial_values(profile_model, material.structure))
     end
+    merge!(start, circular_route_initial_values(outline, calibration, circular_routes))
+    scenario.name === :baseline || merge!(start, circular_policy_initial_values(outline))
     return (start = start,)
 end
 
@@ -136,11 +144,11 @@ are assembled.
 function multi_region_blocks(outline::MultiRegionOutline,
     calibration::MultiRegionCalibration,
     scenario::PolicyScenario;
+    circular_routes::CircularRouteCalibration = circular_route_calibration(outline, calibration),
     circular_metal::Union{Nothing,CircularMetalProfile} = nothing)
     calibration.bundle.name == outline.bundle.name ||
         error("Model outline and calibration bundle differ.")
-    scenario.name === :baseline ||
-        error("Policy scenarios require the circular-economy extension blocks, which are not yet assembled.")
+    validate_policy_scenario(scenario, outline)
 
     regions = outline.regions
     goods_by_region = _regional_goods(outline)
@@ -155,21 +163,6 @@ function multi_region_blocks(outline::MultiRegionOutline,
         ax = calibration.intermediate_coefficient,
         positive_lower = positive_lower,
     )
-    production = Any[
-        JCGEBlocks.production(
-            Symbol(:production_, region),
-            outline.industries_by_region[region],
-            outline.factors_by_region[region],
-            outline.industries_by_region[region];
-            form = :cd_leontief,
-            params = production_params,
-        )
-        for region in regions
-    ]
-    physical_quantity_links = observed_physical_quantity_links(
-        outline.bundle,
-        calibration,
-    )
     profile_model = circular_metal === nothing ? nothing : MultiRegionModelSpec(
         "circular-metal-blocks",
         outline,
@@ -177,7 +170,41 @@ function multi_region_blocks(outline::MultiRegionOutline,
         scenario,
         copy(outline.bundle.physical_coefficients),
         copy(outline.bundle.physical_quantities),
+        circular_routes,
         circular_metal,
+    )
+    material = circular_metal === nothing ? nothing :
+        circular_material_blocks(profile_model, circular_routes)
+    material_activities = material === nothing ? Set{Symbol}() : material.structure.activities
+    policy_active = scenario.name !== :baseline
+    circular = circular_route_blocks(outline, calibration, circular_routes;
+        scenario=scenario,
+        include_policy_transfer=policy_active,
+        excluded_eol_activities=material_activities)
+    material === nothing && error(
+        "The circular-service model requires the calibrated circular-metal structure.")
+    policy = policy_active ? circular_policy_blocks(outline, calibration,
+        circular_routes, material.structure, scenario) : nothing
+    eol_activities = Set(keys(circular_routes.eol_reference_total))
+    standard_production = Any[]
+    for region in regions
+        activities = [activity for activity in outline.industries_by_region[region]
+            if !(activity in eol_activities) && !(activity in material_activities)]
+        isempty(activities) && continue
+        push!(standard_production, JCGEBlocks.production(
+            Symbol(:production_, region),
+            activities,
+            outline.factors_by_region[region],
+            outline.industries_by_region[region];
+            form = :cd_leontief,
+            params = production_params,
+        ))
+    end
+    production = vcat(standard_production, circular.eol_production,
+        material === nothing ? Any[] : material.production)
+    physical_quantity_links = observed_physical_quantity_links(
+        outline.bundle,
+        calibration,
     )
     circular_metal_extensions = circular_metal === nothing ? Any[] :
         circular_metal_blocks(profile_model, circular_metal)
@@ -186,19 +213,6 @@ function multi_region_blocks(outline::MultiRegionOutline,
     circular_metal_market = circular_metal === nothing ? Any[] :
         circular_metal_extensions[(end - 1):end]
 
-    price_index = JCGEBlocks.regional_price_index(
-        :household_price_index,
-        regions,
-        goods_by_region;
-        price_var = :pq,
-        index_var = :P_HH,
-        common_index_var = :P_HH_COMMON,
-        params = (
-            weight = calibration.price_weight,
-            common_weight = calibration.common_price_weight,
-            positive_lower = positive_lower,
-        ),
-    )
     factor_availability = JCGEBlocks.regional_factor_availability(
         :regional_factor_availability,
         regions,
@@ -213,31 +227,33 @@ function multi_region_blocks(outline::MultiRegionOutline,
             positive_lower = positive_lower,
         ),
     )
-    private_saving = JCGEBlocks.regional_private_saving_income(
-        :regional_private_saving,
-        regions,
-        outline.factors_by_region,
-        outline.industries_by_region;
-        factor_input = :F,
-        factor_price = :pf,
-        saving_var = :Sp,
-        direct_tax_var = :Td,
-        params = (ssp = calibration.private_saving_share, positive_lower = positive_lower),
-    )
-    household_demand = JCGEBlocks.regional_household_income_demand(
-        :regional_household_demand,
-        regions,
-        goods_by_region,
-        outline.factors_by_region,
-        outline.industries_by_region;
-        factor_input = :F,
-        factor_price = :pf,
-        composite_price = :pq,
-        consumption_var = :Xp,
-        saving_var = :Sp,
-        direct_tax_var = :Td,
-        params = (alpha = calibration.household_demand_share, positive_lower = positive_lower),
-    )
+    private_saving = policy_active ? policy.private_saving :
+        JCGEBlocks.regional_private_saving_income(
+            :regional_private_saving,
+            regions,
+            outline.factors_by_region,
+            outline.industries_by_region;
+            factor_input = :F,
+            factor_price = :pf,
+            saving_var = :Sp,
+            direct_tax_var = :Td,
+            params = (ssp = calibration.private_saving_share, positive_lower = positive_lower),
+        )
+    household_demand = policy_active ? policy.household :
+        JCGEBlocks.regional_household_income_demand(
+            :regional_household_demand,
+            regions,
+            circular_routes.nonservice_goods_by_region,
+            outline.factors_by_region,
+            outline.industries_by_region;
+            factor_input = :F,
+            factor_price = :pf,
+            composite_price = :pq,
+            consumption_var = :Xp,
+            saving_var = :Sp,
+            direct_tax_var = :Td,
+            params = (alpha = calibration.household_demand_share, positive_lower = positive_lower),
+        )
     government_demand = JCGEBlocks.regional_government_demand(
         :regional_government_demand,
         regions,
@@ -336,14 +352,9 @@ function multi_region_blocks(outline::MultiRegionOutline,
             positive_lower = positive_lower,
         ),
     )
-    utility = JCGEBlocks.utility_regional(
-        :regional_household_utility,
-        goods_by_region,
-        (alpha = calibration.household_share,),
-    )
     initial_values = JCGEBlocks.initial_values(
         :calibrated_initial_values,
-        _initial_value_parameters(outline, calibration, circular_metal),
+        _initial_value_parameters(outline, calibration, circular_routes, scenario, circular_metal),
     )
     numeraire = JCGEBlocks.numeraire(
         :numeraire,
@@ -354,12 +365,15 @@ function multi_region_blocks(outline::MultiRegionOutline,
 
     return (
         production = production,
+        circular_policy = policy,
+        circular_routes = circular,
+        material_composite = material,
         physical_quantity_links = physical_quantity_links,
         circular_metal = circular_metal_extensions,
         circular_metal_physical = circular_metal_physical,
         circular_metal_market = circular_metal_market,
         factor_availability = factor_availability,
-        price_index = price_index,
+        price_index = circular.price_index,
         private_saving = private_saving,
         household_demand = household_demand,
         government_demand = government_demand,
@@ -368,7 +382,7 @@ function multi_region_blocks(outline::MultiRegionOutline,
         external_account = external_account,
         investment_pool = investment_pool,
         market_clearing = market_clearing,
-        utility = utility,
+        utility = circular.utility,
         initial_values = initial_values,
         numeraire = numeraire,
     )

@@ -1,0 +1,21 @@
+instrument	sequence	wedge	description
+virgin_metal_tax	1	0.0025	EU-wide primary-BASIC_METALS tax of 0.25 percent on eligible CE-RISE new-product activities.
+virgin_metal_tax	2	0.005	EU-wide primary-BASIC_METALS tax of 0.5 percent on eligible CE-RISE new-product activities.
+virgin_metal_tax	3	0.01	EU-wide primary-BASIC_METALS tax of 1 percent on eligible CE-RISE new-product activities.
+virgin_metal_tax	4	0.02	EU-wide primary-BASIC_METALS tax of 2 percent on eligible CE-RISE new-product activities.
+recycling_support	1	-0.0025	EU-wide recycled-METAL support of 0.25 percent on eligible CE-RISE material inputs.
+recycling_support	2	-0.005	EU-wide recycled-METAL support of 0.5 percent on eligible CE-RISE material inputs.
+recycling_support	3	-0.01	EU-wide recycled-METAL support of 1 percent on eligible CE-RISE material inputs.
+recycling_support	4	-0.02	EU-wide recycled-METAL support of 2 percent on eligible CE-RISE material inputs.
+refurbishment_support	1	-0.0025	EU-wide refurbishment-service support of 0.25 percent for CE-RISE households.
+refurbishment_support	2	-0.005	EU-wide refurbishment-service support of 0.5 percent for CE-RISE households.
+refurbishment_support	3	-0.01	EU-wide refurbishment-service support of 1 percent for CE-RISE households.
+refurbishment_support	4	-0.02	EU-wide refurbishment-service support of 2 percent for CE-RISE households.
+repair_support	1	-0.0025	EU-wide repair-service support of 0.25 percent for CE-RISE households.
+repair_support	2	-0.005	EU-wide repair-service support of 0.5 percent for CE-RISE households.
+repair_support	3	-0.01	EU-wide repair-service support of 1 percent for CE-RISE households.
+repair_support	4	-0.02	EU-wide repair-service support of 2 percent for CE-RISE households.
+reuse_support	1	-0.0025	EU-wide reuse-service support of 0.25 percent for CE-RISE households.
+reuse_support	2	-0.005	EU-wide reuse-service support of 0.5 percent for CE-RISE households.
+reuse_support	3	-0.01	EU-wide reuse-service support of 1 percent for CE-RISE households.
+reuse_support	4	-0.02	EU-wide reuse-service support of 2 percent for CE-RISE households.

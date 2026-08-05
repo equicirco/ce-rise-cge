@@ -13,7 +13,7 @@ the six regional investment accounts.
 const ROOT_DIR = normpath(joinpath(@__DIR__, "..", ".."))
 const STAGE6_DIR = joinpath(ROOT_DIR, "data", "artifacts", "06_closed_sam")
 const STAGE7_DIR = joinpath(ROOT_DIR, "data", "artifacts", "07_model_scaffold")
-const STAGE4B_DIR = joinpath(ROOT_DIR, "data", "artifacts", "04b_symmetric_io")
+const STAGE4C_DIR = joinpath(ROOT_DIR, "data", "artifacts", "04c_recycled_metal_io")
 const MAPPING_DIR = joinpath(ROOT_DIR, "data", "mappings")
 const OUTDIR = joinpath(ROOT_DIR, "data", "artifacts", "08_six_region_bundle")
 
@@ -26,8 +26,10 @@ const IN_PHYSICAL_BRIDGE = joinpath(STAGE7_DIR, "physical_quantity_bridge_templa
 const IN_PHYSICAL_COEFFS = joinpath(STAGE7_DIR, "physical_coefficient_template.tsv")
 const IN_CIRCULAR_METAL_BASELINE = joinpath(MAPPING_DIR, "circular_metal_baseline.tsv")
 const IN_MODEL_CONFIGURATION = joinpath(MAPPING_DIR, "model_configuration.tsv")
-const IN_IO_INTERMEDIATE = joinpath(STAGE4B_DIR, "industry_by_industry_intermediate.tsv")
-const IN_IO_FINAL = joinpath(STAGE4B_DIR, "industry_by_final_demand.tsv")
+const IN_POLICY_WEDGE_GRID = joinpath(MAPPING_DIR, "policy_wedge_grid.tsv")
+const IN_SENSITIVITY_PARAMETER_GRID = joinpath(MAPPING_DIR, "sensitivity_parameter_grid.tsv")
+const IN_IO_INTERMEDIATE = joinpath(STAGE4C_DIR, "industry_by_industry_intermediate.tsv")
+const IN_IO_FINAL = joinpath(STAGE4C_DIR, "industry_by_final_demand.tsv")
 
 const OUT_SAM = joinpath(OUTDIR, "sam.csv")
 const OUT_SETS = joinpath(OUTDIR, "sets.csv")
@@ -44,6 +46,8 @@ const OUT_PHYSICAL_BRIDGE = joinpath(OUTDIR, "regional_physical_quantity_bridge_
 const OUT_PHYSICAL_COEFFS = joinpath(OUTDIR, "regional_physical_coefficient_template.tsv")
 const OUT_CIRCULAR_METAL_BASELINE = joinpath(OUTDIR, "regional_circular_metal_baseline.tsv")
 const OUT_MODEL_CONFIGURATION = joinpath(OUTDIR, "model_configuration.tsv")
+const OUT_POLICY_WEDGE_GRID = joinpath(OUTDIR, "policy_wedge_grid.tsv")
+const OUT_SENSITIVITY_PARAMETER_GRID = joinpath(OUTDIR, "sensitivity_parameter_grid.tsv")
 const OUT_PRODUCT_USE_REGISTRY = joinpath(OUTDIR, "regional_product_use_registry.tsv")
 const OUT_TRADE_REGISTRY = joinpath(OUTDIR, "regional_trade_registry.tsv")
 
@@ -651,6 +655,8 @@ function main()
     _, circular_metal_baseline_rows = table_rows(IN_CIRCULAR_METAL_BASELINE)
     quantity_header, quantity_rows = table_rows(IN_PHYSICAL_BRIDGE)
     configuration_header, configuration_rows = table_rows(IN_MODEL_CONFIGURATION)
+    policy_grid_header, policy_grid_rows = table_rows(IN_POLICY_WEDGE_GRID)
+    sensitivity_grid_header, sensitivity_grid_rows = table_rows(IN_SENSITIVITY_PARAMETER_GRID)
     _, io_intermediate_rows = table_rows(IN_IO_INTERMEDIATE)
     _, io_final_rows = table_rows(IN_IO_FINAL)
     families = [row["family"] for row in family_rows]
@@ -688,6 +694,8 @@ function main()
         ["coefficient_id", "value", "physical_unit", "calibration_basis", "notes"],
         circular_metal_baseline_table)
     write_tsv(OUT_MODEL_CONFIGURATION, configuration_header, [[row[key] for key in configuration_header] for row in configuration_rows])
+    write_tsv(OUT_POLICY_WEDGE_GRID, policy_grid_header, [[row[key] for key in policy_grid_header] for row in policy_grid_rows])
+    write_tsv(OUT_SENSITIVITY_PARAMETER_GRID, sensitivity_grid_header, [[row[key] for key in sensitivity_grid_header] for row in sensitivity_grid_rows])
     write_tsv(OUT_PRODUCT_USE_REGISTRY, ["product", "origin", "destination", "use_kind", "use_target", "value_meur"], product_use_table)
     write_tsv(OUT_TRADE_REGISTRY, ["product", "origin", "destination", "intermediate_value_meur", "household_value_meur", "government_value_meur", "fixed_investment_value_meur", "inventory_change_value_meur", "marketed_value_meur"], trade_table)
 

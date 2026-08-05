@@ -18,6 +18,8 @@ struct CalibrationBundle
     physical_quantities::DataFrame
     physical_flows::DataFrame
     configuration::DataFrame
+    policy_wedge_grid::DataFrame
+    sensitivity_parameter_grid::DataFrame
     product_use_registry::DataFrame
     trade_registry::DataFrame
 end
@@ -58,6 +60,8 @@ function load_calibration_bundle(name::Symbol = :eu_2016_six_region; data_dir::A
         _load_tsv(joinpath(dir, "regional_physical_quantity_bridge_template.tsv")),
         _load_tsv(joinpath(dir, "regional_observed_physical_flows.tsv")),
         _load_tsv(joinpath(dir, "model_configuration.tsv")),
+        _load_tsv(joinpath(dir, "policy_wedge_grid.tsv")),
+        _load_tsv(joinpath(dir, "sensitivity_parameter_grid.tsv")),
         _load_tsv(joinpath(dir, "regional_product_use_registry.tsv")),
         _load_tsv(joinpath(dir, "regional_trade_registry.tsv")),
     )
@@ -130,6 +134,8 @@ function calibration_summary(bundle::CalibrationBundle = default_calibration_bun
         quantity_bridge_rows = nrow(bundle.physical_quantities),
         observed_physical_flow_rows = nrow(bundle.physical_flows),
         configuration_rows = nrow(bundle.configuration),
+        policy_wedge_rows = nrow(bundle.policy_wedge_grid),
+        sensitivity_parameter_rows = nrow(bundle.sensitivity_parameter_grid),
         product_use_rows = nrow(bundle.product_use_registry),
         trade_route_rows = nrow(bundle.trade_registry),
     )

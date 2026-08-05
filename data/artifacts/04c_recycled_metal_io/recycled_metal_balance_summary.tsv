@@ -1,0 +1,13 @@
+key	value
+allocation_scope	destination_region_proportional_basic_metals_intermediate_use
+total_recycled_metal_allocation_meur	697.9150554357394
+total_primary_metal_reduction_meur	697.9150554357394
+fixed_constructed_intermediate_cells	1804
+free_balancing_cells	27838
+active_balancing_cells	27838
+active_set_iterations	1
+direct_reclassification_l1_meur	1610.1973842779203
+balancing_adjustment_l1_meur	1691.821211384654
+max_constraint_residual	3.725290298461914e-9
+max_abs_row_gap	3.725290298461914e-9
+max_abs_column_gap	2.7939677238464355e-9

@@ -1,0 +1,176 @@
+region	product_sector	product_label	output_meur
+DE	AGRI_FOOD	Agriculture and food	228497.62080696906
+DE	BASIC_METALS	Basic metals	86551.6060197207
+DE	CONSTRUCTION	Construction	302067.7552259
+DE	EXTRACTIVE	Extractive industries	9855.45501042417
+DE	INC_EE	Incineration and disposal activities for CE-RISE chains	76.55646662587444
+DE	METAL_COMPONENTS	Metal components and fabricated metals	127251.4229928182
+DE	NEW_ELMA	New CE-RISE electrical equipment	63189.84479246072
+DE	NEW_OFMA	New CE-RISE office machinery and computers	2.047232177917585
+DE	NEW_RATV	New CE-RISE communication and consumer electronics	51254.210696410526
+DE	OTHER_MANUFACTURING	Other manufacturing	1.1381809483176738e6
+DE	OTHER_SERVICES	Other market services	1.9426548091195363e6
+DE	PUBLIC_SOCIAL	Public and social services	769582.2527764399
+DE	REC_EE	Recycling and recovery activities for CE-RISE chains	205.31817958273632
+DE	REF_ELMA	Refurbishment route for ELMA	10077.939077536565
+DE	REF_OFMA	Refurbishment route for OFMA	0.637918190661056
+DE	REF_RATV	Refurbishment route for RATV	9745.764987969802
+DE	REP_ELMA	Repair activities linked to ELMA	63.75991870913518
+DE	REP_OFMA	Repair activities linked to OFMA	0.22666086194168053
+DE	REP_RATV	Repair activities linked to RATV	158.16310685247217
+DE	REU_ELMA	Reuse route for ELMA	3673.5029528990253
+DE	REU_OFMA	Reuse route for OFMA	0.4874440249697077
+DE	REU_RATV	Reuse route for RATV	4570.287666374783
+DE	TRADE	Trade services	526293.1647791292
+DE	TRANSPORT	Transport and storage	338926.18275073206
+DE	UTIL_WASTE	Utilities, water, and residual waste services	163884.0490999793
+FR	AGRI_FOOD	Agriculture and food	233558.00133913945
+FR	BASIC_METALS	Basic metals	24587.9
+FR	CONSTRUCTION	Construction	290460.8368387787
+FR	EXTRACTIVE	Extractive industries	5056.599168085409
+FR	INC_EE	Incineration and disposal activities for CE-RISE chains	117.59037641065754
+FR	METAL_COMPONENTS	Metal components and fabricated metals	51740.83732565002
+FR	NEW_ELMA	New CE-RISE electrical equipment	15160.435976333916
+FR	NEW_OFMA	New CE-RISE office machinery and computers	0.9332640583911452
+FR	NEW_RATV	New CE-RISE communication and consumer electronics	16552.343362690695
+FR	OTHER_MANUFACTURING	Other manufacturing	444694.6558216828
+FR	OTHER_SERVICES	Other market services	1.5307112457679799e6
+FR	PUBLIC_SOCIAL	Public and social services	564292.8235936762
+FR	REC_EE	Recycling and recovery activities for CE-RISE chains	140.99042286216428
+FR	REF_ELMA	Refurbishment route for ELMA	2350.658538537479
+FR	REF_OFMA	Refurbishment route for OFMA	0.20594306200012574
+FR	REF_RATV	Refurbishment route for RATV	2521.985148421764
+FR	REP_ELMA	Repair activities linked to ELMA	38.55899999999999
+FR	REP_OFMA	Repair activities linked to OFMA	0.002175607089118914
+FR	REP_RATV	Repair activities linked to RATV	39.43382439291091
+FR	REU_ELMA	Reuse route for ELMA	479.2964370537548
+FR	REU_OFMA	Reuse route for OFMA	0.17785183500832213
+FR	REU_RATV	Reuse route for RATV	457.6749935406912
+FR	TRADE	Trade services	386911.73
+FR	TRANSPORT	Transport and storage	199502.35263165913
+FR	UTIL_WASTE	Utilities, water, and residual waste services	147053.22119854245
+IT	AGRI_FOOD	Agriculture and food	185622.80055029216
+IT	BASIC_METALS	Basic metals	47020.24997890593
+IT	CONSTRUCTION	Construction	177606.67887253722
+IT	EXTRACTIVE	Extractive industries	7023.558293813482
+IT	INC_EE	Incineration and disposal activities for CE-RISE chains	187.87741819761214
+IT	METAL_COMPONENTS	Metal components and fabricated metals	85776.68638675564
+IT	NEW_ELMA	New CE-RISE electrical equipment	25223.096265101023
+IT	NEW_OFMA	New CE-RISE office machinery and computers	3371.44751962149
+IT	NEW_RATV	New CE-RISE communication and consumer electronics	11739.41715684193
+IT	OTHER_MANUFACTURING	Other manufacturing	544043.7681240678
+IT	OTHER_SERVICES	Other market services	1.0907221593648111e6
+IT	PUBLIC_SOCIAL	Public and social services	362743.7882849448
+IT	REC_EE	Recycling and recovery activities for CE-RISE chains	406.27224105945635
+IT	REF_ELMA	Refurbishment route for ELMA	2653.1097410264583
+IT	REF_OFMA	Refurbishment route for OFMA	300.5318491305853
+IT	REF_RATV	Refurbishment route for RATV	1046.3007930579583
+IT	REP_ELMA	Repair activities linked to ELMA	33.19653347193116
+IT	REP_OFMA	Repair activities linked to OFMA	8.402923692066846
+IT	REP_RATV	Repair activities linked to RATV	28.824855949859145
+IT	REU_ELMA	Reuse route for ELMA	1174.2580199885044
+IT	REU_OFMA	Reuse route for OFMA	139.358150850544
+IT	REU_RATV	Reuse route for RATV	485.1392382545608
+IT	TRADE	Trade services	319101.95186106337
+IT	TRANSPORT	Transport and storage	180354.46387239345
+IT	UTIL_WASTE	Utilities, water, and residual waste services	122313.87970417077
+PL	AGRI_FOOD	Agriculture and food	84065.5810679265
+PL	BASIC_METALS	Basic metals	13972.186140818523
+PL	CONSTRUCTION	Construction	83292.7633941077
+PL	EXTRACTIVE	Extractive industries	7708.541040714822
+PL	INC_EE	Incineration and disposal activities for CE-RISE chains	27.199036508751533
+PL	METAL_COMPONENTS	Metal components and fabricated metals	24276.21261595028
+PL	NEW_ELMA	New CE-RISE electrical equipment	9719.70065965101
+PL	NEW_OFMA	New CE-RISE office machinery and computers	150.35003507928795
+PL	NEW_RATV	New CE-RISE communication and consumer electronics	5720.818943049959
+PL	OTHER_MANUFACTURING	Other manufacturing	160072.47519685878
+PL	OTHER_SERVICES	Other market services	197605.406135086
+PL	PUBLIC_SOCIAL	Public and social services	78134.85210683075
+PL	REC_EE	Recycling and recovery activities for CE-RISE chains	16.410255084251702
+PL	REF_ELMA	Refurbishment route for ELMA	964.3727013895693
+PL	REF_OFMA	Refurbishment route for OFMA	25.73156021486013
+PL	REF_RATV	Refurbishment route for RATV	977.3307135797967
+PL	REP_ELMA	Repair activities linked to ELMA	32.61763582578702
+PL	REP_OFMA	Repair activities linked to OFMA	0.42448626585730487
+PL	REP_RATV	Repair activities linked to RATV	2.967131422218471
+PL	REU_ELMA	Reuse route for ELMA	479.01629507103166
+PL	REU_OFMA	Reuse route for OFMA	8.502710501956825
+PL	REU_RATV	Reuse route for RATV	319.92900013173346
+PL	TRADE	Trade services	93472.54471461743
+PL	TRANSPORT	Transport and storage	62449.10451165764
+PL	UTIL_WASTE	Utilities, water, and residual waste services	32184.52691165551
+REU	AGRI_FOOD	Agriculture and food	1.1933850039759108e6
+REU	BASIC_METALS	Basic metals	252677.1533979794
+REU	CONSTRUCTION	Construction	1.4240220610656051e6
+REU	EXTRACTIVE	Extractive industries	299769.74484598555
+REU	INC_EE	Incineration and disposal activities for CE-RISE chains	379.2763557022043
+REU	METAL_COMPONENTS	Metal components and fabricated metals	254545.9695993948
+REU	NEW_ELMA	New CE-RISE electrical equipment	102345.3906233059
+REU	NEW_OFMA	New CE-RISE office machinery and computers	9003.025254499564
+REU	NEW_RATV	New CE-RISE communication and consumer electronics	160394.68474834875
+REU	OTHER_MANUFACTURING	Other manufacturing	2.4434850230273153e6
+REU	OTHER_SERVICES	Other market services	6.475189781890995e6
+REU	PUBLIC_SOCIAL	Public and social services	2.3370533514318536e6
+REU	REC_EE	Recycling and recovery activities for CE-RISE chains	113.23918662254928
+REU	REF_ELMA	Refurbishment route for ELMA	16021.662609657042
+REU	REF_OFMA	Refurbishment route for OFMA	2396.209352525445
+REU	REF_RATV	Refurbishment route for RATV	42655.9016460846
+REU	REP_ELMA	Repair activities linked to ELMA	96.65367936195601
+REU	REP_OFMA	Repair activities linked to OFMA	16.958349206727533
+REU	REP_RATV	Repair activities linked to RATV	292.77634378300377
+REU	REU_ELMA	Reuse route for ELMA	4378.578221572044
+REU	REU_OFMA	Reuse route for OFMA	676.1483755177061
+REU	REU_RATV	Reuse route for RATV	12030.687812158292
+REU	TRADE	Trade services	1.9539704207322677e6
+REU	TRANSPORT	Transport and storage	1.1673415646549203e6
+REU	UTIL_WASTE	Utilities, water, and residual waste services	749590.6798194229
+ROW	AGRI_FOOD	Agriculture and food	9.173221002120871e6
+ROW	BASIC_METALS	Basic metals	2.8604991757327463e6
+ROW	CONSTRUCTION	Construction	6.859992503694977e6
+ROW	EXTRACTIVE	Extractive industries	3.5837521457155696e6
+ROW	INC_EE	Incineration and disposal activities for CE-RISE chains	2132.2277695925413
+ROW	METAL_COMPONENTS	Metal components and fabricated metals	1.334725488139749e6
+ROW	NEW_ELMA	New CE-RISE electrical equipment	995547.2804381305
+ROW	NEW_OFMA	New CE-RISE office machinery and computers	399886.74671677477
+ROW	NEW_RATV	New CE-RISE communication and consumer electronics	1.440914643490844e6
+ROW	OTHER_MANUFACTURING	Other manufacturing	1.9130679701043244e7
+ROW	OTHER_SERVICES	Other market services	2.656505144587523e7
+ROW	PUBLIC_SOCIAL	Public and social services	1.130344480779438e7
+ROW	REC_EE	Recycling and recovery activities for CE-RISE chains	5.732910734915967
+ROW	REF_ELMA	Refurbishment route for ELMA	73326.10068848205
+ROW	REF_OFMA	Refurbishment route for OFMA	25907.61534770129
+ROW	REF_RATV	Refurbishment route for RATV	93492.52748483414
+ROW	REP_ELMA	Repair activities linked to ELMA	928.8602993216585
+ROW	REP_OFMA	Repair activities linked to OFMA	580.414607014097
+ROW	REP_RATV	Repair activities linked to RATV	2093.811232242206
+ROW	REU_ELMA	Reuse route for ELMA	19419.94752161768
+ROW	REU_OFMA	Reuse route for OFMA	9722.84503895252
+ROW	REU_RATV	Reuse route for RATV	35086.41875507681
+ROW	TRADE	Trade services	8.1803967716229195e6
+ROW	TRANSPORT	Transport and storage	4.2397021201692745e6
+ROW	UTIL_WASTE	Utilities, water, and residual waste services	2.887894387789694e6
+SK	AGRI_FOOD	Agriculture and food	7447.424955555535
+SK	BASIC_METALS	Basic metals	4162.359176222576
+SK	CONSTRUCTION	Construction	13902.561600008126
+SK	EXTRACTIVE	Extractive industries	466.4862006279478
+SK	INC_EE	Incineration and disposal activities for CE-RISE chains	3.6237936538664397
+SK	METAL_COMPONENTS	Metal components and fabricated metals	5300.294047679637
+SK	NEW_ELMA	New CE-RISE electrical equipment	2049.3634210735618
+SK	NEW_OFMA	New CE-RISE office machinery and computers	0.3351141682007358
+SK	NEW_RATV	New CE-RISE communication and consumer electronics	4049.7054267585204
+SK	OTHER_MANUFACTURING	Other manufacturing	48172.72530011857
+SK	OTHER_SERVICES	Other market services	43917.213202271945
+SK	PUBLIC_SOCIAL	Public and social services	15078.065236511846
+SK	REC_EE	Recycling and recovery activities for CE-RISE chains	1.1636314723609251
+SK	REF_ELMA	Refurbishment route for ELMA	431.7052894275188
+SK	REF_OFMA	Refurbishment route for OFMA	0.3756005572181529
+SK	REF_RATV	Refurbishment route for RATV	688.8011172634733
+SK	REP_ELMA	Repair activities linked to ELMA	0.7163947626932197
+SK	REP_OFMA	Repair activities linked to OFMA	0.2919690901893082
+SK	REP_RATV	Repair activities linked to RATV	0.6509595921798869
+SK	REU_ELMA	Reuse route for ELMA	252.8167442561229
+SK	REU_OFMA	Reuse route for OFMA	0.3468802470835074
+SK	REU_RATV	Reuse route for RATV	343.664326866622
+SK	TRADE	Trade services	14380.033336187365
+SK	TRANSPORT	Transport and storage	10700.897610366534
+SK	UTIL_WASTE	Utilities, water, and residual waste services	11655.707665260305

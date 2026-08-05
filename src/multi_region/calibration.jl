@@ -314,7 +314,7 @@ function multi_region_calibration(bundle::CalibrationBundle = default_calibratio
         household_total[region] = total
         for good in goods
             demand = get(household_demand, good, 0.0) / base_price
-            demand > 0.0 || error("Household demand for $(good) is not positive.")
+            demand >= 0.0 || error("Household demand for $(good) is negative.")
             household_demand[good] = demand
             household_share[good] = demand / total
             household_demand_share[(good, region)] = household_share[good]

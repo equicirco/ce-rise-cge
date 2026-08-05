@@ -10,7 +10,7 @@ The global investment-pool account is included for the stage-6 closure.
 """
 
 const ROOT_DIR = normpath(joinpath(@__DIR__, "..", ".."))
-const IO_DIR = joinpath(ROOT_DIR, "data", "artifacts", "04b_symmetric_io")
+const IO_DIR = joinpath(ROOT_DIR, "data", "artifacts", "04c_recycled_metal_io")
 const SUT_DIR = joinpath(ROOT_DIR, "data", "artifacts", "04_balanced_sut")
 const SECTOR_DIR = joinpath(ROOT_DIR, "data", "artifacts", "03_final_preparation")
 const OUTDIR = joinpath(ROOT_DIR, "data", "artifacts", "05_core_sam")

@@ -1,0 +1,6 @@
+key	value	description
+allocation_scope	eu_destination_region	Allocate recycled-metal availability within each European destination region.
+eligible_use	basic_metals_intermediate_use	Only existing intermediate purchases of BASIC_METALS receive the constructed recycled-metal allocation.
+weighting	proportional_to_basic_metals_use	Allocate each destination region's recycled-metal availability in proportion to its observed BASIC_METALS intermediate-use values.
+reclassification	all_positive_noninventory_rec_ee_uses	Reclassify positive non-inventory REC_EE uses in European destinations as recycled-metal inputs.
+balancing	quadratic_minimum_distance	Keep the constructed recycled-metal allocation fixed and restore IO identities through the smallest weighted adjustment of the remaining observed flows.

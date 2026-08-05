@@ -1,0 +1,19 @@
+component	key	sequence	value	description
+trade	armington_elasticity	1	0.5	Low substitution responsiveness across observed supply origins for traded industries.
+trade	armington_elasticity	2	1.0	Unitary substitution responsiveness across observed supply origins for traded industries.
+trade	armington_elasticity	3	2.0	High substitution responsiveness across observed supply origins for traded industries.
+trade	cet_transformation_elasticity	1	0.5	Low transformation responsiveness across observed output destinations for traded industries.
+trade	cet_transformation_elasticity	2	1.0	Unitary transformation responsiveness across observed output destinations for traded industries.
+trade	cet_transformation_elasticity	3	2.0	High transformation responsiveness across observed output destinations for traded industries.
+circular_routes	service_elasticity	1	0.5	Low substitution responsiveness among new production and circular service routes.
+circular_routes	service_elasticity	2	1.0	Unitary substitution responsiveness among new production and circular service routes.
+circular_routes	service_elasticity	3	2.0	High substitution responsiveness among new production and circular service routes.
+circular_routes	eol_allocation_elasticity	1	0.5	Low responsiveness of end-of-life allocation across circular and disposal routes.
+circular_routes	eol_allocation_elasticity	2	1.0	Unitary responsiveness of end-of-life allocation across circular and disposal routes.
+circular_routes	eol_allocation_elasticity	3	2.0	High responsiveness of end-of-life allocation across circular and disposal routes.
+circular_routes	eol_productivity_elasticity	1	0.5	Low production response to normalized end-of-life availability.
+circular_routes	eol_productivity_elasticity	2	1.0	Unitary production response to normalized end-of-life availability.
+circular_routes	eol_productivity_elasticity	3	2.0	High production response to normalized end-of-life availability.
+circular_metal	material_substitution_elasticity	1	0.5	Low substitution responsiveness between primary and recycled metal in eligible CE-RISE activities.
+circular_metal	material_substitution_elasticity	2	1.0	Unitary substitution responsiveness between primary and recycled metal in eligible CE-RISE activities.
+circular_metal	material_substitution_elasticity	3	2.0	High substitution responsiveness between primary and recycled metal in eligible CE-RISE activities.
