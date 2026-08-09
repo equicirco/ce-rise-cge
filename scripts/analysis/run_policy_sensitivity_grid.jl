@@ -14,12 +14,23 @@ using CERiseCGE
 
 const ROOT_DIR = normpath(joinpath(@__DIR__, "..", ".."))
 const OUTPUT_DIR = joinpath(ROOT_DIR, "results", "multi_region", "policy_sensitivity")
-const OUTPUT_FILE = joinpath(OUTPUT_DIR, "policy_sensitivity_grid.csv")
+const DEFAULT_OUTPUT_FILE = joinpath(OUTPUT_DIR, "policy_sensitivity_grid.csv")
 const WORKERS = 6
 
+function command_options(args)
+    if isempty(args)
+        return (dry_run = false, output_file = DEFAULT_OUTPUT_FILE)
+    elseif args == ["--dry-run"]
+        return (dry_run = true, output_file = DEFAULT_OUTPUT_FILE)
+    elseif length(args) == 2 && first(args) == "--output"
+        return (dry_run = false, output_file = normpath(joinpath(ROOT_DIR, last(args))))
+    end
+    error("Usage: julia --project=. scripts/analysis/run_policy_sensitivity_grid.jl " *
+          "[--dry-run | --output PATH]")
+end
+
 function main()
-    isempty(ARGS) || ARGS == ["--dry-run"] || error(
-        "Usage: julia --project=. scripts/analysis/run_policy_sensitivity_grid.jl [--dry-run]")
+    options = command_options(ARGS)
     bundle = default_calibration_bundle()
     profiles = sensitivity_profiles(bundle)
     wedges = policy_wedge_grid(bundle)
@@ -29,14 +40,14 @@ function main()
     println("Expected policy-result rows: ", expected_rows)
     println("Distributed workers: ", WORKERS)
 
-    if ARGS == ["--dry-run"]
+    if options.dry_run
         println("Dry run completed; no results were written.")
         return nothing
     end
 
-    isfile(OUTPUT_FILE) && error(
-        "Refusing to overwrite existing analysis output: $(OUTPUT_FILE)")
-    mkpath(OUTPUT_DIR)
+    isfile(options.output_file) && error(
+        "Refusing to overwrite existing analysis output: $(options.output_file)")
+    mkpath(dirname(options.output_file))
     results = run_configured_policy_sensitivity_grid(
         ; bundle=bundle,
         profiles=profiles,
@@ -47,8 +58,8 @@ function main()
         "Sensitivity grid returned $(size(results, 1)) rows; expected $(expected_rows).")
     valid_rows = count(results.solver_valid)
     println("Solver-valid policy rows: ", valid_rows, " of ", expected_rows)
-    CSV.write(OUTPUT_FILE, results)
-    println("Wrote ", OUTPUT_FILE)
+    CSV.write(options.output_file, results)
+    println("Wrote ", options.output_file)
     return nothing
 end
 
