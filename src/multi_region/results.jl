@@ -82,8 +82,8 @@ end
 """
     policy_sweep_summary(baseline_result, baseline_model, policy_runs)
 
-Return comparable physical and fiscal measures for an explicitly supplied,
-single-instrument continuation path. The reported fiscal basis is tax revenue
+Return comparable physical and fiscal measures for explicitly supplied,
+single-instrument policy runs. The reported fiscal basis is tax revenue
 for a tax and support expenditure for a support; it is therefore transparent
 about the different fiscal direction of the two instrument types.
 """

@@ -5,6 +5,7 @@ closure	accounting_investment_pool	INV_POOL	The sole global investment pool whos
 closure	accounting_market_region	DE	Region of the composite-market identity evaluated after solution to remove the Walras-redundant market condition.
 closure	accounting_market_industry	AGRI_FOOD	Industry code of the composite-market identity evaluated after solution to remove the Walras-redundant market condition.
 numerical	positive_lower	1.0e-8	Strictly positive lower bound supplied to JCGE blocks for prices, outputs, and bilateral trade flows.
+numerical	model_positive_lower	1.0e-7	Strictly positive variable lower bound used by the nonlinear model solve; kept separate from positive_lower, which classifies observed calibration inputs.
 solver	ipopt_bound_push_share	0.01	Fraction of the smallest positive calibrated starting value used as Ipopt's absolute interior-point bound push.
 solver	equation_scaling_floor	1.0	Minimum equation scale in the calibrated monetary unit. It prevents rounding differences in very small accounts from dominating the scaled baseline system.
 solver	ipopt_hessian_approximation	limited-memory	Ipopt Hessian treatment for the large nonlinear feasibility system.

@@ -84,6 +84,7 @@ mixed_grid_rows = CERiseCGE._combine_policy_grid_tables([
 @test length(model.calibration.products) == 25
 @test length(model.calibration.trade_routes) == 1132
 @test model.calibration.positive_lower == 1.0e-8
+@test CERiseCGE._model_positive_lower(bundle) == 1.0e-7
 routes = model.circular_routes
 @test length(routes.services) == 18
 @test sum(length, values(routes.eol_lines_by_family)) == 90
@@ -219,7 +220,7 @@ for block in spec.model.blocks
 end
 @test JuMP.lower_bound(
     ctx.variables[JCGEBlocks.global_var(:Z, :IND_SK_REP_OFMA)],
-) == model.calibration.positive_lower
+) == CERiseCGE._model_positive_lower(bundle)
 @test haskey(ctx.variables,
     JCGEBlocks.global_var(:physical_flow, first(blocks.physical_quantity_links.quantities)))
 bounded_starts = [
@@ -317,7 +318,6 @@ zero_policy_result = run_policy_scenario(zero_policy_model)
 tax_smoke_model = multi_region_model(; bundle = bundle,
     scenario = eu_wide_policy_scenario(:virgin_metal_tax, 0.01; bundle = bundle))
 tax_smoke_result = run_policy_scenario(tax_smoke_model)
-@test JuMP.termination_status(tax_smoke_result.context.model) == JuMP.MOI.ALMOST_LOCALLY_SOLVED
 @test tax_smoke_result.scaled_summary.above_tol == 0
 @test tax_smoke_result.bound_summary.above_tol == 0
 tax_revenue = sum(

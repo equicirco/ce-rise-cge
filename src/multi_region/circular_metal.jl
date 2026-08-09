@@ -386,7 +386,10 @@ end
 
 """Create material-composite production blocks from the reclassified calibration bundle."""
 function circular_material_blocks(model::MultiRegionModelSpec,
-    routes::CircularRouteCalibration)
+    routes::CircularRouteCalibration;
+    positive_lower::Real=model.calibration.positive_lower)
+    lower = Float64(positive_lower)
+    lower > 0.0 || error("Material-composite variable lower bound must be strictly positive.")
     structure = circular_material_structure(model)
     eol_activities = Set(keys(routes.eol_reference_total))
     blocks = Any[
@@ -409,7 +412,7 @@ function circular_material_blocks(model::MultiRegionModelSpec,
                 primary_tax_activities = _policy_primary_tax_activities(routes, structure),
                 recycled_support_activities = _policy_recycled_support_activities(routes, structure),
                 eol_productivity_elasticity = routes.eol_productivity_elasticity,
-                positive_lower = model.calibration.positive_lower,
+                positive_lower = lower,
             ),
         )
         for region in model.outline.regions
@@ -717,7 +720,10 @@ end
 
 """Create the physical METAL-market blocks supported by a sensitivity profile."""
 function circular_metal_blocks(model::MultiRegionModelSpec,
-    profile::CircularMetalProfile)
+    profile::CircularMetalProfile;
+    positive_lower::Real=model.calibration.positive_lower)
+    lower = Float64(positive_lower)
+    lower > 0.0 || error("Circular-metal variable lower bound must be strictly positive.")
     structure = _circular_metal_structure(model, profile)
     blocks = Any[
         JCGEBlocks.quantity_link(
@@ -782,7 +788,7 @@ function circular_metal_blocks(model::MultiRegionModelSpec,
             (
                 external_price = structure.external_price,
                 fixed_demand = structure.inventory_demand,
-                positive_lower = model.calibration.positive_lower,
+                positive_lower = lower,
             ),
         ))
     return blocks

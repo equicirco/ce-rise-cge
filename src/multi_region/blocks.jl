@@ -27,6 +27,13 @@ const MULTI_REGION_BLOCK_KINDS = (
 
 _regional_goods(outline::MultiRegionOutline) = outline.industries_by_region
 
+"""Return the calibrated strictly positive variable bound used by the model solve."""
+function _model_positive_lower(bundle::CalibrationBundle)
+    lower = calibration_option_number(bundle, "numerical", "model_positive_lower")
+    lower > 0.0 || error("numerical.model_positive_lower must be strictly positive.")
+    return lower
+end
+
 function _output_tax_by_good(calibration::MultiRegionCalibration)
     return Dict(
         calibration.product_by_region[(region, product)] =>
@@ -153,7 +160,7 @@ function multi_region_blocks(outline::MultiRegionOutline,
     regions = outline.regions
     goods_by_region = _regional_goods(outline)
     base_price = calibration_option_number(calibration.bundle, "normalization", "base_price")
-    positive_lower = calibration.positive_lower
+    positive_lower = _model_positive_lower(calibration.bundle)
     inventory = JCGEBlocks.inventory_treatment(:stock_change)
 
     production_params = (
@@ -174,17 +181,20 @@ function multi_region_blocks(outline::MultiRegionOutline,
         circular_metal,
     )
     material = circular_metal === nothing ? nothing :
-        circular_material_blocks(profile_model, circular_routes)
+        circular_material_blocks(profile_model, circular_routes;
+            positive_lower=positive_lower)
     material_activities = material === nothing ? Set{Symbol}() : material.structure.activities
     policy_active = scenario.name !== :baseline
     circular = circular_route_blocks(outline, calibration, circular_routes;
         scenario=scenario,
         include_policy_transfer=policy_active,
-        excluded_eol_activities=material_activities)
+        excluded_eol_activities=material_activities,
+        positive_lower=positive_lower)
     material === nothing && error(
         "The circular-service model requires the calibrated circular-metal structure.")
     policy = policy_active ? circular_policy_blocks(outline, calibration,
-        circular_routes, material.structure, scenario) : nothing
+        circular_routes, material.structure, scenario;
+        positive_lower=positive_lower) : nothing
     eol_activities = Set(keys(circular_routes.eol_reference_total))
     standard_production = Any[]
     for region in regions
@@ -207,7 +217,8 @@ function multi_region_blocks(outline::MultiRegionOutline,
         calibration,
     )
     circular_metal_extensions = circular_metal === nothing ? Any[] :
-        circular_metal_blocks(profile_model, circular_metal)
+        circular_metal_blocks(profile_model, circular_metal;
+            positive_lower=positive_lower)
     circular_metal_physical = circular_metal === nothing ? Any[] :
         circular_metal_extensions[1:(end - 2)]
     circular_metal_market = circular_metal === nothing ? Any[] :

@@ -252,15 +252,18 @@ end
 """Return the policy blocks and their calibrated zero starts."""
 function circular_policy_blocks(outline::MultiRegionOutline,
     calibration::MultiRegionCalibration, routes::CircularRouteCalibration,
-    material_structure, scenario::PolicyScenario)
+    material_structure, scenario::PolicyScenario;
+    positive_lower::Real=calibration.positive_lower)
     validate_policy_scenario(scenario, outline)
+    lower = Float64(positive_lower)
+    lower > 0.0 || error("Circular-policy variable lower bound must be strictly positive.")
     fiscal = CircularPolicyFiscalBlock(
         :regional_circular_policy_fiscal,
         outline.regions,
         material_structure,
         routes,
         scenario,
-        (positive_lower = calibration.positive_lower,),
+        (positive_lower = lower,),
     )
     household = PolicyAwareHouseholdDemandBlock(
         :regional_policy_aware_household_demand,
@@ -269,7 +272,7 @@ function circular_policy_blocks(outline::MultiRegionOutline,
         outline.factors_by_region,
         outline.industries_by_region,
         (alpha = calibration.household_demand_share,
-         positive_lower = calibration.positive_lower,),
+         positive_lower = lower,),
     )
     private_saving = PolicyAwarePrivateSavingBlock(
         :regional_policy_aware_private_saving,
@@ -277,7 +280,7 @@ function circular_policy_blocks(outline::MultiRegionOutline,
         outline.factors_by_region,
         outline.industries_by_region,
         (ssp = calibration.private_saving_share,
-         positive_lower = calibration.positive_lower,),
+         positive_lower = lower,),
     )
     return (fiscal = fiscal, household = household, private_saving = private_saving)
 end

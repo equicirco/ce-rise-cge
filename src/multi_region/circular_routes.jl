@@ -677,8 +677,10 @@ function circular_route_blocks(outline::MultiRegionOutline,
     calibration::MultiRegionCalibration, routes::CircularRouteCalibration;
     scenario::PolicyScenario=baseline_scenario(),
     include_policy_transfer::Bool=false,
-    excluded_eol_activities::Set{Symbol}=Set{Symbol}())
-    lower = calibration.positive_lower
+    excluded_eol_activities::Set{Symbol}=Set{Symbol}(),
+    positive_lower::Real=calibration.positive_lower)
+    lower = Float64(positive_lower)
+    lower > 0.0 || error("Circular-route variable lower bound must be strictly positive.")
     eol_activities_by_region = Dict(region => Symbol[] for region in outline.regions)
     lookup = account_region_lookup(outline.bundle)
     for activity in keys(routes.eol_reference_total)
