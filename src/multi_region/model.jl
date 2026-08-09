@@ -573,6 +573,12 @@ function _sensitivity_failure_table(profile::SensitivityProfile,
     return table
 end
 
+"""Combine valid and solver-rejected profile tables without discarding diagnostics."""
+function _combine_policy_grid_tables(profile_tables::AbstractVector)
+    isempty(profile_tables) && error("The policy sensitivity grid returned no profile tables.")
+    return vcat(profile_tables...; cols=:union)
+end
+
 """
     run_configured_policy_sensitivity_grid(; bundle=default_calibration_bundle(), ...)
 
@@ -606,5 +612,5 @@ function run_configured_policy_sensitivity_grid(;
         on_error = (profile, err) -> _sensitivity_failure_table(
             profile, bundle, requested_instruments, err),
     )
-    return vcat(profile_tables...; cols=:setequal)
+    return _combine_policy_grid_tables(profile_tables)
 end

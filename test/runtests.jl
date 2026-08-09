@@ -1,5 +1,5 @@
 using Test
-using DataFrames: nrow
+using DataFrames: DataFrame, nrow
 using CERiseCGE
 using JCGEBlocks
 using JCGECore
@@ -71,6 +71,13 @@ failure_rows = CERiseCGE._sensitivity_failure_table(
 @test nrow(failure_rows) == 20
 @test all(.!failure_rows.solver_valid)
 @test all(failure_rows.solver_message .== "test failure")
+mixed_grid_rows = CERiseCGE._combine_policy_grid_tables([
+    DataFrame(sensitivity_profile = [:valid], solver_valid = [true], fiscal_basis_million_eur = [1.0]),
+    DataFrame(sensitivity_profile = [:rejected], solver_valid = [false], solver_message = ["test failure"]),
+])
+@test nrow(mixed_grid_rows) == 2
+@test :fiscal_basis_million_eur in propertynames(mixed_grid_rows)
+@test :solver_message in propertynames(mixed_grid_rows)
 @test nrow(model.coefficient_template) == 138
 @test nrow(bundle.circular_metal_baseline) == 12
 @test nrow(model.quantity_template) == 126
