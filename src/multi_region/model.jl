@@ -59,6 +59,7 @@ function solver_configuration(model::MultiRegionModelSpec = multi_region_model()
         "solver", "ipopt_acceptable_complementarity_tolerance")
     acceptable_iterations = calibration_option_number(bundle,
         "solver", "ipopt_acceptable_iterations")
+    max_cpu_time = calibration_option_number(bundle, "solver", "ipopt_max_cpu_time")
     baseline_residual_tolerance = calibration_option_number(bundle, "diagnostics", "baseline_absolute_residual_tolerance")
     scaled_residual_tolerance = calibration_option_number(bundle,
         "diagnostics", "scaled_equation_residual_tolerance")
@@ -80,6 +81,7 @@ function solver_configuration(model::MultiRegionModelSpec = multi_region_model()
         "solver.ipopt_acceptable_complementarity_tolerance must be strictly positive.")
     acceptable_iterations >= 1.0 && isinteger(acceptable_iterations) || error(
         "solver.ipopt_acceptable_iterations must be a positive integer.")
+    max_cpu_time > 0.0 || error("solver.ipopt_max_cpu_time must be strictly positive.")
     baseline_residual_tolerance > 0.0 ||
         error("diagnostics.baseline_absolute_residual_tolerance must be strictly positive.")
     scaled_residual_tolerance > 0.0 || error(
@@ -103,6 +105,7 @@ function solver_configuration(model::MultiRegionModelSpec = multi_region_model()
         ipopt_acceptable_constraint_violation_tolerance = acceptable_constraint_violation_tolerance,
         ipopt_acceptable_complementarity_tolerance = acceptable_complementarity_tolerance,
         ipopt_acceptable_iterations = Int(acceptable_iterations),
+        ipopt_max_cpu_time = max_cpu_time,
         baseline_residual_tolerance = baseline_residual_tolerance,
         scaled_residual_tolerance = scaled_residual_tolerance,
         bound_violation_tolerance = bound_violation_tolerance,
@@ -125,6 +128,7 @@ function default_optimizer(model::MultiRegionModelSpec = multi_region_model())
         "acceptable_constr_viol_tol" => configuration.ipopt_acceptable_constraint_violation_tolerance,
         "acceptable_compl_inf_tol" => configuration.ipopt_acceptable_complementarity_tolerance,
         "acceptable_iter" => configuration.ipopt_acceptable_iterations,
+        "max_cpu_time" => configuration.ipopt_max_cpu_time,
     )
 end
 
@@ -373,6 +377,15 @@ function run_policy_scenario(model::MultiRegionModelSpec;
     return _run_model(model; tol=tol, start_values=start_values)
 end
 
+"""Solve one policy point and measure its total local solver time."""
+function _timed_policy_scenario(model::MultiRegionModelSpec;
+    tol::Union{Nothing,Real}=nothing,
+    start_values::Union{Nothing,AbstractDict{Symbol,<:Real}}=nothing)
+    elapsed = @elapsed result = run_policy_scenario(model;
+        tol=tol, start_values=start_values)
+    return (result=result, elapsed_seconds=elapsed)
+end
+
 """Return the one non-zero policy instrument declared by a policy scenario."""
 function _active_policy_instrument(model::MultiRegionModelSpec)
     active = Symbol[
@@ -486,9 +499,32 @@ end
 
 """Solve each declared policy point and retain its individual validity record."""
 function _run_declared_policy_points(models::AbstractVector{<:MultiRegionModelSpec};
-    tol::Union{Nothing,Real}=nothing)
+    tol::Union{Nothing,Real}=nothing,
+    on_point::Union{Nothing,Function}=nothing)
     instrument = _validate_policy_path(models)
-    results = Any[run_policy_scenario(model; tol=tol) for model in models]
+    results = Any[]
+    elapsed_seconds = Float64[]
+    attempts = ones(Int, length(models))
+    for (index, model) in enumerate(models)
+        wedge = policy_wedge(model.scenario, instrument)
+        on_point === nothing || on_point((
+            phase = :direct_start,
+            instrument = instrument,
+            wedge = wedge,
+            attempt = 1,
+        ))
+        direct = _timed_policy_scenario(model; tol=tol)
+        push!(results, direct.result)
+        push!(elapsed_seconds, direct.elapsed_seconds)
+        on_point === nothing || on_point((
+            phase = :direct_complete,
+            instrument = instrument,
+            wedge = wedge,
+            attempt = 1,
+            solver_valid = _valid_policy_solution(direct.result),
+            solver_elapsed_seconds = direct.elapsed_seconds,
+        ))
+    end
     valid = Bool[_valid_policy_solution(result) for result in results]
     messages = Union{Missing,String}[missing for _ in models]
     rejected = findall(!, valid)
@@ -502,17 +538,36 @@ function _run_declared_policy_points(models::AbstractVector{<:MultiRegionModelSp
             continue
         end
         source_index = candidates[argmax(strengths[candidates])]
-        retry = run_policy_scenario(models[index]; tol=tol,
+        wedge = policy_wedge(models[index].scenario, instrument)
+        on_point === nothing || on_point((
+            phase = :retry_start,
+            instrument = instrument,
+            wedge = wedge,
+            attempt = attempts[index] + 1,
+        ))
+        retry = _timed_policy_scenario(models[index]; tol=tol,
             start_values=solution_start_values(results[source_index]))
-        results[index] = retry
-        valid[index] = _valid_policy_solution(retry)
-        valid[index] || (messages[index] = _policy_solution_error(models[index], retry))
+        results[index] = retry.result
+        elapsed_seconds[index] += retry.elapsed_seconds
+        attempts[index] += 1
+        valid[index] = _valid_policy_solution(retry.result)
+        valid[index] || (messages[index] = _policy_solution_error(models[index], retry.result))
+        on_point === nothing || on_point((
+            phase = :retry_complete,
+            instrument = instrument,
+            wedge = wedge,
+            attempt = attempts[index],
+            solver_valid = valid[index],
+            solver_elapsed_seconds = retry.elapsed_seconds,
+        ))
     end
     return [(
         model = models[index],
         result = results[index],
         solver_valid = valid[index],
         solver_message = messages[index],
+        solver_elapsed_seconds = elapsed_seconds[index],
+        solver_attempts = attempts[index],
     ) for index in eachindex(models)]
 end
 
@@ -564,19 +619,35 @@ end
 
 function _run_configured_sensitivity_profile(profile::SensitivityProfile,
     bundle::CalibrationBundle, requested_instruments::AbstractVector{Symbol};
-    tol::Union{Nothing,Real} = nothing)
+    tol::Union{Nothing,Real} = nothing,
+    on_progress::Union{Nothing,Function} = nothing)
     profile_bundle = sensitivity_bundle(profile; bundle=bundle)
     calibration = multi_region_calibration(profile_bundle)
     baseline_model = multi_region_model(; bundle=profile_bundle, calibration=calibration)
-    baseline_result = run_baseline(baseline_model; tol=tol)
+    on_progress === nothing || on_progress((phase = :baseline_start,))
+    baseline_elapsed_seconds = @elapsed baseline_result = run_baseline(baseline_model; tol=tol)
+    on_progress === nothing || on_progress((
+        phase = :baseline_complete,
+        solver_elapsed_seconds = baseline_elapsed_seconds,
+    ))
     tables = DataFrame[]
     for instrument in requested_instruments
+        on_progress === nothing || on_progress((
+            phase = :instrument_start,
+            instrument = instrument,
+        ))
         records = _run_declared_policy_points(policy_sweep_models(instrument;
-            bundle=profile_bundle, calibration=calibration); tol=tol)
+            bundle=profile_bundle, calibration=calibration); tol=tol,
+            on_point=on_progress)
         valid_records = filter(record -> record.solver_valid, records)
         if !isempty(valid_records)
             policy_runs = [(model=record.model, result=record.result) for record in valid_records]
             table = policy_sweep_summary(baseline_result, baseline_model, policy_runs)
+            timing = Dict(record.model.scenario.name => record for record in valid_records)
+            table.solver_elapsed_seconds = [timing[scenario].solver_elapsed_seconds
+                for scenario in table.scenario]
+            table.solver_attempts = [timing[scenario].solver_attempts
+                for scenario in table.scenario]
             table.sensitivity_profile = fill(profile.name, nrow(table))
             for (component, key) in SENSITIVITY_PARAMETER_KEYS
                 table[!, Symbol(key)] = fill(profile.values[(component, key)], nrow(table))
@@ -588,6 +659,12 @@ function _run_configured_sensitivity_profile(profile::SensitivityProfile,
         invalid_records = filter(record -> !record.solver_valid, records)
         isempty(invalid_records) || push!(tables,
             _sensitivity_rejected_policy_table(profile, invalid_records))
+        on_progress === nothing || on_progress((
+            phase = :instrument_complete,
+            instrument = instrument,
+            accepted_points = length(valid_records),
+            rejected_points = length(invalid_records),
+        ))
     end
     return vcat(tables...; cols=:union)
 end
@@ -609,6 +686,8 @@ function _sensitivity_rejected_policy_table(profile::SensitivityProfile,
             scaled_residuals_above_tolerance = result.scaled_summary.above_tol,
             max_bound_violation = result.bound_summary.max_abs,
             bound_violations_above_tolerance = result.bound_summary.above_tol,
+            solver_elapsed_seconds = record.solver_elapsed_seconds,
+            solver_attempts = record.solver_attempts,
             sensitivity_profile = profile.name,
             solver_valid = false,
             solver_message = record.solver_message,
@@ -635,6 +714,8 @@ function _sensitivity_failure_table(profile::SensitivityProfile,
                 sensitivity_profile = profile.name,
                 solver_valid = false,
                 solver_message = message,
+                solver_elapsed_seconds = missing,
+                solver_attempts = missing,
             ))
         end
     end
@@ -643,6 +724,105 @@ function _sensitivity_failure_table(profile::SensitivityProfile,
         table[!, Symbol(key)] = fill(profile.values[(component, key)], nrow(table))
     end
     return table
+end
+
+"""Write a CSV through a same-directory temporary file and atomically replace its target."""
+function _write_atomic_csv(path::AbstractString, table::DataFrame)
+    temporary = "$(path).$(getpid()).tmp"
+    CSV.write(temporary, table)
+    mv(temporary, path; force=true)
+    return path
+end
+
+function _progress_field(event::NamedTuple, field::Symbol, default=missing)
+    return hasproperty(event, field) ? getproperty(event, field) : default
+end
+
+function _write_profile_status(path::AbstractString, profile::SensitivityProfile;
+    state::Symbol,
+    phase::Symbol,
+    started_at::Real,
+    completed_attempts::Integer,
+    event::NamedTuple=NamedTuple(),
+    profile_elapsed_seconds=missing,
+    error_message=missing)
+    instrument = _progress_field(event, :instrument)
+    instrument_text = ismissing(instrument) ? missing : String(instrument)
+    table = DataFrame((
+        sensitivity_profile = [String(profile.name)],
+        state = [String(state)],
+        phase = [String(phase)],
+        instrument = [instrument_text],
+        wedge = [_progress_field(event, :wedge)],
+        attempt = [_progress_field(event, :attempt)],
+        last_solver_valid = [_progress_field(event, :solver_valid)],
+        last_solver_elapsed_seconds = [_progress_field(event, :solver_elapsed_seconds)],
+        completed_solver_attempts = [Int(completed_attempts)],
+        started_unix_seconds = [Float64(started_at)],
+        updated_unix_seconds = [time()],
+        profile_elapsed_seconds = [profile_elapsed_seconds],
+        error_message = [error_message],
+    ))
+    return _write_atomic_csv(path, table)
+end
+
+"""Solve one profile and persist its status and complete result table for monitored execution."""
+function _checkpointed_sensitivity_profile(profile::SensitivityProfile,
+    bundle::CalibrationBundle, requested_instruments::AbstractVector{Symbol},
+    checkpoint_dir::AbstractString; tol::Union{Nothing,Real}=nothing)
+    mkpath(checkpoint_dir)
+    profile_name = String(profile.name)
+    result_path = joinpath(checkpoint_dir, "$(profile_name).csv")
+    status_path = joinpath(checkpoint_dir, "$(profile_name).status.csv")
+    started_at = time()
+    completed_attempts = Ref(0)
+    _write_profile_status(status_path, profile;
+        state=:running, phase=:profile_start, started_at=started_at,
+        completed_attempts=completed_attempts[])
+
+    progress = function(event::NamedTuple)
+        phase = _progress_field(event, :phase, :unknown)
+        phase in (:direct_complete, :retry_complete) && (completed_attempts[] += 1)
+        _write_profile_status(status_path, profile;
+            state=:running, phase=phase, started_at=started_at,
+            completed_attempts=completed_attempts[], event=event)
+        return nothing
+    end
+
+    table = nothing
+    error_message = missing
+    elapsed_seconds = @elapsed begin
+        try
+            table = _run_configured_sensitivity_profile(profile, bundle,
+                requested_instruments; tol=tol, on_progress=progress)
+        catch err
+            error_message = sprint(showerror, err)
+            table = _sensitivity_failure_table(profile, bundle,
+                requested_instruments, err)
+        end
+    end
+    table.profile_elapsed_seconds = fill(elapsed_seconds, nrow(table))
+    _write_atomic_csv(result_path, table)
+    valid_rows = count(table.solver_valid)
+    completion = (
+        phase = :profile_complete,
+        accepted_rows = valid_rows,
+        rejected_rows = nrow(table) - valid_rows,
+    )
+    _write_profile_status(status_path, profile;
+        state=ismissing(error_message) ? :completed : :failed,
+        phase=:profile_complete, started_at=started_at,
+        completed_attempts=completed_attempts[], event=completion,
+        profile_elapsed_seconds=elapsed_seconds, error_message=error_message)
+    return (
+        sensitivity_profile = profile.name,
+        result_path = result_path,
+        rows = nrow(table),
+        solver_valid_rows = valid_rows,
+        solver_rejected_rows = nrow(table) - valid_rows,
+        profile_elapsed_seconds = elapsed_seconds,
+        error_message = error_message,
+    )
 end
 
 """Combine valid and solver-rejected profile tables without discarding diagnostics."""

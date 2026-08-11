@@ -18,7 +18,9 @@ Security: For vulnerabilities.
 - Validation reports for the staged artifact chain and public-data scope curation for the repository.
 - Generic normalized physical-flow links for the 78 directly observed CE-RISE flows, with base-year tonne anchors and scenario projection through JCGEOutput.
 - Baseline tests covering physical-flow links, anchors, projections, and calibration-driver diagnostics.
+- Checkpointed policy-grid execution with one persistent status record and result file per sensitivity profile, plus a command-line status report for live monitoring and safe restart.
 
 ### Changed
 - Updated the model environment to the registered JCGEBlocks 0.1.7 and JCGEOutput 0.1.4 releases.
 - Tightened the data-configured Ipopt convergence tolerances used for calibration replication.
+- Policy scenarios now retain per-point solver time and retry counts, while a configured Ipopt CPU-time limit records hard points as numerical rejections instead of allowing a worker to run indefinitely.

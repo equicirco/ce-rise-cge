@@ -17,6 +17,7 @@ solver	ipopt_acceptable_dual_infeasibility_tolerance	10.0	Ipopt acceptable dual-
 solver	ipopt_acceptable_constraint_violation_tolerance	1.0e-4	Ipopt acceptable scaled constraint violation; matches the independent original-equation validation threshold below.
 solver	ipopt_acceptable_complementarity_tolerance	10.0	Ipopt acceptable complementarity threshold for a residual-validated feasibility solve.
 solver	ipopt_acceptable_iterations	1	Number of consecutive acceptable feasibility iterations required before Ipopt returns an acceptable solution.
+solver	ipopt_max_cpu_time	120.0	Maximum CPU seconds allowed for one nonlinear solve; a time-limited policy point is retained as a numerical rejection rather than blocking a grid worker.
 diagnostics	baseline_absolute_residual_tolerance	1.0e-4	Absolute residual threshold for reporting the baseline replication. The physical METAL quantities are expressed in tonnes, so this corresponds to 0.1 kg and is far below the resolution of the source accounts.
 diagnostics	scaled_equation_residual_tolerance	1.0e-4	Maximum residual relative to the equation's calibrated scale used to validate policy-scenario feasibility across monetary and physical units.
 diagnostics	bound_violation_tolerance	1.0e-8	Maximum post-solution variable-bound violation in model units used alongside scaled equation residuals to validate policy-scenario feasibility independently of solver status.

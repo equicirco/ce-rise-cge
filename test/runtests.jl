@@ -85,6 +85,7 @@ mixed_grid_rows = CERiseCGE._combine_policy_grid_tables([
 @test length(model.calibration.trade_routes) == 1132
 @test model.calibration.positive_lower == 1.0e-8
 @test CERiseCGE._model_positive_lower(bundle) == 1.0e-7
+@test solver_configuration(model).ipopt_max_cpu_time == 120.0
 routes = model.circular_routes
 @test length(routes.services) == 18
 @test sum(length, values(routes.eol_lines_by_family)) == 90
