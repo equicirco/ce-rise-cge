@@ -109,6 +109,8 @@ function _initial_value_parameters(outline::MultiRegionOutline,
             calibration.delivery_wedge[route.id] * seller_price
     end
 
+    merge!(start, common_eu_trade_initial_values(calibration))
+
     for region in outline.regions, product in calibration.products
         good = calibration.product_by_region[(region, product)]
         start[JCGEBlocks.global_var(:Tz, good)] =
@@ -295,29 +297,18 @@ function multi_region_blocks(outline::MultiRegionOutline,
         quantity_var = :Xv,
         params = (quantity = calibration.fixed_investment_demand,),
     )
-    trade = JCGEBlocks.multiregion_trade(
-        :bilateral_trade,
+    trade = common_eu_trade(
+        :common_eu_trade,
         regions,
-        calibration.trade_routes,
-        calibration.trade_goods;
-        output_var = :Z,
-        output_price_var = :pz,
-        composite_var = :Q,
-        composite_price_var = :pq,
-        flow_var = :T,
-        seller_price_var = :pS,
-        delivered_price_var = :pD,
+        calibration.trade_goods,
+        calibration;
         inventory = inventory,
         params = (
-            armington_scale = calibration.armington_scale,
-            armington_share = calibration.armington_share,
             armington_exponent = calibration.armington_exponent,
-            cet_scale = calibration.cet_scale,
-            cet_share = calibration.cet_share,
             cet_exponent = calibration.cet_exponent,
             output_tax = calibration.output_tax,
-            delivery_wedge = calibration.delivery_wedge,
             world_price = calibration.world_price,
+            trade_value = calibration.trade_value,
             inventory_change = calibration.inventory_change,
             positive_lower = positive_lower,
         ),
@@ -325,7 +316,7 @@ function multi_region_blocks(outline::MultiRegionOutline,
     external_account = JCGEBlocks.regional_external_account(
         :regional_external_account,
         regions,
-        calibration.trade_routes;
+        trade.row_routes;
         flow_var = :T,
         seller_price_var = :pS,
         foreign_saving_var = :FSAV,

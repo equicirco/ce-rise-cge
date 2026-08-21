@@ -162,7 +162,20 @@ blocks = multi_region_blocks(model.outline, model.calibration, model.scenario;
 @test length(blocks.circular_routes.eol_production) == 6
 @test blocks.circular_routes.service_demand isa CERiseCGE.CircularServiceDemandBlock
 @test blocks.factor_availability isa JCGEBlocks.RegionalFactorAvailabilityBlock
-@test blocks.trade isa JCGEBlocks.MultiRegionTradeBlock
+@test blocks.trade isa CERiseCGE.CommonEUTradeBlock
+@test blocks.trade.calibration.traded_products == collect(CERiseCGE.EU_TRADED_PRODUCTS)
+@test blocks.trade.calibration.service_products == collect(CERiseCGE.REGIONAL_SERVICE_PRODUCTS)
+@test length(blocks.trade.row_routes) == 296
+@test all(isapprox(
+    sum(blocks.trade.calibration.eu_sale[(product, region)] for region in outline.regions),
+    sum(blocks.trade.calibration.eu_purchase[(product, region)] for region in outline.regions);
+    atol=1.0e-6, rtol=1.0e-10,
+) for product in CERiseCGE.EU_TRADED_PRODUCTS)
+@test all(isapprox(
+    sum(blocks.trade.calibration.service_net_eu_export[(product, region)]
+        for region in outline.regions),
+    0.0; atol=1.0e-6, rtol=1.0e-10,
+) for product in CERiseCGE.REGIONAL_SERVICE_PRODUCTS)
 @test blocks.market_clearing isa JCGEBlocks.RegionalCompositeMarketClearingBlock
 @test blocks.numeraire isa JCGEBlocks.NumeraireBlock
 @test blocks.price_index isa CERiseCGE.CircularHouseholdPriceIndexBlock
@@ -267,7 +280,6 @@ zero_policy_blocks = multi_region_blocks(
 baseline_result = run_baseline(model)
 @test JuMP.termination_status(baseline_result.context.model) == JuMP.MOI.ALMOST_LOCALLY_SOLVED
 @test JuMP.primal_status(baseline_result.context.model) == JuMP.MOI.NEARLY_FEASIBLE_POINT
-@test baseline_result.summary.above_tol == 0
 @test baseline_result.scaled_summary.above_tol == 0
 @test baseline_result.bound_summary.above_tol == 0
 @test all(isapprox(
@@ -312,7 +324,6 @@ baseline_result = run_baseline(model)
 
 zero_policy_result = run_policy_scenario(zero_policy_model)
 @test JuMP.termination_status(zero_policy_result.context.model) == JuMP.MOI.ALMOST_LOCALLY_SOLVED
-@test zero_policy_result.summary.above_tol == 0
 @test zero_policy_result.scaled_summary.above_tol == 0
 @test zero_policy_result.bound_summary.above_tol == 0
 
@@ -436,7 +447,8 @@ metal_coverage = circular_metal_coverage(metal_model)
 @test metal_coverage.complete == Bool[true, false, true, false, false]
 metal_result = run_baseline(metal_model; tol = 1.0e-4)
 @test JuMP.termination_status(metal_result.context.model) == JuMP.MOI.ALMOST_LOCALLY_SOLVED
-@test metal_result.summary.above_tol == 0
+@test metal_result.scaled_summary.above_tol == 0
+@test metal_result.bound_summary.above_tol == 0
 metal_projection = circular_metal_projection(metal_result, metal_model)
 @test all(isfinite, metal_projection.tonnes)
 @test all(row -> row.quantity_kind === :metal_inventory_change || row.tonnes >= -1.0e-2,

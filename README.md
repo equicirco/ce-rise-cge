@@ -1,6 +1,8 @@
 # CE-RISE Circular Economy CGE
 This repository develops a Julia-based computable general equilibrium model for analysing circular-economy strategies in European electronics value chains under the CE-RISE project.
 
+Primary and manufactured products clear through common EU markets with one EU price per product. Repair, refurbishment, reuse, waste treatment, construction, and other services remain regional; their observed net EU service balances are retained as fixed calibration terms. Trade with the rest of the world remains price-taking.
+
 ## Contents
 
 - `data/disaggregation/`: CE-RISE disaggregation input used in the data workflow.
