@@ -60,6 +60,10 @@ function solver_configuration(model::MultiRegionModelSpec = multi_region_model()
     acceptable_iterations = calibration_option_number(bundle,
         "solver", "ipopt_acceptable_iterations")
     max_cpu_time = calibration_option_number(bundle, "solver", "ipopt_max_cpu_time")
+    policy_continuation_minimum_increment = calibration_option_number(bundle,
+        "solver", "policy_continuation_minimum_increment")
+    policy_continuation_max_attempts = calibration_option_number(bundle,
+        "solver", "policy_continuation_max_attempts")
     baseline_residual_tolerance = calibration_option_number(bundle, "diagnostics", "baseline_absolute_residual_tolerance")
     scaled_residual_tolerance = calibration_option_number(bundle,
         "diagnostics", "scaled_equation_residual_tolerance")
@@ -82,6 +86,10 @@ function solver_configuration(model::MultiRegionModelSpec = multi_region_model()
     acceptable_iterations >= 1.0 && isinteger(acceptable_iterations) || error(
         "solver.ipopt_acceptable_iterations must be a positive integer.")
     max_cpu_time > 0.0 || error("solver.ipopt_max_cpu_time must be strictly positive.")
+    policy_continuation_minimum_increment > 0.0 || error(
+        "solver.policy_continuation_minimum_increment must be strictly positive.")
+    policy_continuation_max_attempts >= 1.0 && isinteger(policy_continuation_max_attempts) || error(
+        "solver.policy_continuation_max_attempts must be a positive integer.")
     baseline_residual_tolerance > 0.0 ||
         error("diagnostics.baseline_absolute_residual_tolerance must be strictly positive.")
     scaled_residual_tolerance > 0.0 || error(
@@ -106,6 +114,8 @@ function solver_configuration(model::MultiRegionModelSpec = multi_region_model()
         ipopt_acceptable_complementarity_tolerance = acceptable_complementarity_tolerance,
         ipopt_acceptable_iterations = Int(acceptable_iterations),
         ipopt_max_cpu_time = max_cpu_time,
+        policy_continuation_minimum_increment = policy_continuation_minimum_increment,
+        policy_continuation_max_attempts = Int(policy_continuation_max_attempts),
         baseline_residual_tolerance = baseline_residual_tolerance,
         scaled_residual_tolerance = scaled_residual_tolerance,
         bound_violation_tolerance = bound_violation_tolerance,
@@ -464,6 +474,68 @@ function _policy_solution_error(model::MultiRegionModelSpec, result)
 end
 
 """
+Retry one rejected policy point from a validated lower-strength solution.
+
+The economic specification is unchanged. The interval from the accepted source
+wedge to the rejected target is bisected only when a trial solve fails the
+existing residual and bound checks. The minimum increment and retry budget are
+read from the calibration bundle's solver settings.
+"""
+function _adaptive_policy_retry(model::MultiRegionModelSpec, instrument::Symbol,
+    source_strength::Real, source_starts::AbstractDict{Symbol,<:Real};
+    target_pretried_from_source::Bool=false,
+    tol::Union{Nothing,Real}=nothing)
+    configuration = solver_configuration(model)
+    target_wedge = policy_wedge(model.scenario, instrument)
+    target_strength = abs(target_wedge)
+    direction = sign(target_wedge)
+    current_strength = Float64(source_strength)
+    0.0 <= current_strength < target_strength || error(
+        "Adaptive policy continuation requires a lower-strength source point.")
+    direction != 0.0 || error("Adaptive policy continuation requires a non-zero target wedge.")
+
+    starts = source_starts
+    step = target_strength - current_strength
+    target_pretried_from_source && (step /= 2.0)
+    elapsed_seconds = 0.0
+    attempts = 0
+    last_result = nothing
+    while attempts < configuration.policy_continuation_max_attempts
+        step >= configuration.policy_continuation_minimum_increment || break
+        trial_strength = min(target_strength, current_strength + step)
+        trial_wedge = direction * trial_strength
+        trial_model = isapprox(trial_strength, target_strength;
+            atol=eps(target_strength), rtol=0.0) ?
+            model : _policy_continuation_model(model, instrument, trial_wedge)
+        trial = _timed_policy_scenario(trial_model; tol=tol, start_values=starts)
+        elapsed_seconds += trial.elapsed_seconds
+        attempts += 1
+        last_result = trial.result
+        if _valid_policy_solution(trial.result)
+            current_strength = trial_strength
+            starts = solution_start_values(trial.result)
+            isapprox(current_strength, target_strength;
+                atol=eps(target_strength), rtol=0.0) && return (
+                result = trial.result,
+                solver_valid = true,
+                elapsed_seconds = elapsed_seconds,
+                attempts = attempts,
+            )
+            step = min(target_strength - current_strength, 2.0 * step)
+        else
+            step /= 2.0
+        end
+    end
+    last_result === nothing && error("Adaptive policy continuation made no trial solve.")
+    return (
+        result = last_result,
+        solver_valid = false,
+        elapsed_seconds = elapsed_seconds,
+        attempts = attempts,
+    )
+end
+
+"""
     run_policy_path(models; tol=nothing, start_values=nothing)
 
 Solve a sequence of structurally compatible, single-instrument policy models
@@ -497,14 +569,28 @@ function run_policy_path(models::AbstractVector{<:MultiRegionModelSpec};
     return runs
 end
 
-"""Solve each declared policy point and retain its individual validity record."""
+"""
+Solve declared policy points sequentially and retain their individual validity records.
+
+Each declared point first starts from the closest preceding accepted solution.
+When that direct solve is rejected, only the interval from that accepted point to
+the target is bisected adaptively. Consequently, an accepted point becomes the
+starting state for the following declared policy point.
+"""
 function _run_declared_policy_points(models::AbstractVector{<:MultiRegionModelSpec};
     tol::Union{Nothing,Real}=nothing,
+    baseline_start_values::Union{Nothing,AbstractDict{Symbol,<:Real}}=nothing,
     on_point::Union{Nothing,Function}=nothing)
     instrument = _validate_policy_path(models)
-    results = Any[]
-    elapsed_seconds = Float64[]
+    strengths = abs.(Float64[policy_wedge(model.scenario, instrument) for model in models])
+    results = Vector{Any}(undef, length(models))
+    elapsed_seconds = zeros(Float64, length(models))
     attempts = ones(Int, length(models))
+    valid = falses(length(models))
+    messages = Union{Missing,String}[missing for _ in models]
+
+    source_strength = 0.0
+    source_starts = baseline_start_values
     for (index, model) in enumerate(models)
         wedge = policy_wedge(model.scenario, instrument)
         on_point === nothing || on_point((
@@ -513,53 +599,48 @@ function _run_declared_policy_points(models::AbstractVector{<:MultiRegionModelSp
             wedge = wedge,
             attempt = 1,
         ))
-        direct = _timed_policy_scenario(model; tol=tol)
-        push!(results, direct.result)
-        push!(elapsed_seconds, direct.elapsed_seconds)
+        direct = _timed_policy_scenario(model; tol=tol,
+            start_values=source_starts)
+        results[index] = direct.result
+        elapsed_seconds[index] = direct.elapsed_seconds
+        valid[index] = _valid_policy_solution(direct.result)
         on_point === nothing || on_point((
             phase = :direct_complete,
             instrument = instrument,
             wedge = wedge,
             attempt = 1,
-            solver_valid = _valid_policy_solution(direct.result),
+            solver_valid = valid[index],
             solver_elapsed_seconds = direct.elapsed_seconds,
         ))
-    end
-    valid = Bool[_valid_policy_solution(result) for result in results]
-    messages = Union{Missing,String}[missing for _ in models]
-    rejected = findall(!, valid)
-
-    strengths = abs.(Float64[policy_wedge(model.scenario, instrument) for model in models])
-    for index in sort(rejected; by=index -> strengths[index])
-        candidates = [candidate for candidate in eachindex(models)
-            if valid[candidate] && strengths[candidate] < strengths[index]]
-        if isempty(candidates)
-            messages[index] = _policy_solution_error(models[index], results[index])
-            continue
+        if !valid[index] && source_starts !== nothing
+            on_point === nothing || on_point((
+                phase = :retry_start,
+                instrument = instrument,
+                wedge = wedge,
+                attempt = attempts[index] + 1,
+            ))
+            retry = _adaptive_policy_retry(model, instrument,
+                source_strength, source_starts;
+                target_pretried_from_source=true, tol=tol)
+            results[index] = retry.result
+            elapsed_seconds[index] += retry.elapsed_seconds
+            attempts[index] += retry.attempts
+            valid[index] = retry.solver_valid
+            on_point === nothing || on_point((
+                phase = :retry_complete,
+                instrument = instrument,
+                wedge = wedge,
+                attempt = attempts[index],
+                solver_valid = valid[index],
+                solver_elapsed_seconds = retry.elapsed_seconds,
+            ))
         end
-        source_index = candidates[argmax(strengths[candidates])]
-        wedge = policy_wedge(models[index].scenario, instrument)
-        on_point === nothing || on_point((
-            phase = :retry_start,
-            instrument = instrument,
-            wedge = wedge,
-            attempt = attempts[index] + 1,
-        ))
-        retry = _timed_policy_scenario(models[index]; tol=tol,
-            start_values=solution_start_values(results[source_index]))
-        results[index] = retry.result
-        elapsed_seconds[index] += retry.elapsed_seconds
-        attempts[index] += 1
-        valid[index] = _valid_policy_solution(retry.result)
-        valid[index] || (messages[index] = _policy_solution_error(models[index], retry.result))
-        on_point === nothing || on_point((
-            phase = :retry_complete,
-            instrument = instrument,
-            wedge = wedge,
-            attempt = attempts[index],
-            solver_valid = valid[index],
-            solver_elapsed_seconds = retry.elapsed_seconds,
-        ))
+        if valid[index]
+            source_strength = strengths[index]
+            source_starts = solution_start_values(results[index])
+        else
+            messages[index] = _policy_solution_error(model, results[index])
+        end
     end
     return [(
         model = models[index],
@@ -587,10 +668,10 @@ end
 """
     run_configured_policy_sweep(instrument; bundle=default_calibration_bundle(), ...)
 
-Solve the declared calibration-data policy points from calibrated starts and
-return the common baseline and comparable fiscal--physical summary. A rejected
-point is retried only from the closest valid lower-strength declared wedge;
-the baseline is never used as a policy-solve starting point. Results remain in
+Solve the declared calibration-data policy points from the validated baseline
+and return the common baseline and comparable fiscal--physical summary. A
+rejected point is retried by adaptive continuation from the nearest validated
+lower-strength point, including the baseline when necessary. Results remain in
 memory; persistence is intentionally left to the subsequent analysis workflow.
 """
 function run_configured_policy_sweep(instrument::Symbol;
@@ -603,7 +684,8 @@ function run_configured_policy_sweep(instrument::Symbol;
     baseline_result = run_baseline(baseline_model; tol=tol)
     models = policy_sweep_models(instrument; bundle=bundle,
         calibration=calibration, circular_metal=circular_metal)
-    records = _run_declared_policy_points(models; tol=tol)
+    records = _run_declared_policy_points(models; tol=tol,
+        baseline_start_values=solution_start_values(baseline_result))
     invalid = filter(record -> !record.solver_valid, records)
     isempty(invalid) || error("Configured policy sweep rejected $(length(invalid)) declared point(s): " *
         join((String(record.model.scenario.name) for record in invalid), ", "))
@@ -638,6 +720,7 @@ function _run_configured_sensitivity_profile(profile::SensitivityProfile,
         ))
         records = _run_declared_policy_points(policy_sweep_models(instrument;
             bundle=profile_bundle, calibration=calibration); tol=tol,
+            baseline_start_values=solution_start_values(baseline_result),
             on_point=on_progress)
         valid_records = filter(record -> record.solver_valid, records)
         if !isempty(valid_records)
@@ -825,6 +908,190 @@ function _checkpointed_sensitivity_profile(profile::SensitivityProfile,
     )
 end
 
+"""Return a serializable diagnostic row for one solved sensitivity point."""
+function _solvability_diagnostic_row(profile::SensitivityProfile, stage::Symbol,
+    scenario::Symbol, instrument, wedge, result, elapsed_seconds::Real)
+    worst_equation = result.scaled_summary.worst
+    worst_bound = result.bound_summary.worst
+    parameter_names = Tuple(Symbol(key) for (_, key) in SENSITIVITY_PARAMETER_KEYS)
+    parameter_values = Tuple(profile.values[(component, key)]
+        for (component, key) in SENSITIVITY_PARAMETER_KEYS)
+    parameters = NamedTuple{parameter_names}(parameter_values)
+    row = (
+        sensitivity_profile = profile.name,
+        stage = stage,
+        scenario = scenario,
+        instrument = instrument,
+        wedge = wedge,
+        termination_status = JuMP.termination_status(result.context.model),
+        primal_status = JuMP.primal_status(result.context.model),
+        solver_valid = _valid_policy_solution(result),
+        solver_elapsed_seconds = Float64(elapsed_seconds),
+        max_scaled_residual = result.scaled_summary.max_scaled_abs,
+        scaled_residuals_above_tolerance = result.scaled_summary.above_tol,
+        max_bound_violation = result.bound_summary.max_abs,
+        bound_violations_above_tolerance = result.bound_summary.above_tol,
+        worst_equation_block = isnothing(worst_equation) ? missing : worst_equation.block,
+        worst_equation_tag = isnothing(worst_equation) ? missing : worst_equation.tag,
+        worst_equation_indices = isnothing(worst_equation) ? missing :
+            join(string.(worst_equation.indices), "|"),
+        worst_equation_scaled_residual = isnothing(worst_equation) ? missing :
+            worst_equation.scaled_residual,
+        worst_bound_variable = isnothing(worst_bound) ? missing : worst_bound.variable,
+        worst_bound_violation = isnothing(worst_bound) ? missing : worst_bound.violation,
+        solver_message = missing,
+    )
+    return merge(row, parameters)
+end
+
+"""Return a serializable failure row when a diagnostic model cannot be assembled or solved."""
+function _solvability_failure_row(profile::SensitivityProfile, stage::Symbol,
+    scenario::Symbol, instrument, wedge, err)
+    parameter_names = Tuple(Symbol(key) for (_, key) in SENSITIVITY_PARAMETER_KEYS)
+    parameter_values = Tuple(profile.values[(component, key)]
+        for (component, key) in SENSITIVITY_PARAMETER_KEYS)
+    parameters = NamedTuple{parameter_names}(parameter_values)
+    row = (
+        sensitivity_profile = profile.name,
+        stage = stage,
+        scenario = scenario,
+        instrument = instrument,
+        wedge = wedge,
+        termination_status = missing,
+        primal_status = missing,
+        solver_valid = false,
+        solver_elapsed_seconds = missing,
+        max_scaled_residual = missing,
+        scaled_residuals_above_tolerance = missing,
+        max_bound_violation = missing,
+        bound_violations_above_tolerance = missing,
+        worst_equation_block = missing,
+        worst_equation_tag = missing,
+        worst_equation_indices = missing,
+        worst_equation_scaled_residual = missing,
+        worst_bound_variable = missing,
+        worst_bound_violation = missing,
+        solver_message = sprint(showerror, err),
+    )
+    return merge(row, parameters)
+end
+
+"""
+    _run_solvability_diagnostic_profile(profile, bundle, instruments)
+
+Diagnose one sensitivity profile without changing its economic specification.
+The zero-policy solution is assessed first. Policy wedges are assessed only when
+that profile's baseline satisfies the configured numerical acceptance checks.
+"""
+function _run_solvability_diagnostic_profile(profile::SensitivityProfile,
+    bundle::CalibrationBundle, requested_instruments::AbstractVector{Symbol};
+    tol::Union{Nothing,Real}=nothing,
+    on_progress::Union{Nothing,Function}=nothing)
+    profile_bundle = sensitivity_bundle(profile; bundle=bundle)
+    calibration = multi_region_calibration(profile_bundle)
+    baseline_model = multi_region_model(; bundle=profile_bundle, calibration=calibration)
+    on_progress === nothing || on_progress((phase=:baseline_start,))
+    baseline_elapsed_seconds = 0.0
+    baseline_result = nothing
+    try
+        baseline_elapsed_seconds = @elapsed baseline_result = run_baseline(baseline_model; tol=tol)
+    catch err
+        return DataFrame([_solvability_failure_row(profile, :baseline, :baseline,
+            missing, missing, err)])
+    end
+    baseline_row = _solvability_diagnostic_row(profile, :baseline, :baseline,
+        missing, 0.0, baseline_result, baseline_elapsed_seconds)
+    on_progress === nothing || on_progress((
+        phase=:baseline_complete,
+        solver_valid=baseline_row.solver_valid,
+        solver_elapsed_seconds=baseline_elapsed_seconds,
+    ))
+    baseline_row.solver_valid || return DataFrame([baseline_row])
+
+    rows = NamedTuple[baseline_row]
+    for instrument in requested_instruments
+        on_progress === nothing || on_progress((phase=:instrument_start, instrument=instrument))
+        records = _run_declared_policy_points(policy_sweep_models(instrument;
+            bundle=profile_bundle, calibration=calibration); tol=tol,
+            baseline_start_values=solution_start_values(baseline_result),
+            on_point=on_progress)
+        for record in records
+            scenario = record.model.scenario
+            push!(rows, _solvability_diagnostic_row(profile, :policy, scenario.name,
+                instrument, policy_wedge(scenario, instrument), record.result,
+                record.solver_elapsed_seconds))
+        end
+        on_progress === nothing || on_progress((
+            phase=:instrument_complete,
+            instrument=instrument,
+            accepted_points=count(record -> record.solver_valid, records),
+            rejected_points=count(record -> !record.solver_valid, records),
+        ))
+    end
+    return DataFrame(rows)
+end
+
+"""Run one profile and persist its baseline-plus-policy solvability diagnostic."""
+function _checkpointed_solvability_diagnostic_profile(profile::SensitivityProfile,
+    bundle::CalibrationBundle, requested_instruments::AbstractVector{Symbol},
+    checkpoint_dir::AbstractString; tol::Union{Nothing,Real}=nothing)
+    mkpath(checkpoint_dir)
+    profile_name = String(profile.name)
+    result_path = joinpath(checkpoint_dir, "$(profile_name).csv")
+    status_path = joinpath(checkpoint_dir, "$(profile_name).status.csv")
+    started_at = time()
+    completed_attempts = Ref(0)
+    _write_profile_status(status_path, profile;
+        state=:running, phase=:profile_start, started_at=started_at,
+        completed_attempts=completed_attempts[])
+
+    progress = function(event::NamedTuple)
+        phase = _progress_field(event, :phase, :unknown)
+        phase === :direct_complete && (completed_attempts[] += 1)
+        phase === :retry_complete && (completed_attempts[] +=
+            max(0, Int(_progress_field(event, :attempt, 1)) - 1))
+        _write_profile_status(status_path, profile;
+            state=:running, phase=phase, started_at=started_at,
+            completed_attempts=completed_attempts[], event=event)
+        return nothing
+    end
+
+    table = nothing
+    error_message = missing
+    elapsed_seconds = @elapsed begin
+        try
+            table = _run_solvability_diagnostic_profile(profile, bundle,
+                requested_instruments; tol=tol, on_progress=progress)
+        catch err
+            error_message = sprint(showerror, err)
+            table = DataFrame([_solvability_failure_row(profile, :profile, :profile,
+                missing, missing, err)])
+        end
+    end
+    table.profile_elapsed_seconds = fill(elapsed_seconds, nrow(table))
+    _write_atomic_csv(result_path, table)
+    valid_rows = count(table.solver_valid)
+    completion = (
+        phase=:profile_complete,
+        accepted_rows=valid_rows,
+        rejected_rows=nrow(table) - valid_rows,
+    )
+    _write_profile_status(status_path, profile;
+        state=ismissing(error_message) ? :completed : :failed,
+        phase=:profile_complete, started_at=started_at,
+        completed_attempts=completed_attempts[], event=completion,
+        profile_elapsed_seconds=elapsed_seconds, error_message=error_message)
+    return (
+        sensitivity_profile=profile.name,
+        result_path=result_path,
+        rows=nrow(table),
+        solver_valid_rows=valid_rows,
+        solver_rejected_rows=nrow(table) - valid_rows,
+        profile_elapsed_seconds=elapsed_seconds,
+        error_message=error_message,
+    )
+end
+
 """Combine valid and solver-rejected profile tables without discarding diagnostics."""
 function _combine_policy_grid_tables(profile_tables::AbstractVector)
     isempty(profile_tables) && error("The policy sensitivity grid returned no profile tables.")
@@ -836,14 +1103,13 @@ end
 
 Evaluate every configured single-instrument policy point at every Cartesian
 combination of the declared behavioural sensitivity ladder. Each profile has
-one common baseline for comparison, while every declared policy point is first
-solved from its profile-specific calibrated starts. Only a rejected point is
-retried from the closest valid lower-strength declared wedge; the zero-policy
-baseline is never a policy-solve start. Profiles are independent and can
-therefore use JCGERuntime's process-based execution. Every declared grid point
-is retained in the returned table: profiles that fail the numerical acceptance
-criteria are marked `solver_valid = false` and carry the corresponding
-diagnostic message.
+one common solved baseline, which is also used as the first policy start. A
+rejected point is retried by adaptive continuation from the nearest valid
+lower-strength solution, bisecting only failed intervals. Profiles are
+independent and can therefore use JCGERuntime's process-based execution. Every
+declared grid point is retained in the returned table: profiles that fail the
+numerical acceptance criteria are marked `solver_valid = false` and carry the
+corresponding diagnostic message.
 """
 function run_configured_policy_sensitivity_grid(;
     bundle::CalibrationBundle = default_calibration_bundle(),

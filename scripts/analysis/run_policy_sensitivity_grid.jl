@@ -16,11 +16,12 @@ using CERiseCGE
 const ROOT_DIR = normpath(joinpath(@__DIR__, "..", ".."))
 const OUTPUT_DIR = joinpath(ROOT_DIR, "results", "multi_region", "policy_sensitivity")
 const DEFAULT_OUTPUT_FILE = joinpath(OUTPUT_DIR, "policy_sensitivity_grid.csv")
-const WORKERS = 6
+const DEFAULT_WORKERS = 10
 
 function command_options(args)
     dry_run = false
     output_file = DEFAULT_OUTPUT_FILE
+    workers = DEFAULT_WORKERS
     index = 1
     while index <= length(args)
         if args[index] == "--dry-run"
@@ -29,12 +30,16 @@ function command_options(args)
         elseif args[index] == "--output" && index < length(args)
             output_file = normpath(joinpath(ROOT_DIR, args[index + 1]))
             index += 2
+        elseif args[index] == "--workers" && index < length(args)
+            workers = parse(Int, args[index + 1])
+            workers > 0 || error("--workers must be positive.")
+            index += 2
         else
             error("Usage: julia --project=. scripts/analysis/run_policy_sensitivity_grid.jl " *
-                  "[--dry-run] [--output PATH]")
+                  "[--dry-run] [--output PATH] [--workers N]")
         end
     end
-    return (dry_run = dry_run, output_file = output_file)
+    return (dry_run = dry_run, output_file = output_file, workers = workers)
 end
 
 function checkpoint_dir(output_file::AbstractString)
@@ -80,7 +85,7 @@ function main()
     println("Policy points per profile: ", policy_points)
     println("Completed profile checkpoints: ", length(completed))
     println("Profiles pending: ", length(pending))
-    println("Distributed workers: ", WORKERS)
+    println("Distributed workers: ", options.workers)
     println("Checkpoint directory: ", directory)
     flush(stdout)
 
@@ -98,7 +103,7 @@ function main()
         runner = profile -> CERiseCGE._checkpointed_sensitivity_profile(
             profile, bundle, requested_instruments, directory),
         execution = :distributed,
-        workers = WORKERS,
+        workers = options.workers,
         worker_modules = [:CERiseCGE],
     )
 

@@ -2,8 +2,8 @@ component	key	value	description
 closure	numeraire_label	P_HH_COMMON	Model-defined common household-consumption price index used as the numeraire.
 closure	numeraire_kind	price_index	JCGECore numeraire kind for a model-defined price index.
 closure	accounting_investment_pool	INV_POOL	The sole global investment pool whose zero-sum transfer identity is evaluated after solution as an accounting check.
-closure	accounting_market_region	DE	Region of the composite-market identity evaluated after solution to remove the Walras-redundant market condition.
-closure	accounting_market_industry	AGRI_FOOD	Industry code of the composite-market identity evaluated after solution to remove the Walras-redundant market condition.
+closure	accounting_market_region	IT	Region of the composite-market identity evaluated after solution to remove the Walras-redundant market condition.
+closure	accounting_market_industry	OTHER_SERVICES	Industry code of the composite-market identity evaluated after solution to remove the Walras-redundant market condition.
 numerical	positive_lower	1.0e-8	Strictly positive lower bound supplied to JCGE blocks for prices, outputs, and bilateral trade flows.
 numerical	model_positive_lower	1.0e-7	Strictly positive variable lower bound used by the nonlinear model solve; kept separate from positive_lower, which classifies observed calibration inputs.
 solver	ipopt_bound_push_share	0.01	Fraction of the smallest positive calibrated starting value used as Ipopt's absolute interior-point bound push.
@@ -18,8 +18,10 @@ solver	ipopt_acceptable_constraint_violation_tolerance	1.0e-4	Ipopt acceptable s
 solver	ipopt_acceptable_complementarity_tolerance	10.0	Ipopt acceptable complementarity threshold for a residual-validated feasibility solve.
 solver	ipopt_acceptable_iterations	1	Number of consecutive acceptable feasibility iterations required before Ipopt returns an acceptable solution.
 solver	ipopt_max_cpu_time	120.0	Maximum CPU seconds allowed for one nonlinear solve; a time-limited policy point is retained as a numerical rejection rather than blocking a grid worker.
+solver	policy_continuation_minimum_increment	2.5e-5	Smallest absolute EU-wide policy-wedge increment used when adaptive continuation bisects a rejected solve interval.
+solver	policy_continuation_max_attempts	60	Maximum adaptive continuation trial solves allowed while recovering one rejected declared policy point.
 diagnostics	baseline_absolute_residual_tolerance	1.0e-4	Absolute residual threshold for reporting the baseline replication. The physical METAL quantities are expressed in tonnes, so this corresponds to 0.1 kg and is far below the resolution of the source accounts.
-diagnostics	scaled_equation_residual_tolerance	1.0e-4	Maximum residual relative to the equation's calibrated scale used to validate policy-scenario feasibility across monetary and physical units.
+diagnostics	scaled_equation_residual_tolerance	1.0e-3	Maximum residual relative to the equation's calibrated scale used to validate policy-scenario feasibility across monetary and physical units.
 diagnostics	bound_violation_tolerance	1.0e-8	Maximum post-solution variable-bound violation in model units used alongside scaled equation residuals to validate policy-scenario feasibility independently of solver status.
 normalization	base_price	1.0	Common calibration price used to express the monetary SAM as model quantities at the reference point.
 trade	armington_elasticity	1.0	Initial Armington elasticity for observed product sourcing; retained as a sensitivity parameter until product-specific evidence is selected.

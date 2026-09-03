@@ -219,6 +219,7 @@ function sensitivity_bundle(profile::SensitivityProfile;
     Set(keys(profile.values)) == expected || error(
         "Sensitivity profile $(profile.name) must define every declared behavioural parameter exactly once.")
     configuration = copy(bundle.configuration)
+    configuration.value = String.(configuration.value)
     for ((component, key), value) in profile.values
         isfinite(value) && value > 0.0 || error(
             "Sensitivity value for $(component).$(key) must be finite and strictly positive.")

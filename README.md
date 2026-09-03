@@ -9,9 +9,23 @@ Primary and manufactured products clear through common EU markets with one EU pr
 - `data/mappings/`: regional, sectoral, and model-configuration mappings.
 - `data/artifacts/`: persisted supply-use, input-output, and social-accounting-matrix artifacts.
 - `scripts/input/`: data preparation, balancing, validation, and calibration-data construction scripts.
+- `scripts/analysis/`: policy-sensitivity analysis and reproducible solution workflows.
 - `src/`: the Julia implementation of the CGE model.
 - `test/`: model and calibration tests.
 - `Project.toml` and `Manifest.toml`: the Julia environment.
+
+## Reproduce policy-sensitivity solutions
+
+Run the complete declared policy experiment and its documented numerical continuation workflow with:
+
+```bash
+julia --project=. scripts/analysis/reproduce_policy_sensitivity_solutions.jl --workers 10
+```
+
+The script creates a fresh result directory containing the staged diagnostics,
+one complete 14,580-row policy table, and the retained unresolved points. It
+validates 14,570 equilibria and leaves the ten unresolved 2% virgin-metal-tax
+points visible rather than replacing them.
 
 ## License
 

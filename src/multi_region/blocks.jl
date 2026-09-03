@@ -100,9 +100,12 @@ function _initial_value_parameters(outline::MultiRegionOutline,
         start[JCGEBlocks.global_var(:INV_POOL, region)] = calibration.investment_pool_transfer[region]
     end
 
+    # Bilateral EU routes are represented by the common-EU sale and purchase
+    # variables below. Only routes involving the external account remain as
+    # individual `T`, `pS`, and `pD` variables in the assembled model.
     for route in calibration.trade_routes
-        seller_price = (route.origin == :ROW || route.destination == :ROW) ?
-            calibration.world_price[route.id] : base_price
+        (route.origin == :ROW || route.destination == :ROW) || continue
+        seller_price = calibration.world_price[route.id]
         start[JCGEBlocks.global_var(:T, route.id)] = calibration.trade_value[route.id]
         start[JCGEBlocks.global_var(:pS, route.id)] = seller_price
         start[JCGEBlocks.global_var(:pD, route.id)] =

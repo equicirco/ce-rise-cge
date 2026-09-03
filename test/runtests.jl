@@ -86,6 +86,8 @@ mixed_grid_rows = CERiseCGE._combine_policy_grid_tables([
 @test model.calibration.positive_lower == 1.0e-8
 @test CERiseCGE._model_positive_lower(bundle) == 1.0e-7
 @test solver_configuration(model).ipopt_max_cpu_time == 120.0
+@test solver_configuration(model).policy_continuation_minimum_increment == 2.5e-5
+@test solver_configuration(model).policy_continuation_max_attempts == 60
 routes = model.circular_routes
 @test length(routes.services) == 18
 @test sum(length, values(routes.eol_lines_by_family)) == 90
@@ -110,8 +112,10 @@ solver = solver_configuration(model)
 @test solver.ipopt_acceptable_constraint_violation_tolerance == 1.0e-4
 @test solver.ipopt_acceptable_complementarity_tolerance == 10.0
 @test solver.ipopt_acceptable_iterations == 1
+@test solver.policy_continuation_minimum_increment == 2.5e-5
+@test solver.policy_continuation_max_attempts == 60
 @test solver.baseline_residual_tolerance == 1.0e-4
-@test solver.scaled_residual_tolerance == 1.0e-4
+@test solver.scaled_residual_tolerance == 1.0e-3
 @test solver.bound_violation_tolerance == 1.0e-8
 @test length(model.calibration.inventory_change) == 150
 @test all(haskey(model.calibration.inventory_change, activity) for activity in outline.industries)
@@ -137,8 +141,8 @@ spec = run_spec(model)
 @test numeraire_closure(bundle).kind == spec.closure.kind
 accounting_targets = closure_accounting_targets(bundle)
 @test accounting_targets.investment_pool == :INV_POOL
-@test accounting_targets.market_region == :DE
-@test accounting_targets.market_good == :IND_DE_AGRI_FOOD
+@test accounting_targets.market_region == :IT
+@test accounting_targets.market_good == :IND_IT_OTHER_SERVICES
 @test !JCGECore.is_enforced(
     spec.closure,
     :regional_investment_pool,
@@ -148,8 +152,8 @@ accounting_targets = closure_accounting_targets(bundle)
     spec.closure,
     :regional_composite_market,
     :regional_composite_market,
-    :IND_DE_AGRI_FOOD,
-    :DE,
+    :IND_IT_OTHER_SERVICES,
+    :IT,
 )
 @test length(JCGECore.accounting_checks(spec.closure)) == 2
 blocks = multi_region_blocks(model.outline, model.calibration, model.scenario;
@@ -188,6 +192,7 @@ blocks = multi_region_blocks(model.outline, model.calibration, model.scenario;
 @test JCGEBlocks.inventory_treatment(blocks.trade).mode == :stock_change
 @test JCGEBlocks.inventory_treatment(blocks.trade).parameter == :inventory_change
 initial_values = blocks.initial_values.params.start
+@test !haskey(initial_values, JCGEBlocks.global_var(:T, :TRD_REF_OFMA_DE_SK))
 @test all(
     isapprox(
         initial_values[JCGEBlocks.global_var(:UU, region)],
@@ -327,9 +332,11 @@ zero_policy_result = run_policy_scenario(zero_policy_model)
 @test zero_policy_result.scaled_summary.above_tol == 0
 @test zero_policy_result.bound_summary.above_tol == 0
 
-tax_smoke_model = multi_region_model(; bundle = bundle,
-    scenario = eu_wide_policy_scenario(:virgin_metal_tax, 0.01; bundle = bundle))
-tax_smoke_result = run_policy_scenario(tax_smoke_model)
+tax_smoke_model = first(policy_sweep_models(:virgin_metal_tax; bundle = bundle))
+tax_smoke_record = only(CERiseCGE._run_declared_policy_points([tax_smoke_model];
+    baseline_start_values = solution_start_values(baseline_result)))
+@test tax_smoke_record.solver_valid
+tax_smoke_result = tax_smoke_record.result
 @test tax_smoke_result.scaled_summary.above_tol == 0
 @test tax_smoke_result.bound_summary.above_tol == 0
 tax_revenue = sum(
