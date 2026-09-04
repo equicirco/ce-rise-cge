@@ -14,7 +14,7 @@ using DataFrames
 using CERiseCGE
 
 const ROOT_DIR = normpath(joinpath(@__DIR__, "..", ".."))
-const OUTPUT_DIR = joinpath(ROOT_DIR, "results", "multi_region", "policy_sensitivity")
+const OUTPUT_DIR = joinpath(ROOT_DIR, "results", "policy_sensitivity")
 const DEFAULT_OUTPUT_FILE = joinpath(OUTPUT_DIR, "policy_sensitivity_grid.csv")
 const DEFAULT_WORKERS = 10
 

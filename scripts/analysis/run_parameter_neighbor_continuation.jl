@@ -14,13 +14,16 @@ using DataFrames
 using Distributed
 using CERiseCGE
 
+include(joinpath(@__DIR__, "recovered_policy_summary.jl"))
+using .RecoveredPolicySummary
+
 const ROOT_DIR = normpath(joinpath(@__DIR__, "..", ".."))
-const DEFAULT_GRID_FILE = joinpath(ROOT_DIR, "results", "multi_region",
-    "policy_sensitivity", "policy_sensitivity_grid_it_other_services.csv")
-const DEFAULT_PREDICTOR_FILE = joinpath(ROOT_DIR, "results", "multi_region",
-    "solvability_it_other_services_tax_predictor_trace.csv")
-const DEFAULT_OUTPUT_FILE = joinpath(ROOT_DIR, "results", "multi_region",
-    "parameter_neighbor_tax_continuation.csv")
+const DEFAULT_GRID_FILE = joinpath(ROOT_DIR, "results", "policy_sensitivity",
+    "policy_sensitivity_grid.csv")
+const DEFAULT_PREDICTOR_FILE = joinpath(ROOT_DIR, "results", "policy_sensitivity",
+    "predictor_trace.csv")
+const DEFAULT_OUTPUT_FILE = joinpath(ROOT_DIR, "results", "policy_sensitivity",
+    "parameter_neighbor.csv")
 const DEFAULT_WORKERS = 10
 const TAX_WEDGE = 0.02
 
@@ -28,6 +31,7 @@ function command_options(args)
     grid_file = DEFAULT_GRID_FILE
     predictor_file = DEFAULT_PREDICTOR_FILE
     output_file = DEFAULT_OUTPUT_FILE
+    summary_dir = nothing
     workers = DEFAULT_WORKERS
     dry_run = false
     index = 1
@@ -41,6 +45,9 @@ function command_options(args)
         elseif args[index] == "--output" && index < length(args)
             output_file = normpath(joinpath(ROOT_DIR, args[index + 1]))
             index += 2
+        elseif args[index] == "--summary-dir" && index < length(args)
+            summary_dir = normpath(joinpath(ROOT_DIR, args[index + 1]))
+            index += 2
         elseif args[index] == "--workers" && index < length(args)
             workers = parse(Int, args[index + 1])
             workers > 0 || error("--workers must be positive.")
@@ -50,11 +57,12 @@ function command_options(args)
             index += 1
         else
             error("Usage: julia --project=. scripts/analysis/run_parameter_neighbor_continuation.jl " *
-                "[--grid PATH] [--predictor PATH] [--output PATH] [--workers N] [--dry-run]")
+                "[--grid PATH] [--predictor PATH] [--output PATH] [--summary-dir PATH] " *
+                "[--workers N] [--dry-run]")
         end
     end
     return (grid_file = grid_file, predictor_file = predictor_file,
-        output_file = output_file, workers = workers, dry_run = dry_run)
+        output_file = output_file, summary_dir = summary_dir, workers = workers, dry_run = dry_run)
 end
 
 checkpoint_dir(output_file::AbstractString) = joinpath(dirname(output_file),
@@ -80,7 +88,7 @@ function parameter_label(keys)
 end
 
 function continuation_tasks(grid_file::AbstractString, predictor_file::AbstractString,
-    directory::AbstractString)
+    directory::AbstractString; summary_dir::Union{Nothing,AbstractString}=nothing)
     isfile(grid_file) || error("Completed policy grid is missing: $(grid_file)")
     grid = CSV.read(grid_file, DataFrame)
     required = Set([:sensitivity_profile, :instrument, :wedge, :solver_valid])
@@ -116,6 +124,8 @@ function continuation_tasks(grid_file::AbstractString, predictor_file::AbstractS
             target = target_name,
             candidates = candidates,
             output_path = joinpath(directory, "$(target_name).csv"),
+            summary_path = isnothing(summary_dir) ? nothing :
+                joinpath(summary_dir, "$(target_name).csv"),
         ))
     end
     return tasks
@@ -177,7 +187,8 @@ function source_tax_solution(profile, bundle)
 end
 
 function run_task(task)
-    isfile(task.output_path) && return (target = task.target, state = :skipped)
+    isfile(task.output_path) && (isnothing(task.summary_path) || isfile(task.summary_path)) &&
+        return (target = task.target, state = :skipped)
     bundle = CERiseCGE.default_calibration_bundle()
     profiles = Dict(profile.name => profile for profile in CERiseCGE.sensitivity_profiles(bundle))
     target = profiles[task.target]
@@ -206,7 +217,12 @@ function run_task(task)
                 source_baseline_valid = baseline_valid,
                 source_tax_valid = source_valid)
             push!(rows, row)
-            row.solver_valid && break
+            if row.solver_valid
+                !isnothing(task.summary_path) &&
+                    RecoveredPolicySummary.write_summary(task.summary_path, target, bundle,
+                        model, result, :neighbor)
+                break
+            end
         catch err
             push!(rows, failure_row(target, candidate.profile, candidate.parameter,
                 candidate.distance, sprint(showerror, err)))
@@ -233,8 +249,10 @@ end
 function main()
     options = command_options(ARGS)
     directory = checkpoint_dir(options.output_file)
-    tasks = continuation_tasks(options.grid_file, options.predictor_file, directory)
-    pending = filter(task -> !isfile(task.output_path), tasks)
+    tasks = continuation_tasks(options.grid_file, options.predictor_file, directory;
+        summary_dir = options.summary_dir)
+    pending = filter(task -> !isfile(task.output_path) ||
+        (!isnothing(task.summary_path) && !isfile(task.summary_path)), tasks)
     println("Remaining tax profiles: ", length(tasks))
     println("Completed checkpoints: ", length(tasks) - length(pending))
     println("Pending profiles: ", length(pending))

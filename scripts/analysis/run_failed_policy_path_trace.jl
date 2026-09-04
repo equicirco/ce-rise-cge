@@ -19,12 +19,16 @@ using Distributed
 using JuMP
 using CERiseCGE
 
+include(joinpath(@__DIR__, "recovered_policy_summary.jl"))
+using .RecoveredPolicySummary
+
 const ROOT_DIR = normpath(joinpath(@__DIR__, "..", ".."))
-const DEFAULT_INPUT_FILE = joinpath(ROOT_DIR, "results", "multi_region",
-    "solvability_adaptive_sequential.csv")
-const DEFAULT_OUTPUT_FILE = joinpath(ROOT_DIR, "results", "multi_region",
-    "solvability_failed_path_trace.csv")
+const DEFAULT_INPUT_FILE = joinpath(ROOT_DIR, "results", "policy_sensitivity",
+    "policy_sensitivity_grid.csv")
+const DEFAULT_OUTPUT_FILE = joinpath(ROOT_DIR, "results", "policy_sensitivity",
+    "predictor_trace.csv")
 const DEFAULT_WORKERS = 6
+const TAX_WEDGE = 0.02
 
 function command_options(args)
     input_file = DEFAULT_INPUT_FILE
@@ -32,6 +36,7 @@ function command_options(args)
     workers = DEFAULT_WORKERS
     limit = nothing
     predictor = false
+    summary_dir = nothing
     dry_run = false
     index = 1
     while index <= length(args)
@@ -52,16 +57,20 @@ function command_options(args)
         elseif args[index] == "--predictor"
             predictor = true
             index += 1
+        elseif args[index] == "--summary-dir" && index < length(args)
+            summary_dir = normpath(joinpath(ROOT_DIR, args[index + 1]))
+            index += 2
         elseif args[index] == "--dry-run"
             dry_run = true
             index += 1
         else
             error("Usage: julia --project=. scripts/analysis/run_failed_policy_path_trace.jl " *
-                "[--input PATH] [--output PATH] [--workers N] [--limit N] [--predictor] [--dry-run]")
+                "[--input PATH] [--output PATH] [--workers N] [--limit N] [--predictor] " *
+                "[--summary-dir PATH] [--dry-run]")
         end
     end
     return (input_file=input_file, output_file=output_file, workers=workers,
-        limit=limit, predictor=predictor, dry_run=dry_run)
+        limit=limit, predictor=predictor, summary_dir=summary_dir, dry_run=dry_run)
 end
 
 checkpoint_dir(output_file::AbstractString) = joinpath(dirname(output_file),
@@ -129,6 +138,7 @@ function trace_declared_policy_path(profile, models, baseline_result; predictor:
     prior_strength = nothing
     prior_starts = nothing
     rows = NamedTuple[]
+    endpoint = nothing
 
     for model in models
         target_wedge = CERiseCGE.policy_wedge(model.scenario, instrument)
@@ -145,6 +155,8 @@ function trace_declared_policy_path(profile, models, baseline_result; predictor:
             source_strength = target_strength
             source_starts = CERiseCGE.solution_start_values(direct_result)
             source_result = direct_result
+            isapprox(target_strength, TAX_WEDGE; atol=eps(TAX_WEDGE), rtol=0.0) &&
+                (endpoint = (model = model, result = direct_result))
             continue
         end
 
@@ -180,6 +192,8 @@ function trace_declared_policy_path(profile, models, baseline_result; predictor:
                     accepted_target = true
                     source_strength = current_strength
                     source_starts = starts
+                    isapprox(current_strength, TAX_WEDGE; atol=eps(TAX_WEDGE), rtol=0.0) &&
+                        (endpoint = (model = model, result = current_result))
                     break
                 end
                 step = min(target_strength - current_strength, 2.0 * step)
@@ -202,18 +216,20 @@ function trace_declared_policy_path(profile, models, baseline_result; predictor:
                 source_strength = target_strength
                 source_starts = CERiseCGE.solution_start_values(predictor_result)
                 source_result = predictor_result
+                isapprox(target_strength, TAX_WEDGE; atol=eps(TAX_WEDGE), rtol=0.0) &&
+                    (endpoint = (model = model, result = predictor_result))
             end
         end
         accepted_target || nothing
     end
-    return DataFrame(rows)
+    return (trace = DataFrame(rows), endpoint = endpoint)
 end
 
 function run_failure_path(task)
     profile_name = Symbol(task.profile)
     instrument = Symbol(task.instrument)
     output_path = String(task.output_path)
-    isfile(output_path) && return (
+    isfile(output_path) && (isnothing(task.summary_path) || isfile(task.summary_path)) && return (
         profile = profile_name,
         instrument = instrument,
         output_path = output_path,
@@ -232,10 +248,14 @@ function run_failure_path(task)
     if CERiseCGE._valid_policy_solution(baseline_result)
         models = CERiseCGE.policy_sweep_models(instrument; bundle=profile_bundle,
             calibration=calibration)
-        for row in eachrow(trace_declared_policy_path(profile, models, baseline_result;
-            predictor=task.predictor))
+        traced = trace_declared_policy_path(profile, models, baseline_result;
+            predictor=task.predictor)
+        for row in eachrow(traced.trace)
             push!(rows, NamedTuple(row))
         end
+        !isnothing(task.summary_path) && !isnothing(traced.endpoint) &&
+            RecoveredPolicySummary.write_summary(task.summary_path, profile, bundle,
+                traced.endpoint.model, traced.endpoint.result, :predictor)
     end
     table = DataFrame(rows)
     mkpath(dirname(output_path))
@@ -293,8 +313,13 @@ function main()
     options = command_options(ARGS)
     directory = checkpoint_dir(options.output_file)
     tasks = failed_path_tasks(options.input_file, directory; limit=options.limit)
-    tasks = [merge(task, (predictor=options.predictor,)) for task in tasks]
-    pending = filter(task -> !isfile(task.output_path), tasks)
+    tasks = [merge(task, (
+        predictor=options.predictor,
+        summary_path=isnothing(options.summary_dir) ? nothing :
+            joinpath(options.summary_dir, "$(task.profile).csv"),
+    )) for task in tasks]
+    pending = filter(task -> !isfile(task.output_path) ||
+        (!isnothing(task.summary_path) && !isfile(task.summary_path)), tasks)
     println("Failed profile--instrument paths: ", length(tasks))
     println("Completed checkpoints: ", length(tasks) - length(pending))
     println("Pending paths: ", length(pending))

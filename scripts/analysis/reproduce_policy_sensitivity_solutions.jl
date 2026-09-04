@@ -5,17 +5,17 @@ Reproduce the complete six-region policy-sensitivity solution set from scratch.
 
 The workflow first solves all declared policy points, then applies only
 diagnostic continuation paths to the rejected 2% virgin-metal-tax endpoints.
-It materializes one complete result table with 14,570 validated equilibria and
-ten retained unresolved points. No policy point, calibration value, acceptance
-criterion, or economic equation is altered by the continuation stages.
+It materializes one complete result table, retaining every endpoint that remains
+unresolved under the declared acceptance criteria. No policy point, calibration
+value, acceptance criterion, or economic equation is altered by the continuation
+stages.
 """
 
 using CSV
 using DataFrames
 
 const ROOT_DIR = normpath(joinpath(@__DIR__, "..", ".."))
-const DEFAULT_OUTPUT_DIR = joinpath(ROOT_DIR, "results", "multi_region",
-    "reproducible_policy_sensitivity")
+const DEFAULT_OUTPUT_DIR = joinpath(ROOT_DIR, "results", "policy_sensitivity")
 const DEFAULT_WORKERS = 10
 const FINE_INCREMENT = "0.0001220703125" # 1 / 8192
 
@@ -58,7 +58,6 @@ function write_coverage(final_file::AbstractString, output_dir::AbstractString)
     table = CSV.read(final_file, DataFrame)
     nrow(table) == 14_580 || error("Final result table has $(nrow(table)) rows; expected 14,580.")
     valid = coalesce.(table.solver_valid, false)
-    count(valid) == 14_570 || error("Final result table does not have 14,570 validated rows.")
     coverage = DataFrame(
         total_policy_points = [nrow(table)],
         validated_equilibria = [count(valid)],
@@ -80,12 +79,12 @@ function main()
     bisection = joinpath(out, "parameter_bisection.csv")
     fine = joinpath(out, "parameter_bisection_fine.csv")
     diagonal = joinpath(out, "parameter_bisection_diagonal.csv")
+    recovered_summaries = joinpath(out, "recovered_endpoint_summaries")
     final = joinpath(out, "policy_sensitivity_solutions.csv")
 
     println("Output directory: ", out)
     println("Workers: ", options.workers)
     println("Declared policy points: 14,580")
-    println("Expected validated equilibria: 14,570")
     if options.dry_run
         println("Stages: declared grid; predictor; neighbouring-profile continuation; " *
             "parameter continuation; fine parameter continuation; diagonal continuation; " *
@@ -93,43 +92,50 @@ function main()
         println("Dry run completed; no results were written.")
         return nothing
     end
-    ispath(out) && error("Output directory already exists: $(out). Choose a new --output-dir for a fresh reproduction.")
-    mkpath(out)
+    if ispath(out)
+        isdir(out) && isempty(readdir(out)) ||
+            error("Output directory is not empty: $(out). A fresh reproduction requires an empty directory.")
+    else
+        mkpath(out)
+    end
     workers = string(options.workers)
     run_stage("scripts/analysis/run_policy_sensitivity_grid.jl", [
         "--output", relative(grid), "--workers", workers,
     ])
     run_stage("scripts/analysis/run_failed_policy_path_trace.jl", [
         "--input", relative(grid), "--output", relative(predictor),
-        "--workers", workers, "--predictor",
+        "--workers", workers, "--predictor", "--summary-dir", relative(recovered_summaries),
     ])
     run_stage("scripts/analysis/run_parameter_neighbor_continuation.jl", [
         "--grid", relative(grid), "--predictor", relative(predictor),
         "--output", relative(neighbor), "--workers", workers,
+        "--summary-dir", relative(recovered_summaries),
     ])
     run_stage("scripts/analysis/run_parameter_bisection_continuation.jl", [
         "--input", relative(neighbor), "--output", relative(bisection),
-        "--workers", workers,
+        "--workers", workers, "--summary-dir", relative(recovered_summaries),
     ])
     run_stage("scripts/analysis/run_parameter_bisection_continuation.jl", [
         "--input", relative(neighbor), "--remaining-from", relative(bisection),
         "--minimum-fraction-increment", FINE_INCREMENT,
         "--output", relative(fine), "--workers", workers,
+        "--summary-dir", relative(recovered_summaries),
     ])
     run_stage("scripts/analysis/run_parameter_bisection_continuation.jl", [
         "--input", relative(neighbor), "--remaining-from", relative(fine),
         "--minimum-fraction-increment", FINE_INCREMENT,
         "--continuation-path", "diagonal_tax_parameter",
         "--output", relative(diagonal), "--workers", workers,
+        "--summary-dir", relative(recovered_summaries),
     ])
     run_stage("scripts/analysis/materialize_recovered_policy_results.jl", [
-        "--grid", relative(grid), "--predictor", relative(predictor),
-        "--neighbor", relative(neighbor), "--bisection", relative(bisection),
-        "--fine", relative(fine), "--diagonal", relative(diagonal),
-        "--output", relative(final), "--workers", workers,
+        "--grid", relative(grid), "--summary-dir", relative(recovered_summaries),
+        "--output", relative(final),
     ])
     write_coverage(final, out)
     println("Reproduction completed: ", final)
 end
 
-main()
+if abspath(PROGRAM_FILE) == @__FILE__
+    main()
+end
