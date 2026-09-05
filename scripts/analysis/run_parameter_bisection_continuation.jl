@@ -19,10 +19,8 @@ include(joinpath(@__DIR__, "recovered_policy_summary.jl"))
 using .RecoveredPolicySummary
 
 const ROOT_DIR = normpath(joinpath(@__DIR__, "..", ".."))
-const DEFAULT_INPUT_FILE = joinpath(ROOT_DIR, "results", "policy_sensitivity",
-    "parameter_neighbor.csv")
-const DEFAULT_OUTPUT_FILE = joinpath(ROOT_DIR, "results", "policy_sensitivity",
-    "parameter_bisection.csv")
+const DEFAULT_INPUT_FILE = joinpath(ROOT_DIR, "results", "parameter_neighbor.csv")
+const DEFAULT_OUTPUT_FILE = joinpath(ROOT_DIR, "results", "parameter_bisection.csv")
 const DEFAULT_WORKERS = 10
 const TAX_WEDGE = 0.02
 const DEFAULT_MINIMUM_FRACTION_INCREMENT = 1.0 / 1024.0

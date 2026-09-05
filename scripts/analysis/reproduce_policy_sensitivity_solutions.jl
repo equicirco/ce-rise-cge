@@ -15,7 +15,7 @@ using CSV
 using DataFrames
 
 const ROOT_DIR = normpath(joinpath(@__DIR__, "..", ".."))
-const DEFAULT_OUTPUT_DIR = joinpath(ROOT_DIR, "results", "policy_sensitivity")
+const DEFAULT_OUTPUT_DIR = joinpath(ROOT_DIR, "results")
 const DEFAULT_WORKERS = 10
 const FINE_INCREMENT = "0.0001220703125" # 1 / 8192
 
