@@ -31,6 +31,7 @@ export sensitivity_parameter_grid, sensitivity_profiles, sensitivity_bundle
 export MULTI_REGION_BLOCK_KINDS, multi_region_blocks
 export MultiRegionModelSpec, multi_region_model, solver_configuration, run_spec, baseline, run_baseline, run_policy_scenario, run_policy_path, policy_sweep_models, run_configured_policy_sweep, run_configured_policy_sensitivity_grid, solution_start_values, default_optimizer
 export summary_row, policy_fiscal_totals, policy_sweep_summary
+export equilibrium_outcomes, policy_outcome_comparison
 export coefficient_template_status, quantity_bridge_status, route_family_table
 export PhysicalSatelliteSpec, PhysicalSatelliteReadiness, physical_satellite_spec, physical_satellite_readiness
 export observed_physical_flows, physical_flow_anchors, observed_physical_quantity_links, physical_quantity_indices

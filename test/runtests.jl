@@ -359,6 +359,42 @@ tax_sweep = policy_sweep_summary(baseline_result, model,
 @test only(tax_sweep.fiscal_basis_kind) === :tax_revenue
 @test only(tax_sweep.fiscal_basis_million_eur) > 0.0
 
+baseline_outcomes = equilibrium_outcomes(baseline_result, model)
+tax_outcomes = policy_outcome_comparison(
+    baseline_result, model, tax_smoke_result, tax_smoke_model)
+@test nrow(tax_outcomes) == nrow(baseline_outcomes)
+@test nrow(tax_outcomes) > 1_500
+@test Set(tax_outcomes.domain) == Set([:economic, :fiscal, :physical])
+@test Set(tax_outcomes.unit) == Set([:index, :million_eur, :ratio, :tonnes])
+@test any(tax_outcomes.indicator .== :activity_gross_output_million_eur)
+@test any(tax_outcomes.indicator .== :primary_metal_output)
+@test any(tax_outcomes.indicator .== :policy_revenue_million_eur)
+@test all(tax_outcomes.scenario .== tax_smoke_model.scenario.name)
+@test all(tax_outcomes.instrument .== :virgin_metal_tax)
+@test all(tax_outcomes.wedge .== 0.0025)
+
+include(joinpath(@__DIR__, "..", "scripts", "analysis", "policy_outcome_database.jl"))
+using .PolicyOutcomeDatabase
+mktempdir() do directory
+    database_path = joinpath(directory, "policy_outcomes.duckdb")
+    policy_points = DataFrame(
+        sensitivity_profile = [:sensitivity_001],
+        scenario = [tax_smoke_model.scenario.name],
+        instrument = [:virgin_metal_tax],
+        wedge = [0.0025],
+        solver_valid = [true],
+    )
+    outcomes = copy(tax_outcomes)
+    outcomes.sensitivity_profile = fill(:sensitivity_001, nrow(outcomes))
+    store = PolicyOutcomeDatabase.create_database(database_path, policy_points)
+    PolicyOutcomeDatabase.append_outcomes!(store, outcomes)
+    summary = PolicyOutcomeDatabase.database_summary(store.connection)
+    @test summary.policy_points == 1
+    @test summary.outcome_rows == nrow(outcomes)
+    PolicyOutcomeDatabase.close_database!(store)
+    @test isfile(database_path)
+end
+
 recycling_seed_model = multi_region_model(; bundle = bundle,
     scenario = eu_wide_policy_scenario(:recycling_support, -0.005; bundle = bundle))
 recycling_target_model = multi_region_model(; bundle = bundle,

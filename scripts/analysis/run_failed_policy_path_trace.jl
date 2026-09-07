@@ -21,6 +21,8 @@ using CERiseCGE
 
 include(joinpath(@__DIR__, "recovered_policy_summary.jl"))
 using .RecoveredPolicySummary
+include(joinpath(@__DIR__, "recovered_policy_outcome.jl"))
+using .RecoveredPolicyOutcome
 
 const ROOT_DIR = normpath(joinpath(@__DIR__, "..", ".."))
 const DEFAULT_INPUT_FILE = joinpath(ROOT_DIR, "results", "policy_sensitivity_grid.csv")
@@ -35,6 +37,7 @@ function command_options(args)
     limit = nothing
     predictor = false
     summary_dir = nothing
+    outcome_dir = nothing
     dry_run = false
     index = 1
     while index <= length(args)
@@ -58,17 +61,21 @@ function command_options(args)
         elseif args[index] == "--summary-dir" && index < length(args)
             summary_dir = normpath(joinpath(ROOT_DIR, args[index + 1]))
             index += 2
+        elseif args[index] == "--outcome-dir" && index < length(args)
+            outcome_dir = normpath(joinpath(ROOT_DIR, args[index + 1]))
+            index += 2
         elseif args[index] == "--dry-run"
             dry_run = true
             index += 1
         else
             error("Usage: julia --project=. scripts/analysis/run_failed_policy_path_trace.jl " *
                 "[--input PATH] [--output PATH] [--workers N] [--limit N] [--predictor] " *
-                "[--summary-dir PATH] [--dry-run]")
+                "[--summary-dir PATH] [--outcome-dir PATH] [--dry-run]")
         end
     end
     return (input_file=input_file, output_file=output_file, workers=workers,
-        limit=limit, predictor=predictor, summary_dir=summary_dir, dry_run=dry_run)
+        limit=limit, predictor=predictor, summary_dir=summary_dir,
+        outcome_dir=outcome_dir, dry_run=dry_run)
 end
 
 checkpoint_dir(output_file::AbstractString) = joinpath(dirname(output_file),
@@ -227,7 +234,8 @@ function run_failure_path(task)
     profile_name = Symbol(task.profile)
     instrument = Symbol(task.instrument)
     output_path = String(task.output_path)
-    isfile(output_path) && (isnothing(task.summary_path) || isfile(task.summary_path)) && return (
+    isfile(output_path) && (isnothing(task.summary_path) || isfile(task.summary_path)) &&
+        (isnothing(task.outcome_path) || isfile(task.outcome_path)) && return (
         profile = profile_name,
         instrument = instrument,
         output_path = output_path,
@@ -254,6 +262,9 @@ function run_failure_path(task)
         !isnothing(task.summary_path) && !isnothing(traced.endpoint) &&
             RecoveredPolicySummary.write_summary(task.summary_path, profile, bundle,
                 traced.endpoint.model, traced.endpoint.result, :predictor)
+        !isnothing(task.outcome_path) && !isnothing(traced.endpoint) &&
+            RecoveredPolicyOutcome.write_outcome(task.outcome_path, profile, bundle,
+                traced.endpoint.model, traced.endpoint.result)
     end
     table = DataFrame(rows)
     mkpath(dirname(output_path))
@@ -314,10 +325,13 @@ function main()
     tasks = [merge(task, (
         predictor=options.predictor,
         summary_path=isnothing(options.summary_dir) ? nothing :
-            joinpath(options.summary_dir, "$(task.profile).csv"),
+        joinpath(options.summary_dir, "$(task.profile).csv"),
+        outcome_path=isnothing(options.outcome_dir) ? nothing :
+        joinpath(options.outcome_dir, "$(task.profile).csv"),
     )) for task in tasks]
     pending = filter(task -> !isfile(task.output_path) ||
-        (!isnothing(task.summary_path) && !isfile(task.summary_path)), tasks)
+        (!isnothing(task.summary_path) && !isfile(task.summary_path)) ||
+        (!isnothing(task.outcome_path) && !isfile(task.outcome_path)), tasks)
     println("Failed profile--instrument paths: ", length(tasks))
     println("Completed checkpoints: ", length(tasks) - length(pending))
     println("Pending paths: ", length(pending))

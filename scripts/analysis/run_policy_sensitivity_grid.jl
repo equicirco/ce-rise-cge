@@ -21,6 +21,7 @@ const DEFAULT_WORKERS = 10
 function command_options(args)
     dry_run = false
     output_file = DEFAULT_OUTPUT_FILE
+    outcome_dir = nothing
     workers = DEFAULT_WORKERS
     index = 1
     while index <= length(args)
@@ -30,16 +31,20 @@ function command_options(args)
         elseif args[index] == "--output" && index < length(args)
             output_file = normpath(joinpath(ROOT_DIR, args[index + 1]))
             index += 2
+        elseif args[index] == "--outcome-dir" && index < length(args)
+            outcome_dir = normpath(joinpath(ROOT_DIR, args[index + 1]))
+            index += 2
         elseif args[index] == "--workers" && index < length(args)
             workers = parse(Int, args[index + 1])
             workers > 0 || error("--workers must be positive.")
             index += 2
         else
             error("Usage: julia --project=. scripts/analysis/run_policy_sensitivity_grid.jl " *
-                  "[--dry-run] [--output PATH] [--workers N]")
+                  "[--dry-run] [--output PATH] [--outcome-dir PATH] [--workers N]")
         end
     end
-    return (dry_run = dry_run, output_file = output_file, workers = workers)
+    return (dry_run = dry_run, output_file = output_file, outcome_dir = outcome_dir,
+        workers = workers)
 end
 
 function checkpoint_dir(output_file::AbstractString)
@@ -48,13 +53,16 @@ function checkpoint_dir(output_file::AbstractString)
 end
 
 function profile_checkpoint_complete(profile, directory::AbstractString,
-    policy_points::Integer)
+    policy_points::Integer; outcome_dir::Union{Nothing,AbstractString}=nothing)
     path = joinpath(directory, "$(profile.name).csv")
     isfile(path) || return false
     table = DataFrame(CSV.File(path))
+    outcome_path = outcome_dir === nothing ? nothing :
+        joinpath(outcome_dir, "$(profile.name).csv")
     return nrow(table) == policy_points &&
         :sensitivity_profile in propertynames(table) &&
-        all(String(value) == String(profile.name) for value in table.sensitivity_profile)
+        all(String(value) == String(profile.name) for value in table.sensitivity_profile) &&
+        (outcome_path === nothing || isfile(outcome_path))
 end
 
 function write_combined_output(output_file::AbstractString, profiles,
@@ -78,8 +86,10 @@ function main()
     policy_points = nrow(wedges)
     expected_rows = length(profiles) * policy_points
     directory = checkpoint_dir(options.output_file)
-    completed = filter(profile -> profile_checkpoint_complete(profile, directory, policy_points), profiles)
-    pending = filter(profile -> !profile_checkpoint_complete(profile, directory, policy_points), profiles)
+    completed = filter(profile -> profile_checkpoint_complete(profile, directory, policy_points;
+        outcome_dir=options.outcome_dir), profiles)
+    pending = filter(profile -> !profile_checkpoint_complete(profile, directory, policy_points;
+        outcome_dir=options.outcome_dir), profiles)
 
     println("Sensitivity profiles: ", length(profiles))
     println("Policy points per profile: ", policy_points)
@@ -87,6 +97,7 @@ function main()
     println("Profiles pending: ", length(pending))
     println("Distributed workers: ", options.workers)
     println("Checkpoint directory: ", directory)
+    options.outcome_dir === nothing || println("Outcome directory: ", options.outcome_dir)
     flush(stdout)
 
     if options.dry_run
@@ -101,7 +112,9 @@ function main()
     isempty(pending) || CERiseCGE.RuntimeExperiments.run_grid(
         pending;
         runner = profile -> CERiseCGE._checkpointed_sensitivity_profile(
-            profile, bundle, requested_instruments, directory),
+            profile, bundle, requested_instruments, directory;
+            outcome_path = options.outcome_dir === nothing ? nothing :
+                joinpath(options.outcome_dir, "$(profile.name).csv")),
         execution = :distributed,
         workers = options.workers,
         worker_modules = [:CERiseCGE],

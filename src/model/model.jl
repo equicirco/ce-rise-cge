@@ -702,7 +702,8 @@ end
 function _run_configured_sensitivity_profile(profile::SensitivityProfile,
     bundle::CalibrationBundle, requested_instruments::AbstractVector{Symbol};
     tol::Union{Nothing,Real} = nothing,
-    on_progress::Union{Nothing,Function} = nothing)
+    on_progress::Union{Nothing,Function} = nothing,
+    on_valid_policy::Union{Nothing,Function} = nothing)
     profile_bundle = sensitivity_bundle(profile; bundle=bundle)
     calibration = multi_region_calibration(profile_bundle)
     baseline_model = multi_region_model(; bundle=profile_bundle, calibration=calibration)
@@ -724,6 +725,9 @@ function _run_configured_sensitivity_profile(profile::SensitivityProfile,
             on_point=on_progress)
         valid_records = filter(record -> record.solver_valid, records)
         if !isempty(valid_records)
+            on_valid_policy === nothing || foreach(valid_records) do record
+                on_valid_policy(baseline_result, baseline_model, record)
+            end
             policy_runs = [(model=record.model, result=record.result) for record in valid_records]
             table = policy_sweep_summary(baseline_result, baseline_model, policy_runs)
             timing = Dict(record.model.scenario.name => record for record in valid_records)
@@ -852,7 +856,8 @@ end
 """Solve one profile and persist its status and complete result table for monitored execution."""
 function _checkpointed_sensitivity_profile(profile::SensitivityProfile,
     bundle::CalibrationBundle, requested_instruments::AbstractVector{Symbol},
-    checkpoint_dir::AbstractString; tol::Union{Nothing,Real}=nothing)
+    checkpoint_dir::AbstractString; tol::Union{Nothing,Real}=nothing,
+    outcome_path::Union{Nothing,AbstractString}=nothing)
     mkpath(checkpoint_dir)
     profile_name = String(profile.name)
     result_path = joinpath(checkpoint_dir, "$(profile_name).csv")
@@ -874,10 +879,15 @@ function _checkpointed_sensitivity_profile(profile::SensitivityProfile,
 
     table = nothing
     error_message = missing
+    outcome_tables = DataFrame[]
     elapsed_seconds = @elapsed begin
         try
             table = _run_configured_sensitivity_profile(profile, bundle,
-                requested_instruments; tol=tol, on_progress=progress)
+                requested_instruments; tol=tol, on_progress=progress,
+                on_valid_policy = outcome_path === nothing ? nothing :
+                    (baseline_result, baseline_model, record) -> push!(outcome_tables,
+                        policy_outcome_comparison(baseline_result, baseline_model,
+                            record.result, record.model)))
         catch err
             error_message = sprint(showerror, err)
             table = _sensitivity_failure_table(profile, bundle,
@@ -886,6 +896,13 @@ function _checkpointed_sensitivity_profile(profile::SensitivityProfile,
     end
     table.profile_elapsed_seconds = fill(elapsed_seconds, nrow(table))
     _write_atomic_csv(result_path, table)
+    if outcome_path !== nothing
+        outcomes = isempty(outcome_tables) ? DataFrame() : vcat(outcome_tables...; cols=:union)
+        nrow(outcomes) > 0 || error("Sensitivity profile $(profile.name) has no valid policy outcomes.")
+        outcomes.sensitivity_profile = fill(profile.name, nrow(outcomes))
+        mkpath(dirname(outcome_path))
+        _write_atomic_csv(outcome_path, outcomes)
+    end
     valid_rows = count(table.solver_valid)
     completion = (
         phase = :profile_complete,

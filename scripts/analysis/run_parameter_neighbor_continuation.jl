@@ -16,6 +16,8 @@ using CERiseCGE
 
 include(joinpath(@__DIR__, "recovered_policy_summary.jl"))
 using .RecoveredPolicySummary
+include(joinpath(@__DIR__, "recovered_policy_outcome.jl"))
+using .RecoveredPolicyOutcome
 
 const ROOT_DIR = normpath(joinpath(@__DIR__, "..", ".."))
 const DEFAULT_GRID_FILE = joinpath(ROOT_DIR, "results", "policy_sensitivity_grid.csv")
@@ -29,6 +31,7 @@ function command_options(args)
     predictor_file = DEFAULT_PREDICTOR_FILE
     output_file = DEFAULT_OUTPUT_FILE
     summary_dir = nothing
+    outcome_dir = nothing
     workers = DEFAULT_WORKERS
     dry_run = false
     index = 1
@@ -45,6 +48,9 @@ function command_options(args)
         elseif args[index] == "--summary-dir" && index < length(args)
             summary_dir = normpath(joinpath(ROOT_DIR, args[index + 1]))
             index += 2
+        elseif args[index] == "--outcome-dir" && index < length(args)
+            outcome_dir = normpath(joinpath(ROOT_DIR, args[index + 1]))
+            index += 2
         elseif args[index] == "--workers" && index < length(args)
             workers = parse(Int, args[index + 1])
             workers > 0 || error("--workers must be positive.")
@@ -55,11 +61,12 @@ function command_options(args)
         else
             error("Usage: julia --project=. scripts/analysis/run_parameter_neighbor_continuation.jl " *
                 "[--grid PATH] [--predictor PATH] [--output PATH] [--summary-dir PATH] " *
-                "[--workers N] [--dry-run]")
+                "[--outcome-dir PATH] [--workers N] [--dry-run]")
         end
     end
     return (grid_file = grid_file, predictor_file = predictor_file,
-        output_file = output_file, summary_dir = summary_dir, workers = workers, dry_run = dry_run)
+        output_file = output_file, summary_dir = summary_dir, outcome_dir = outcome_dir,
+        workers = workers, dry_run = dry_run)
 end
 
 checkpoint_dir(output_file::AbstractString) = joinpath(dirname(output_file),
@@ -185,6 +192,7 @@ end
 
 function run_task(task)
     isfile(task.output_path) && (isnothing(task.summary_path) || isfile(task.summary_path)) &&
+        (isnothing(task.outcome_path) || isfile(task.outcome_path)) &&
         return (target = task.target, state = :skipped)
     bundle = CERiseCGE.default_calibration_bundle()
     profiles = Dict(profile.name => profile for profile in CERiseCGE.sensitivity_profiles(bundle))
@@ -218,6 +226,9 @@ function run_task(task)
                 !isnothing(task.summary_path) &&
                     RecoveredPolicySummary.write_summary(task.summary_path, target, bundle,
                         model, result, :neighbor)
+                !isnothing(task.outcome_path) &&
+                    RecoveredPolicyOutcome.write_outcome(task.outcome_path, target, bundle,
+                        model, result)
                 break
             end
         catch err
@@ -248,8 +259,11 @@ function main()
     directory = checkpoint_dir(options.output_file)
     tasks = continuation_tasks(options.grid_file, options.predictor_file, directory;
         summary_dir = options.summary_dir)
+    tasks = [merge(task, (outcome_path = isnothing(options.outcome_dir) ? nothing :
+        joinpath(options.outcome_dir, "$(task.target).csv"),)) for task in tasks]
     pending = filter(task -> !isfile(task.output_path) ||
-        (!isnothing(task.summary_path) && !isfile(task.summary_path)), tasks)
+        (!isnothing(task.summary_path) && !isfile(task.summary_path)) ||
+        (!isnothing(task.outcome_path) && !isfile(task.outcome_path)), tasks)
     println("Remaining tax profiles: ", length(tasks))
     println("Completed checkpoints: ", length(tasks) - length(pending))
     println("Pending profiles: ", length(pending))

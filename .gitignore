@@ -3,3 +3,5 @@ article/
 data/raw/
 data/interim/
 data/disaggregation/*.xlsx
+results/data/*.duckdb
+results/data/*.duckdb.wal

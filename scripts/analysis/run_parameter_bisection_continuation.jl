@@ -17,6 +17,8 @@ using CERiseCGE
 
 include(joinpath(@__DIR__, "recovered_policy_summary.jl"))
 using .RecoveredPolicySummary
+include(joinpath(@__DIR__, "recovered_policy_outcome.jl"))
+using .RecoveredPolicyOutcome
 
 const ROOT_DIR = normpath(joinpath(@__DIR__, "..", ".."))
 const DEFAULT_INPUT_FILE = joinpath(ROOT_DIR, "results", "parameter_neighbor.csv")
@@ -30,6 +32,7 @@ function command_options(args)
     input_file = DEFAULT_INPUT_FILE
     output_file = DEFAULT_OUTPUT_FILE
     summary_dir = nothing
+    outcome_dir = nothing
     remaining_from = nothing
     minimum_fraction_increment = DEFAULT_MINIMUM_FRACTION_INCREMENT
     continuation_path = :parameter_only
@@ -45,6 +48,9 @@ function command_options(args)
             index += 2
         elseif args[index] == "--summary-dir" && index < length(args)
             summary_dir = normpath(joinpath(ROOT_DIR, args[index + 1]))
+            index += 2
+        elseif args[index] == "--outcome-dir" && index < length(args)
+            outcome_dir = normpath(joinpath(ROOT_DIR, args[index + 1]))
             index += 2
         elseif args[index] == "--remaining-from" && index < length(args)
             remaining_from = normpath(joinpath(ROOT_DIR, args[index + 1]))
@@ -69,13 +75,13 @@ function command_options(args)
         else
             error("Usage: julia --project=. scripts/analysis/run_parameter_bisection_continuation.jl " *
                 "[--input PATH] [--output PATH] [--summary-dir PATH] [--remaining-from PATH] " *
-                "[--minimum-fraction-increment VALUE] " *
+                "[--outcome-dir PATH] [--minimum-fraction-increment VALUE] " *
                 "[--continuation-path parameter_only|diagonal_tax_parameter] " *
                 "[--workers N] [--dry-run]")
         end
     end
     return (input_file = input_file, output_file = output_file,
-        summary_dir = summary_dir,
+        summary_dir = summary_dir, outcome_dir = outcome_dir,
         remaining_from = remaining_from,
         minimum_fraction_increment = minimum_fraction_increment,
         continuation_path = continuation_path,
@@ -243,6 +249,7 @@ end
 function trace_task(task)
     completed_checkpoint(task.output_path) &&
         (isnothing(task.summary_path) || isfile(task.summary_path)) &&
+        (isnothing(task.outcome_path) || isfile(task.outcome_path)) &&
         return (target = task.target, state = :skipped)
     bundle = CERiseCGE.default_calibration_bundle()
     profiles = Dict(profile.name => profile for profile in CERiseCGE.sensitivity_profiles(bundle))
@@ -289,6 +296,9 @@ function trace_task(task)
             !isnothing(task.summary_path) &&
                 RecoveredPolicySummary.write_summary(task.summary_path, target, bundle,
                     direct_model, direct, summary_stage(task))
+            !isnothing(task.outcome_path) &&
+                RecoveredPolicyOutcome.write_outcome(task.outcome_path, target, bundle,
+                    direct_model, direct)
             CERiseCGE._write_atomic_csv(task.output_path, DataFrame(rows))
             return (target = task.target, state = :recovered)
         end
@@ -313,6 +323,9 @@ function trace_task(task)
                     !isnothing(task.summary_path) &&
                         RecoveredPolicySummary.write_summary(task.summary_path, target, bundle,
                             model, result, summary_stage(task))
+                    !isnothing(task.outcome_path) &&
+                        RecoveredPolicyOutcome.write_outcome(task.outcome_path, target, bundle,
+                            model, result)
                     break
                 end
                 step = min(1.0 - current_fraction, 2.0 * step)
@@ -352,8 +365,11 @@ function main()
         minimum_fraction_increment = options.minimum_fraction_increment,
         continuation_path = options.continuation_path,
         summary_dir = options.summary_dir)
+    tasks = [merge(task, (outcome_path = isnothing(options.outcome_dir) ? nothing :
+        joinpath(options.outcome_dir, "$(task.target).csv"),)) for task in tasks]
     pending = filter(task -> !completed_checkpoint(task.output_path) ||
-        (!isnothing(task.summary_path) && !isfile(task.summary_path)), tasks)
+        (!isnothing(task.summary_path) && !isfile(task.summary_path)) ||
+        (!isnothing(task.outcome_path) && !isfile(task.outcome_path)), tasks)
     println("Remaining tax profiles: ", length(tasks))
     println("Completed checkpoints: ", length(tasks) - length(pending))
     println("Pending profiles: ", length(pending))
