@@ -277,6 +277,12 @@ function latex_interval(median, lower, upper; digits::Int=1)
         "$(latex_number(upper; digits=digits))]"
 end
 
+function latex_value_with_iqr(median, lower, upper; digits::Int=1)
+    value = latex_number(median; digits=digits)
+    interval = "[$(latex_number(lower; digits=digits)), $(latex_number(upper; digits=digits))]"
+    return "\\shortstack[r]{$(value) \\\\ $(interval)}"
+end
+
 function _table_row(table::DataFrame, predicate)
     return only(eachrow(filter(predicate, table)))
 end
@@ -286,7 +292,7 @@ function write_material_fiscal_table(path::AbstractString, primary::DataFrame, f
         println(io, "\\begin{table}[htbp]")
         println(io, "\\centering")
         println(io, "\\footnotesize")
-        println(io, "\\caption{Primary-metal outcome and fiscal scale at a 2\\% policy wedge. Brackets give the interquartile range across the declared sensitivity design. Fiscal flow is tax revenue for the tax and support expenditure for support instruments.}")
+        println(io, "\\caption{Primary-metal outcome and fiscal scale at a 2\\% policy wedge. The first line reports the median and the second line the interquartile range across the declared sensitivity design. Fiscal flow is tax revenue for the tax and support expenditure for support instruments.}")
         println(io, "\\label{tab:policy-material-fiscal}")
         println(io, "\\begin{tabularx}{\\textwidth}{>{\\raggedright\\arraybackslash}p{0.25\\textwidth}>{\\raggedleft\\arraybackslash}p{0.25\\textwidth}>{\\raggedright\\arraybackslash}p{0.18\\textwidth}>{\\raggedleft\\arraybackslash}X}")
         println(io, "\\hline")
@@ -299,9 +305,9 @@ function write_material_fiscal_table(path::AbstractString, primary::DataFrame, f
                 row.wedge_percent == EVIDENCE_WEDGE_PERCENT)
             fiscal_basis = instrument == "virgin_metal_tax" ? "Tax revenue" : "Support expenditure"
             println(io, "$(POLICY_LABELS[instrument]) & " *
-                "$(latex_interval(material.median_reduction_tonnes, material.lower_quartile_reduction_tonnes, material.upper_quartile_reduction_tonnes)) & " *
+                "$(latex_value_with_iqr(material.median_reduction_tonnes, material.lower_quartile_reduction_tonnes, material.upper_quartile_reduction_tonnes)) & " *
                 "$(fiscal_basis) & " *
-                "$(latex_interval(flow.median_fiscal_basis_million_eur, flow.lower_quartile_fiscal_basis_million_eur, flow.upper_quartile_fiscal_basis_million_eur)) \\\\")
+                "$(latex_value_with_iqr(flow.median_fiscal_basis_million_eur, flow.lower_quartile_fiscal_basis_million_eur, flow.upper_quartile_fiscal_basis_million_eur)) \\\\")
             instrument == last(POLICY_ORDER) || println(io, "\\lightrule")
         end
         println(io, "\\hline")
