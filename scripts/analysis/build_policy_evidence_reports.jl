@@ -229,15 +229,28 @@ end
 
 """Plot primary-metal saving against each policy's most influential condition."""
 function policy_condition_response_figure(table::DataFrame; filename::AbstractString)
-    figure = Figure(size=(1200, 1500), fontsize=17)
+    figure = Figure(size=(1800, 1200), fontsize=17)
     grid = figure[1, 1] = GridLayout()
-    for (index, instrument) in enumerate(POLICY_ORDER)
-        position = (cld(index, 2), isodd(index) ? 1 : 2)
+    panel_rows = Dict{String, DataFrame}()
+    for instrument in POLICY_ORDER
         parameter = KEY_POLICY_CONDITIONS[instrument]
         rows = filter(row -> row.instrument == instrument &&
             row.wedge_percent == EVIDENCE_WEDGE_PERCENT && row.parameter == parameter,
             table)
         sort!(rows, :value)
+        panel_rows[instrument] = rows
+    end
+    lower = min(0.0, minimum(minimum(rows.lower_quartile_reduction_tonnes)
+        for rows in values(panel_rows)))
+    upper = maximum(maximum(rows.upper_quartile_reduction_tonnes)
+        for rows in values(panel_rows))
+    padding = 0.05 * (upper - lower)
+    ylimits = (lower - padding, upper + padding)
+
+    for (index, instrument) in enumerate(POLICY_ORDER)
+        position = index <= 3 ? (1, index) : (2, index - 3)
+        parameter = KEY_POLICY_CONDITIONS[instrument]
+        rows = panel_rows[instrument]
         axis = Axis(grid[position...];
             title=POLICY_LABELS[instrument],
             xlabel=parameter_axis_label(parameter, ""),
@@ -254,14 +267,12 @@ function policy_condition_response_figure(table::DataFrame; filename::AbstractSt
         scatter!(axis, rows.value, rows.median_reduction_tonnes;
             color=POLICY_COLOURS[instrument], markersize=10)
         hlines!(axis, [0.0]; color=:black, linewidth=1, linestyle=:dash)
+        ylims!(axis, ylimits...)
     end
-    Label(grid[3, 2], "Points and line: conditional median\nBand: interquartile range over remaining conditions\nPolicy wedge: 2%";
-        tellwidth=false, halign=:center, valign=:center, fontsize=14)
-    rowsize!(grid, 1, Relative(1.0))
-    rowsize!(grid, 2, Relative(1.0))
-    rowsize!(grid, 3, Relative(1.0))
-    colgap!(grid, 50)
-    rowgap!(grid, 42)
+    rowsize!(grid, 1, Relative(0.5))
+    rowsize!(grid, 2, Relative(0.5))
+    colgap!(grid, 36)
+    rowgap!(grid, 40)
     save(filename, figure)
     return nothing
 end
@@ -280,7 +291,7 @@ end
 function latex_value_with_iqr(median, lower, upper; digits::Int=1)
     value = latex_number(median; digits=digits)
     interval = "[$(latex_number(lower; digits=digits)), $(latex_number(upper; digits=digits))]"
-    return "\\shortstack[r]{$(value) \\\\ $(interval)}"
+    return "\\shortstack[r]{$(value) \\\\ \\mbox{$(interval)}}"
 end
 
 function _table_row(table::DataFrame, predicate)
