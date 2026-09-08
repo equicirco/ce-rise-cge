@@ -25,6 +25,14 @@ const EVIDENCE_PARAMETER_PAIRS = Dict(
     "reuse_support" => ("CET transformation elasticity", "Circular-service elasticity"),
 )
 
+const KEY_POLICY_CONDITIONS = Dict(
+    "virgin_metal_tax" => "Armington elasticity",
+    "recycling_support" => "Metal-substitution elasticity",
+    "refurbishment_support" => "Circular-service elasticity",
+    "repair_support" => "Circular-service elasticity",
+    "reuse_support" => "Circular-service elasticity",
+)
+
 const REGION_ORDER = ["DE", "FR", "IT", "PL", "REU", "SK"]
 
 const REGION_COLOURS = Dict(
@@ -86,13 +94,14 @@ function route_mechanism_evidence(routes::DataFrame, activity::DataFrame)
     return result
 end
 
-function selected_boundary_evidence(pair_summary::DataFrame)
+function selected_boundary_evidence(pair_summary::DataFrame;
+    wedge_percent::Float64=EVIDENCE_WEDGE_PERCENT)
     selected = DataFrame()
     for instrument in POLICY_ORDER
         x_parameter, y_parameter = EVIDENCE_PARAMETER_PAIRS[instrument]
         rows = filter(row ->
             row.instrument == instrument &&
-            row.wedge_percent == EVIDENCE_WEDGE_PERCENT &&
+            row.wedge_percent == wedge_percent &&
             row.x_parameter == x_parameter &&
             row.y_parameter == y_parameter,
             pair_summary)
@@ -100,6 +109,10 @@ function selected_boundary_evidence(pair_summary::DataFrame)
     end
     sort!(selected, [:instrument, :x_value, :y_value])
     return selected
+end
+
+function wedge_slug(wedge_percent::Float64)
+    return replace(string(wedge_percent), "." => "_")
 end
 
 function household_income_evidence(incidence::DataFrame)
@@ -163,7 +176,7 @@ function parameter_axis_label(parameter::AbstractString, axis::AbstractString)
         "Metal-substitution elasticity" => "Metal-substitution\nelasticity",
         "Armington elasticity" => "Armington\nelasticity",
     )
-    return "$(axis): $(short)"
+    return isempty(axis) ? short : "$(axis): $(short)"
 end
 
 function parameter_boundary_figure(table::DataFrame; filename::AbstractString)
@@ -184,8 +197,8 @@ function parameter_boundary_figure(table::DataFrame; filename::AbstractString)
         end
         axis = Axis(grid[position...];
             title=POLICY_LABELS[instrument],
-            xlabel=parameter_axis_label(first(rows.x_parameter), "x"),
-            ylabel=parameter_axis_label(first(rows.y_parameter), "y"),
+            xlabel=parameter_axis_label(first(rows.x_parameter), ""),
+            ylabel=parameter_axis_label(first(rows.y_parameter), ""),
             xlabelsize=13,
             ylabelsize=13,
             xticks=(x_positions, string.(x_values)),
@@ -210,6 +223,45 @@ function parameter_boundary_figure(table::DataFrame; filename::AbstractString)
     rowsize!(grid, 2, Relative(0.5))
     colgap!(grid, 14)
     rowgap!(grid, 18)
+    save(filename, figure)
+    return nothing
+end
+
+"""Plot primary-metal saving against each policy's most influential condition."""
+function policy_condition_response_figure(table::DataFrame; filename::AbstractString)
+    figure = Figure(size=(1200, 1500), fontsize=17)
+    grid = figure[1, 1] = GridLayout()
+    for (index, instrument) in enumerate(POLICY_ORDER)
+        position = (cld(index, 2), isodd(index) ? 1 : 2)
+        parameter = KEY_POLICY_CONDITIONS[instrument]
+        rows = filter(row -> row.instrument == instrument &&
+            row.wedge_percent == EVIDENCE_WEDGE_PERCENT && row.parameter == parameter,
+            table)
+        sort!(rows, :value)
+        axis = Axis(grid[position...];
+            title=POLICY_LABELS[instrument],
+            xlabel=parameter_axis_label(parameter, ""),
+            ylabel="Primary-metal saving (t)",
+            xlabelsize=13,
+            ylabelsize=13,
+            xticks=(rows.value, string.(rows.value)),
+            backgroundcolor=:gray95)
+        band!(axis, rows.value, rows.lower_quartile_reduction_tonnes,
+            rows.upper_quartile_reduction_tonnes;
+            color=(POLICY_COLOURS[instrument], 0.25))
+        lines!(axis, rows.value, rows.median_reduction_tonnes;
+            color=POLICY_COLOURS[instrument], linewidth=3)
+        scatter!(axis, rows.value, rows.median_reduction_tonnes;
+            color=POLICY_COLOURS[instrument], markersize=10)
+        hlines!(axis, [0.0]; color=:black, linewidth=1, linestyle=:dash)
+    end
+    Label(grid[3, 2], "Points and line: conditional median\nBand: interquartile range over remaining conditions\nPolicy wedge: 2%";
+        tellwidth=false, halign=:center, valign=:center, fontsize=14)
+    rowsize!(grid, 1, Relative(1.0))
+    rowsize!(grid, 2, Relative(1.0))
+    rowsize!(grid, 3, Relative(1.0))
+    colgap!(grid, 50)
+    rowgap!(grid, 42)
     save(filename, figure)
     return nothing
 end
@@ -364,6 +416,8 @@ function main()
     isfile(options.database) || error("Outcome database is missing: $(options.database)")
     options.dry_run && error("Evidence reports require a policy-outcome database.")
     mkpath(options.output_dir)
+    article_figure_dir = joinpath(ROOT_DIR, "article", "figures")
+    isdir(article_figure_dir) || error("Article figure directory is missing: $(article_figure_dir)")
     database = DuckDB.DB(options.database)
     connection = DBInterface.connect(database)
     try
@@ -374,6 +428,7 @@ function main()
         routes = policy_circular_route_total_summary(connection)
         activity = policy_activity_summary(connection)
         incidence = policy_incidence_summary(connection)
+        parameter_sensitivity = primary_metal_parameter_sensitivity(connection)
         pair_summary = primary_metal_parameter_pair_summary(connection)
         mechanism_evidence = route_mechanism_evidence(routes, activity)
         income_evidence = household_income_evidence(incidence)
@@ -385,12 +440,26 @@ function main()
             filename=joinpath(options.output_dir, "policy_household_incidence.pdf"))
         parameter_boundary_figure(boundary_evidence;
             filename=joinpath(options.output_dir, "policy_parameter_boundaries.pdf"))
+        parameter_boundary_figure(boundary_evidence;
+            filename=joinpath(article_figure_dir, "policy_validity_conditions.pdf"))
+        for wedge_percent in (0.25, 0.5, 1.0)
+            wedge_evidence = selected_boundary_evidence(pair_summary;
+                wedge_percent=wedge_percent)
+            parameter_boundary_figure(wedge_evidence;
+                filename=joinpath(article_figure_dir,
+                    "policy_validity_conditions_$(wedge_slug(wedge_percent)).pdf"))
+        end
+        policy_condition_response_figure(parameter_sensitivity;
+            filename=joinpath(options.output_dir, "policy_condition_response.pdf"))
+        policy_condition_response_figure(parameter_sensitivity;
+            filename=joinpath(article_figure_dir, "policy_condition_response.pdf"))
         write_article_result_tables(primary, fiscal, efficiency, avoided_new_products,
             income_evidence)
         println("Article result tables: ", joinpath(ROOT_DIR, "article", "generated"))
         println("Route-mechanism evidence rows: ", nrow(mechanism_evidence))
         println("Household-incidence evidence rows: ", nrow(income_evidence))
         println("Parameter-boundary evidence rows: ", nrow(boundary_evidence))
+        println("Article figures: ", article_figure_dir)
     finally
         DBInterface.close!(connection)
         close(database)

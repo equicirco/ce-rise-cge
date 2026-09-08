@@ -398,6 +398,7 @@ function primary_metal_parameter_sensitivity(connection)
     return query(connection, """
         WITH outcomes AS (
             SELECT instrument, wedge,
+                primary_metal_market_demand_reduction_tonnes AS primary_metal_reduction_tonnes,
                 100.0 * primary_metal_market_demand_reduction_tonnes /
                     (primary_metal_market_demand_tonnes + primary_metal_market_demand_reduction_tonnes)
                     AS primary_metal_reduction_percent,
@@ -409,22 +410,22 @@ function primary_metal_parameter_sensitivity(connection)
         ),
         parameter_values AS (
             SELECT instrument, wedge, 'Armington elasticity' AS parameter, armington_elasticity AS value,
-                primary_metal_reduction_percent FROM outcomes
+                primary_metal_reduction_percent, primary_metal_reduction_tonnes FROM outcomes
             UNION ALL
             SELECT instrument, wedge, 'CET transformation elasticity', cet_transformation_elasticity,
-                primary_metal_reduction_percent FROM outcomes
+                primary_metal_reduction_percent, primary_metal_reduction_tonnes FROM outcomes
             UNION ALL
             SELECT instrument, wedge, 'Circular-service elasticity', service_elasticity,
-                primary_metal_reduction_percent FROM outcomes
+                primary_metal_reduction_percent, primary_metal_reduction_tonnes FROM outcomes
             UNION ALL
-            SELECT instrument, wedge, 'EOL-allocation elasticity', eol_allocation_elasticity,
-                primary_metal_reduction_percent FROM outcomes
+            SELECT instrument, wedge, 'Post-use allocation elasticity', eol_allocation_elasticity,
+                primary_metal_reduction_percent, primary_metal_reduction_tonnes FROM outcomes
             UNION ALL
-            SELECT instrument, wedge, 'EOL-productivity elasticity', eol_productivity_elasticity,
-                primary_metal_reduction_percent FROM outcomes
+            SELECT instrument, wedge, 'Post-use activity productivity elasticity', eol_productivity_elasticity,
+                primary_metal_reduction_percent, primary_metal_reduction_tonnes FROM outcomes
             UNION ALL
             SELECT instrument, wedge, 'Metal-substitution elasticity', material_substitution_elasticity,
-                primary_metal_reduction_percent FROM outcomes
+                primary_metal_reduction_percent, primary_metal_reduction_tonnes FROM outcomes
         )
         SELECT instrument, abs(wedge) * 100.0 AS wedge_percent, parameter, value,
             count(*) AS valid_parameter_configurations,
@@ -432,7 +433,10 @@ function primary_metal_parameter_sensitivity(connection)
             quantile_cont(primary_metal_reduction_percent, 0.25) AS lower_quartile_reduction_percent,
             quantile_cont(primary_metal_reduction_percent, 0.75) AS upper_quartile_reduction_percent,
             min(primary_metal_reduction_percent) AS minimum_reduction_percent,
-            max(primary_metal_reduction_percent) AS maximum_reduction_percent
+            max(primary_metal_reduction_percent) AS maximum_reduction_percent,
+            median(primary_metal_reduction_tonnes) AS median_reduction_tonnes,
+            quantile_cont(primary_metal_reduction_tonnes, 0.25) AS lower_quartile_reduction_tonnes,
+            quantile_cont(primary_metal_reduction_tonnes, 0.75) AS upper_quartile_reduction_tonnes
         FROM parameter_values
         GROUP BY instrument, wedge, parameter, value
         ORDER BY instrument, wedge_percent, parameter, value
@@ -460,10 +464,10 @@ function primary_metal_parameter_sensitivity_ranking(connection)
             SELECT instrument, wedge, 'Circular-service elasticity', service_elasticity,
                 primary_metal_market_demand_reduction_tonnes FROM outcomes
             UNION ALL
-            SELECT instrument, wedge, 'EOL-allocation elasticity', eol_allocation_elasticity,
+            SELECT instrument, wedge, 'Post-use allocation elasticity', eol_allocation_elasticity,
                 primary_metal_market_demand_reduction_tonnes FROM outcomes
             UNION ALL
-            SELECT instrument, wedge, 'EOL-productivity elasticity', eol_productivity_elasticity,
+            SELECT instrument, wedge, 'Post-use activity productivity elasticity', eol_productivity_elasticity,
                 primary_metal_market_demand_reduction_tonnes FROM outcomes
             UNION ALL
             SELECT instrument, wedge, 'Metal-substitution elasticity', material_substitution_elasticity,
@@ -491,8 +495,8 @@ const SENSITIVITY_PARAMETERS = [
     ("Armington elasticity", "armington_elasticity"),
     ("CET transformation elasticity", "cet_transformation_elasticity"),
     ("Circular-service elasticity", "service_elasticity"),
-    ("EOL-allocation elasticity", "eol_allocation_elasticity"),
-    ("EOL-productivity elasticity", "eol_productivity_elasticity"),
+    ("Post-use allocation elasticity", "eol_allocation_elasticity"),
+    ("Post-use activity productivity elasticity", "eol_productivity_elasticity"),
     ("Metal-substitution elasticity", "material_substitution_elasticity"),
 ]
 
