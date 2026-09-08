@@ -285,32 +285,33 @@ function write_support_efficiency_table(path::AbstractString, efficiency::DataFr
     return nothing
 end
 
-function write_refurbishment_substitution_table(path::AbstractString,
-    avoided_new_products::DataFrame, refurbishment_metal_demand::DataFrame)
+function write_new_product_displacement_table(path::AbstractString,
+    avoided_new_products::DataFrame)
     open(path, "w") do io
         println(io, "\\begin{table}[htbp]")
         println(io, "\\centering")
         println(io, "\\footnotesize")
-        println(io, "\\caption{Refurbishment-support substitution evidence at a 2\\% wedge. Positive avoided new-product output denotes lower new output relative to the matching zero-policy solution; a positive METAL value denotes higher input demand in the refurbishment route. Brackets give the interquartile range across the sensitivity design.}")
-        println(io, "\\label{tab:refurbishment-substitution}")
-        println(io, "\\begin{tabularx}{\\textwidth}{>{\\raggedright\\arraybackslash}p{0.16\\textwidth}>{\\raggedleft\\arraybackslash}p{0.28\\textwidth}>{\\raggedleft\\arraybackslash}p{0.28\\textwidth}>{\\raggedleft\\arraybackslash}X}")
+        println(io, "\\caption{Displacement of new product output and its metal inputs under life-extension and reuse support at a 2\\% wedge. Positive values denote lower new-product output or lower metal use in new production relative to the matching zero-policy solution. Brackets give the interquartile range across the sensitivity design.}")
+        println(io, "\\label{tab:new-product-displacement}")
+        println(io, "\\begin{tabularx}{\\textwidth}{>{\\raggedright\\arraybackslash}p{0.15\\textwidth}>{\\raggedright\\arraybackslash}p{0.11\\textwidth}>{\\raggedleft\\arraybackslash}p{0.24\\textwidth}>{\\raggedleft\\arraybackslash}p{0.24\\textwidth}>{\\raggedleft\\arraybackslash}X}")
         println(io, "\\hline")
-        println(io, "Product family & Avoided new-product output (t) & Primary METAL demand in refurbishment (t) & Recycled METAL demand in refurbishment (t) \\\\")
+        println(io, "Support & Product family & Avoided new-product output (t) & Avoided primary METAL use in new production (t) & Avoided recycled METAL use in new production (t) \\\\")
         println(io, "\\hline")
         families = ["ELMA", "OFMA", "RATV"]
-        for family in families
-            avoided = _table_row(avoided_new_products, row ->
-                row.instrument == "refurbishment_support" &&
-                row.wedge_percent == EVIDENCE_WEDGE_PERCENT && row.family == family)
-            primary = _table_row(refurbishment_metal_demand, row ->
-                row.wedge_percent == EVIDENCE_WEDGE_PERCENT && row.family == family && row.material == "primary")
-            recycled = _table_row(refurbishment_metal_demand, row ->
-                row.wedge_percent == EVIDENCE_WEDGE_PERCENT && row.family == family && row.material == "recycled")
-            println(io, "$(family) & " *
-                "$(latex_interval(avoided.median_avoided_new_product_tonnes, avoided.lower_quartile_avoided_new_product_tonnes, avoided.upper_quartile_avoided_new_product_tonnes)) & " *
-                "$(latex_interval(primary.median_metal_demand_change_tonnes, primary.lower_quartile_metal_demand_change_tonnes, primary.upper_quartile_metal_demand_change_tonnes)) & " *
-                "$(latex_interval(recycled.median_metal_demand_change_tonnes, recycled.lower_quartile_metal_demand_change_tonnes, recycled.upper_quartile_metal_demand_change_tonnes; digits=2)) \\\\")
-            family == last(families) || println(io, "\\lightrule")
+        instruments = ["refurbishment_support", "repair_support", "reuse_support"]
+        for (instrument_index, instrument) in enumerate(instruments)
+            for (family_index, family) in enumerate(families)
+                avoided = _table_row(avoided_new_products, row ->
+                    row.instrument == instrument &&
+                    row.wedge_percent == EVIDENCE_WEDGE_PERCENT && row.family == family)
+                support = family_index == 1 ? POLICY_LABELS[instrument] : ""
+                println(io, "$(support) & $(family) & " *
+                    "$(latex_interval(avoided.median_avoided_new_product_tonnes, avoided.lower_quartile_avoided_new_product_tonnes, avoided.upper_quartile_avoided_new_product_tonnes)) & " *
+                    "$(latex_interval(avoided.median_avoided_new_product_primary_metal_tonnes, avoided.lower_quartile_avoided_new_product_primary_metal_tonnes, avoided.upper_quartile_avoided_new_product_primary_metal_tonnes)) & " *
+                    "$(latex_interval(avoided.median_avoided_new_product_recycled_metal_tonnes, avoided.lower_quartile_avoided_new_product_recycled_metal_tonnes, avoided.upper_quartile_avoided_new_product_recycled_metal_tonnes; digits=2)) \\\\")
+                family_index == length(families) && instrument_index < length(instruments) ?
+                    println(io, "\\lightrule") : nothing
+            end
         end
         println(io, "\\hline")
         println(io, "\\end{tabularx}")
@@ -347,13 +348,13 @@ function write_household_incidence_table(path::AbstractString, income::DataFrame
 end
 
 function write_article_result_tables(primary::DataFrame, fiscal::DataFrame, efficiency::DataFrame,
-    avoided_new_products::DataFrame, refurbishment_metal_demand::DataFrame, income::DataFrame)
+    avoided_new_products::DataFrame, income::DataFrame)
     generated = joinpath(ROOT_DIR, "article", "generated")
     isdir(generated) || error("Article generated-table directory is missing: $(generated)")
     write_material_fiscal_table(joinpath(generated, "policy_material_fiscal.tex"), primary, fiscal)
     write_support_efficiency_table(joinpath(generated, "policy_support_efficiency.tex"), efficiency)
-    write_refurbishment_substitution_table(joinpath(generated, "policy_refurbishment_substitution.tex"),
-        avoided_new_products, refurbishment_metal_demand)
+    write_new_product_displacement_table(joinpath(generated, "policy_new_product_displacement.tex"),
+        avoided_new_products)
     write_household_incidence_table(joinpath(generated, "policy_household_incidence.tex"), income)
     return nothing
 end
@@ -370,7 +371,6 @@ function main()
         fiscal = policy_fiscal_summary(connection)
         efficiency = policy_support_efficiency_summary(connection)
         avoided_new_products = policy_avoided_new_product_summary(connection)
-        refurbishment_metal_demand = refurbishment_metal_demand_summary(connection)
         routes = policy_circular_route_total_summary(connection)
         activity = policy_activity_summary(connection)
         incidence = policy_incidence_summary(connection)
@@ -386,7 +386,7 @@ function main()
         parameter_boundary_figure(boundary_evidence;
             filename=joinpath(options.output_dir, "policy_parameter_boundaries.pdf"))
         write_article_result_tables(primary, fiscal, efficiency, avoided_new_products,
-            refurbishment_metal_demand, income_evidence)
+            income_evidence)
         println("Article result tables: ", joinpath(ROOT_DIR, "article", "generated"))
         println("Route-mechanism evidence rows: ", nrow(mechanism_evidence))
         println("Household-incidence evidence rows: ", nrow(income_evidence))

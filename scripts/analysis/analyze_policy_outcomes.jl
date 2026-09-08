@@ -281,16 +281,39 @@ function policy_avoided_new_product_summary(connection)
             WHERE indicator = 'observed_new_product_output'
             GROUP BY sensitivity_profile, scenario, instrument, wedge, family
         ),
+        family_metal AS (
+            SELECT sensitivity_profile, scenario, instrument, wedge, family,
+                sum(CASE WHEN material = 'primary' THEN absolute_change ELSE 0.0 END)
+                    AS primary_metal_change_tonnes,
+                sum(CASE WHEN material = 'recycled' THEN absolute_change ELSE 0.0 END)
+                    AS recycled_metal_change_tonnes
+            FROM policy_outcomes
+            WHERE indicator = 'ce_route_metal_demand'
+              AND route = 'NEW'
+            GROUP BY sensitivity_profile, scenario, instrument, wedge, family
+        ),
+        family_combined AS (
+            SELECT output.sensitivity_profile, output.scenario, output.instrument,
+                output.wedge, output.family, output.new_product_change_tonnes,
+                output.baseline_new_product_tonnes, metal.primary_metal_change_tonnes,
+                metal.recycled_metal_change_tonnes
+            FROM family_output AS output
+            INNER JOIN family_metal AS metal
+                USING (sensitivity_profile, scenario, instrument, wedge, family)
+        ),
         combined AS (
             SELECT sensitivity_profile, scenario, instrument, wedge, family,
-                new_product_change_tonnes, baseline_new_product_tonnes
-            FROM family_output
+                new_product_change_tonnes, baseline_new_product_tonnes,
+                primary_metal_change_tonnes, recycled_metal_change_tonnes
+            FROM family_combined
             UNION ALL
             SELECT sensitivity_profile, scenario, instrument, wedge,
                 'all CE-RISE families' AS family,
                 sum(new_product_change_tonnes) AS new_product_change_tonnes,
-                sum(baseline_new_product_tonnes) AS baseline_new_product_tonnes
-            FROM family_output
+                sum(baseline_new_product_tonnes) AS baseline_new_product_tonnes,
+                sum(primary_metal_change_tonnes) AS primary_metal_change_tonnes,
+                sum(recycled_metal_change_tonnes) AS recycled_metal_change_tonnes
+            FROM family_combined
             GROUP BY sensitivity_profile, scenario, instrument, wedge
         )
         SELECT instrument, abs(wedge) * 100.0 AS wedge_percent, family,
@@ -303,39 +326,22 @@ function policy_avoided_new_product_summary(connection)
             quantile_cont(-100.0 * new_product_change_tonnes / nullif(baseline_new_product_tonnes, 0.0), 0.25)
                 AS lower_quartile_avoided_new_product_percent,
             quantile_cont(-100.0 * new_product_change_tonnes / nullif(baseline_new_product_tonnes, 0.0), 0.75)
-                AS upper_quartile_avoided_new_product_percent
+                AS upper_quartile_avoided_new_product_percent,
+            median(-primary_metal_change_tonnes)
+                AS median_avoided_new_product_primary_metal_tonnes,
+            quantile_cont(-primary_metal_change_tonnes, 0.25)
+                AS lower_quartile_avoided_new_product_primary_metal_tonnes,
+            quantile_cont(-primary_metal_change_tonnes, 0.75)
+                AS upper_quartile_avoided_new_product_primary_metal_tonnes,
+            median(-recycled_metal_change_tonnes)
+                AS median_avoided_new_product_recycled_metal_tonnes,
+            quantile_cont(-recycled_metal_change_tonnes, 0.25)
+                AS lower_quartile_avoided_new_product_recycled_metal_tonnes,
+            quantile_cont(-recycled_metal_change_tonnes, 0.75)
+                AS upper_quartile_avoided_new_product_recycled_metal_tonnes
         FROM combined
         GROUP BY instrument, wedge, family
         ORDER BY instrument, wedge_percent, family
-    """)
-end
-
-function refurbishment_metal_demand_summary(connection)
-    return query(connection, """
-        WITH route_demand AS (
-            SELECT sensitivity_profile, scenario, wedge, family, material,
-                sum(absolute_change) AS metal_demand_change_tonnes,
-                sum(baseline_level) AS baseline_metal_demand_tonnes
-            FROM policy_outcomes
-            WHERE instrument = 'refurbishment_support'
-              AND indicator = 'ce_route_metal_demand'
-              AND route = 'REF'
-            GROUP BY sensitivity_profile, scenario, wedge, family, material
-        )
-        SELECT abs(wedge) * 100.0 AS wedge_percent, family, material,
-            count(*) AS valid_parameter_configurations,
-            median(metal_demand_change_tonnes) AS median_metal_demand_change_tonnes,
-            quantile_cont(metal_demand_change_tonnes, 0.25) AS lower_quartile_metal_demand_change_tonnes,
-            quantile_cont(metal_demand_change_tonnes, 0.75) AS upper_quartile_metal_demand_change_tonnes,
-            median(100.0 * metal_demand_change_tonnes / nullif(baseline_metal_demand_tonnes, 0.0))
-                AS median_metal_demand_change_percent,
-            quantile_cont(100.0 * metal_demand_change_tonnes / nullif(baseline_metal_demand_tonnes, 0.0), 0.25)
-                AS lower_quartile_metal_demand_change_percent,
-            quantile_cont(100.0 * metal_demand_change_tonnes / nullif(baseline_metal_demand_tonnes, 0.0), 0.75)
-                AS upper_quartile_metal_demand_change_percent
-        FROM route_demand
-        GROUP BY wedge, family, material
-        ORDER BY wedge_percent, family, material
     """)
 end
 
@@ -651,7 +657,7 @@ function support_efficiency_figure(table::DataFrame; filename::AbstractString)
 end
 
 function write_outputs(options, primary, fiscal, efficiency, activity, flows, routes, route_totals,
-    avoided_new_products, refurbishment_metal_demand, incidence, parameter_sensitivity,
+    avoided_new_products, incidence, parameter_sensitivity,
     parameter_ranking, parameter_pairs)
     mkpath(options.output_dir)
     CSV.write(joinpath(options.output_dir, "policy_primary_metal_summary.csv"), primary)
@@ -662,8 +668,6 @@ function write_outputs(options, primary, fiscal, efficiency, activity, flows, ro
     CSV.write(joinpath(options.output_dir, "policy_circular_route_summary.csv"), routes)
     CSV.write(joinpath(options.output_dir, "policy_circular_route_total_summary.csv"), route_totals)
     CSV.write(joinpath(options.output_dir, "policy_avoided_new_product_summary.csv"), avoided_new_products)
-    CSV.write(joinpath(options.output_dir, "policy_refurbishment_metal_demand_summary.csv"),
-        refurbishment_metal_demand)
     CSV.write(joinpath(options.output_dir, "policy_incidence_summary.csv"), incidence)
     CSV.write(joinpath(options.output_dir, "policy_primary_metal_parameter_sensitivity.csv"),
         parameter_sensitivity)
@@ -706,13 +710,12 @@ function main()
         routes = policy_circular_route_summary(connection)
         route_totals = policy_circular_route_total_summary(connection)
         avoided_new_products = policy_avoided_new_product_summary(connection)
-        refurbishment_metal_demand = refurbishment_metal_demand_summary(connection)
         incidence = policy_incidence_summary(connection)
         parameter_sensitivity = primary_metal_parameter_sensitivity(connection)
         parameter_ranking = primary_metal_parameter_sensitivity_ranking(connection)
         parameter_pairs = primary_metal_parameter_pair_summary(connection)
         write_outputs(options, primary, fiscal, efficiency, activity, flows, routes, route_totals,
-            avoided_new_products, refurbishment_metal_demand, incidence, parameter_sensitivity,
+            avoided_new_products, incidence, parameter_sensitivity,
             parameter_ranking, parameter_pairs)
         println("Primary-metal summary rows: ", nrow(primary))
         println("Fiscal summary rows: ", nrow(fiscal))
@@ -722,7 +725,6 @@ function main()
         println("Circular-route summary rows: ", nrow(routes))
         println("Circular-route total summary rows: ", nrow(route_totals))
         println("Avoided-new-product summary rows: ", nrow(avoided_new_products))
-        println("Refurbishment METAL-demand summary rows: ", nrow(refurbishment_metal_demand))
         println("Incidence summary rows: ", nrow(incidence))
         println("Parameter-sensitivity summary rows: ", nrow(parameter_sensitivity))
         println("Parameter-sensitivity ranking rows: ", nrow(parameter_ranking))
