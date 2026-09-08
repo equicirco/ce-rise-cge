@@ -210,14 +210,18 @@ function parameter_boundary_figure(table::DataFrame; filename::AbstractString)
                 REGIME_COLOURS["primary_metal_increase"]],
             colorrange=(0.5, 3.5))
     end
-    legend_elements = [
-        PolyElement(color=REGIME_COLOURS["primary_metal_saving"]),
-        PolyElement(color=REGIME_COLOURS["parameter_dependent"]),
-        PolyElement(color=REGIME_COLOURS["primary_metal_increase"]),
+    displayed_regimes = [
+        regime for regime in ("primary_metal_saving", "parameter_dependent",
+            "primary_metal_increase") if any(table.material_outcome_regime .== regime)
     ]
-    Legend(grid[2, 3], legend_elements,
-        ["Saving for all remaining settings", "Depends on remaining settings",
-            "Increase for all remaining settings"];
+    legend_elements = [PolyElement(color=REGIME_COLOURS[regime])
+        for regime in displayed_regimes]
+    legend_labels = Dict(
+        "primary_metal_saving" => "Saving for all remaining settings",
+        "parameter_dependent" => "Saving or increase, depending on remaining settings",
+        "primary_metal_increase" => "Increase for all remaining settings",
+    )
+    Legend(grid[2, 3], legend_elements, [legend_labels[regime] for regime in displayed_regimes];
         tellwidth=false, halign=:center, valign=:center, labelsize=14)
     rowsize!(grid, 1, Relative(0.5))
     rowsize!(grid, 2, Relative(0.5))
@@ -305,7 +309,7 @@ function write_material_fiscal_table(path::AbstractString, primary::DataFrame, f
         println(io, "\\footnotesize")
         println(io, "\\caption{Primary-metal outcome and fiscal scale at a 2\\% policy wedge. The first line reports the median and the second line the interquartile range across the declared sensitivity design. Fiscal flow is tax revenue for the tax and support expenditure for support instruments.}")
         println(io, "\\label{tab:policy-material-fiscal}")
-        println(io, "\\begin{tabularx}{\\textwidth}{>{\\raggedright\\arraybackslash}p{0.25\\textwidth}>{\\raggedleft\\arraybackslash}p{0.25\\textwidth}>{\\raggedright\\arraybackslash}p{0.18\\textwidth}>{\\raggedleft\\arraybackslash}X}")
+        println(io, "\\begin{tabular}{@{}>{\\raggedright\\arraybackslash}m{0.22\\textwidth}>{\\raggedleft\\arraybackslash}m{0.23\\textwidth}>{\\raggedright\\arraybackslash}m{0.20\\textwidth}>{\\raggedleft\\arraybackslash}m{0.28\\textwidth}@{}}")
         println(io, "\\hline")
         println(io, "Intervention & Primary-metal saving (t) & Fiscal basis & Fiscal flow (million EUR) \\\\")
         println(io, "\\hline")
@@ -322,7 +326,7 @@ function write_material_fiscal_table(path::AbstractString, primary::DataFrame, f
             instrument == last(POLICY_ORDER) || println(io, "\\lightrule")
         end
         println(io, "\\hline")
-        println(io, "\\end{tabularx}")
+        println(io, "\\end{tabular}")
         println(io, "\\end{table}")
     end
     return nothing
