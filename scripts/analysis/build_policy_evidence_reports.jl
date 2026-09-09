@@ -33,6 +33,13 @@ const KEY_POLICY_CONDITIONS = Dict(
     "reuse_support" => "Circular-service elasticity",
 )
 
+const CONDITION_RESPONSE_VALUES = (0.5, 1.0, 2.0)
+const CONDITION_RESPONSE_COLOURS = Dict(
+    0.5 => colorant"#4E5D6C",
+    1.0 => colorant"#4E79A7",
+    2.0 => colorant"#8064A2",
+)
+
 const REGION_ORDER = ["DE", "FR", "IT", "PL", "REU", "SK"]
 
 const REGION_COLOURS = Dict(
@@ -281,6 +288,57 @@ function policy_condition_response_figure(table::DataFrame; filename::AbstractSt
     return nothing
 end
 
+"""Plot primary-metal saving against the absolute policy-wedge magnitude."""
+function policy_intensity_response_figure(table::DataFrame; filename::AbstractString)
+    selected = filter(row -> row.parameter == KEY_POLICY_CONDITIONS[row.instrument],
+        table)
+    lower = min(0.0, minimum(selected.lower_quartile_reduction_tonnes))
+    upper = maximum(selected.upper_quartile_reduction_tonnes)
+    padding = 0.05 * (upper - lower)
+    ylimits = (lower - padding, upper + padding)
+
+    figure = Figure(size=(1800, 1200), fontsize=17)
+    grid = figure[1, 1] = GridLayout()
+    for (index, instrument) in enumerate(POLICY_ORDER)
+        position = index <= 3 ? (1, index) : (2, index - 3)
+        parameter = KEY_POLICY_CONDITIONS[instrument]
+        axis = Axis(grid[position...];
+            title="$(POLICY_LABELS[instrument])\n$(parameter_axis_label(parameter, ""))",
+            xlabel="Policy wedge (%)",
+            ylabel="Primary-metal saving (t)",
+            xlabelsize=13,
+            ylabelsize=13,
+            xticks=([0.0, 0.25, 0.5, 1.0, 2.0], ["0", "0.25", "0.5", "1", "2"]),
+            backgroundcolor=:gray95)
+        for value in CONDITION_RESPONSE_VALUES
+            rows = filter(row -> row.instrument == instrument &&
+                row.parameter == parameter && row.value == value, table)
+            sort!(rows, :wedge_percent)
+            wedges = vcat(0.0, rows.wedge_percent)
+            medians = vcat(0.0, rows.median_reduction_tonnes)
+            lower_quartiles = vcat(0.0, rows.lower_quartile_reduction_tonnes)
+            upper_quartiles = vcat(0.0, rows.upper_quartile_reduction_tonnes)
+            colour = CONDITION_RESPONSE_COLOURS[value]
+            band!(axis, wedges, lower_quartiles, upper_quartiles; color=(colour, 0.14))
+            lines!(axis, wedges, medians; color=colour, linewidth=3)
+            scatter!(axis, wedges, medians; color=colour, markersize=8)
+        end
+        hlines!(axis, [0.0]; color=:black, linewidth=1, linestyle=:dash)
+        ylims!(axis, ylimits...)
+    end
+    legend_elements = [LineElement(color=CONDITION_RESPONSE_COLOURS[value],
+        linewidth=3) for value in CONDITION_RESPONSE_VALUES]
+    Legend(grid[2, 3], legend_elements,
+        ["Condition value: $(value)" for value in CONDITION_RESPONSE_VALUES];
+        tellwidth=false, halign=:center, valign=:center, labelsize=14)
+    rowsize!(grid, 1, Relative(0.5))
+    rowsize!(grid, 2, Relative(0.5))
+    colgap!(grid, 36)
+    rowgap!(grid, 40)
+    save(filename, figure)
+    return nothing
+end
+
 function formatted(value; digits::Int=2)
     return string(round(Float64(value), digits=digits))
 end
@@ -474,6 +532,10 @@ function main()
             filename=joinpath(options.output_dir, "policy_condition_response.pdf"))
         policy_condition_response_figure(parameter_sensitivity;
             filename=joinpath(article_figure_dir, "policy_condition_response.pdf"))
+        policy_intensity_response_figure(parameter_sensitivity;
+            filename=joinpath(options.output_dir, "policy_intensity_response.pdf"))
+        policy_intensity_response_figure(parameter_sensitivity;
+            filename=joinpath(article_figure_dir, "policy_intensity_response.pdf"))
         write_article_result_tables(primary, fiscal, efficiency, avoided_new_products,
             income_evidence)
         println("Article result tables: ", joinpath(ROOT_DIR, "article", "generated"))
