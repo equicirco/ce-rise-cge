@@ -42,6 +42,14 @@ const CONDITION_RESPONSE_COLOURS = Dict(
 
 const REGION_ORDER = ["DE", "FR", "IT", "PL", "REU", "SK"]
 
+const TRANSMISSION_ACTIVITY_GROUPS = [
+    "Basic metals",
+    "Metal components",
+    "Other manufacturing",
+    "Trade",
+    "Other services",
+]
+
 const REGION_COLOURS = Dict(
     "DE" => colorant"#4E79A7",
     "FR" => colorant"#E17C05",
@@ -131,6 +139,67 @@ function household_income_evidence(incidence::DataFrame)
     return selected
 end
 
+"""Summarise broad-industry output transmission by policy and European region."""
+function activity_transmission_evidence(connection)
+    return query(connection, """
+        WITH activity_changes AS (
+            SELECT sensitivity_profile, scenario, instrument, wedge, region,
+                CASE
+                    WHEN account LIKE '%\\_BASIC\\_METALS' ESCAPE '\\' THEN 'Basic metals'
+                    WHEN account LIKE '%\\_METAL\\_COMPONENTS' ESCAPE '\\' THEN 'Metal components'
+                    WHEN account LIKE '%\\_OTHER\\_MANUFACTURING' ESCAPE '\\' THEN 'Other manufacturing'
+                    WHEN account LIKE '%\\_TRADE' ESCAPE '\\' THEN 'Trade'
+                    WHEN account LIKE '%\\_OTHER\\_SERVICES' ESCAPE '\\' THEN 'Other services'
+                END AS activity_group,
+                100.0 * (policy_level - baseline_level) / nullif(baseline_level, 0.0)
+                    AS output_change_percent
+            FROM policy_outcomes
+            WHERE indicator = 'activity_output_volume_index'
+              AND (
+                    account LIKE '%\\_BASIC\\_METALS' ESCAPE '\\' OR
+                    account LIKE '%\\_METAL\\_COMPONENTS' ESCAPE '\\' OR
+                    account LIKE '%\\_OTHER\\_MANUFACTURING' ESCAPE '\\' OR
+                    account LIKE '%\\_TRADE' ESCAPE '\\' OR
+                    account LIKE '%\\_OTHER\\_SERVICES' ESCAPE '\\'
+              )
+        )
+        SELECT instrument, abs(wedge) * 100.0 AS wedge_percent, region, activity_group,
+            count(*) AS valid_parameter_configurations,
+            median(output_change_percent) AS median_output_change_percent,
+            quantile_cont(output_change_percent, 0.25) AS lower_quartile_output_change_percent,
+            quantile_cont(output_change_percent, 0.75) AS upper_quartile_output_change_percent
+        FROM activity_changes
+        GROUP BY instrument, wedge, region, activity_group
+        ORDER BY instrument, wedge_percent, region, activity_group
+    """)
+end
+
+"""Summarise regional labour and capital utilisation responses in percentage points."""
+function factor_utilisation_evidence(connection)
+    return query(connection, """
+        WITH factor_changes AS (
+            SELECT sensitivity_profile, scenario, instrument, wedge, region,
+                CASE
+                    WHEN right(factor, 3) = 'LAB' THEN 'Labour'
+                    WHEN right(factor, 3) = 'CAP' THEN 'Capital'
+                END AS factor_group,
+                100.0 * (policy_level - baseline_level) AS utilisation_change_percentage_points
+            FROM policy_outcomes
+            WHERE indicator = 'regional_factor_utilisation'
+        )
+        SELECT instrument, abs(wedge) * 100.0 AS wedge_percent, region, factor_group,
+            count(*) AS valid_parameter_configurations,
+            median(utilisation_change_percentage_points) AS median_utilisation_change_percentage_points,
+            quantile_cont(utilisation_change_percentage_points, 0.25)
+                AS lower_quartile_utilisation_change_percentage_points,
+            quantile_cont(utilisation_change_percentage_points, 0.75)
+                AS upper_quartile_utilisation_change_percentage_points
+        FROM factor_changes
+        GROUP BY instrument, wedge, region, factor_group
+        ORDER BY instrument, wedge_percent, region, factor_group
+    """)
+end
+
 function regional_household_income_figure(table::DataFrame; filename::AbstractString)
     figure = Figure(size=(1200, 900), fontsize=18)
     grid = figure[1, 1] = GridLayout()
@@ -160,6 +229,54 @@ function regional_household_income_figure(table::DataFrame; filename::AbstractSt
     rowsize!(grid, 2, Relative(0.5))
     colgap!(grid, 14)
     rowgap!(grid, 18)
+    save(filename, figure)
+    return nothing
+end
+
+"""Plot broad-industry output transmission across the six European regions."""
+function activity_transmission_figure(table::DataFrame; filename::AbstractString)
+    selected = at_evidence_wedge(table)
+    activity_groups = TRANSMISSION_ACTIVITY_GROUPS
+    regions = filter(region -> region in unique(selected.region), REGION_ORDER)
+    colour_limit = maximum(abs, selected.median_output_change_percent)
+    colour_limit = max(colour_limit, 0.01)
+
+    figure = Figure(size=(1800, 1200), fontsize=17)
+    grid = figure[1, 1] = GridLayout()
+    heatmap_plot = nothing
+    for (index, instrument) in enumerate(POLICY_ORDER)
+        position = index <= 3 ? (1, index) : (2, index - 3)
+        rows = filter(:instrument => ==(instrument), selected)
+        values = fill(NaN, length(activity_groups), length(regions))
+        for row in eachrow(rows)
+            activity_index = findfirst(==(row.activity_group), activity_groups)
+            region_index = findfirst(==(row.region), regions)
+            values[activity_index, region_index] = row.median_output_change_percent
+        end
+        axis = Axis(grid[position...];
+            title=POLICY_LABELS[instrument],
+            xlabel="Industry",
+            ylabel=index in (1, 4) ? "Region" : "",
+            xlabelsize=13,
+            ylabelsize=13,
+            xticks=(1:length(activity_groups), activity_groups),
+            yticks=(1:length(regions), regions),
+            xticklabelrotation=pi / 4,
+            yreversed=true,
+            backgroundcolor=:gray95)
+        heatmap_plot = heatmap!(axis, 1:length(activity_groups), 1:length(regions), values;
+            colormap=:PuOr,
+            colorrange=(-colour_limit, colour_limit))
+    end
+    Colorbar(figure[2, 1], heatmap_plot;
+        vertical=false,
+        label="Median output-volume change (%)",
+        labelsize=14,
+        ticklabelsize=13)
+    rowsize!(grid, 1, Relative(0.46))
+    rowsize!(grid, 2, Relative(0.46))
+    colgap!(grid, 28)
+    rowgap!(grid, 36)
     save(filename, figure)
     return nothing
 end
@@ -497,7 +614,7 @@ function main()
     mkpath(options.output_dir)
     article_figure_dir = joinpath(ROOT_DIR, "article", "figures")
     isdir(article_figure_dir) || error("Article figure directory is missing: $(article_figure_dir)")
-    database = DuckDB.DB(options.database)
+    database = DuckDB.DB(options.database; readonly=true)
     connection = DBInterface.connect(database)
     try
         primary = policy_primary_metal_summary(connection)
@@ -507,6 +624,8 @@ function main()
         routes = policy_circular_route_total_summary(connection)
         activity = policy_activity_summary(connection)
         incidence = policy_incidence_summary(connection)
+        activity_transmission = activity_transmission_evidence(connection)
+        factor_utilisation = factor_utilisation_evidence(connection)
         parameter_sensitivity = primary_metal_parameter_sensitivity(connection)
         pair_summary = primary_metal_parameter_pair_summary(connection)
         mechanism_evidence = route_mechanism_evidence(routes, activity)
@@ -514,9 +633,19 @@ function main()
         boundary_evidence = selected_boundary_evidence(pair_summary)
         CSV.write(joinpath(options.output_dir, "policy_route_mechanism_evidence.csv"), mechanism_evidence)
         CSV.write(joinpath(options.output_dir, "policy_household_incidence_evidence.csv"), income_evidence)
+        CSV.write(joinpath(options.output_dir, "policy_activity_transmission_evidence.csv"),
+            activity_transmission)
+        CSV.write(joinpath(options.output_dir, "policy_factor_utilisation_evidence.csv"),
+            factor_utilisation)
         CSV.write(joinpath(options.output_dir, "policy_parameter_boundary_evidence.csv"), boundary_evidence)
         regional_household_income_figure(income_evidence;
             filename=joinpath(options.output_dir, "policy_household_incidence.pdf"))
+        regional_household_income_figure(income_evidence;
+            filename=joinpath(article_figure_dir, "policy_household_incidence.pdf"))
+        activity_transmission_figure(activity_transmission;
+            filename=joinpath(options.output_dir, "policy_activity_transmission.pdf"))
+        activity_transmission_figure(activity_transmission;
+            filename=joinpath(article_figure_dir, "policy_activity_transmission.pdf"))
         parameter_boundary_figure(boundary_evidence;
             filename=joinpath(options.output_dir, "policy_parameter_boundaries.pdf"))
         parameter_boundary_figure(boundary_evidence;
@@ -541,6 +670,8 @@ function main()
         println("Article result tables: ", joinpath(ROOT_DIR, "article", "generated"))
         println("Route-mechanism evidence rows: ", nrow(mechanism_evidence))
         println("Household-incidence evidence rows: ", nrow(income_evidence))
+        println("Activity-transmission evidence rows: ", nrow(activity_transmission))
+        println("Factor-utilisation evidence rows: ", nrow(factor_utilisation))
         println("Parameter-boundary evidence rows: ", nrow(boundary_evidence))
         println("Article figures: ", article_figure_dir)
     finally
