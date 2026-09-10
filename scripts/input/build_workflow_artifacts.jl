@@ -35,6 +35,7 @@ function main()
         "build_stage7_model_scaffold.jl",
         "build_stage8_six_region_bundle.jl",
         "build_stage9_physical_satellite.jl",
+        "generate_article_trade_exposure_table.jl",
         "validate_sut_totals.jl",
     ]
         run_script(script_name)
