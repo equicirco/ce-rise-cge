@@ -19,7 +19,6 @@ const PROJECT_ROOT = normpath(joinpath(@__DIR__, "..", ".."))
 const GENERATED_DIR = joinpath(PROJECT_ROOT, "article", "generated")
 const CORE_OUTPUT = joinpath(GENERATED_DIR, "si_model_equation_inventory.tex")
 const POLICY_OUTPUT = joinpath(GENERATED_DIR, "si_policy_equation_inventory.tex")
-const MINIMUM_OUTPUT_VERSION = v"0.1.5"
 
 const POLICY_LISTING_SCENARIOS = (
     (:virgin_metal_tax, 0.02, "Virgin-metal tax"),
@@ -100,7 +99,7 @@ function _write_family(io::IO, key, equations;
     expression === nothing && error("Equation family $(key) has no mathematical expression.")
     count_text = length(equations) == 1 ? "1 $(instance_label) instance" :
         "$(length(equations)) $(instance_label) instances"
-    println(io, "\\paragraph{\\texttt{$(_latex_escape(block)).$(_latex_escape(tag))}} ($count_text).}")
+    println(io, "\\paragraph{\\texttt{$(_latex_escape(block)).$(_latex_escape(tag))}} ($count_text).")
     println(io, "\\[")
     println(io, JCGEOutput.render_expr(expression; format=:latex))
     println(io, "\\]")
@@ -136,10 +135,6 @@ end
 
 function main()
     isdir(GENERATED_DIR) || error("Article generated directory does not exist: $(GENERATED_DIR)")
-    output_version = Base.pkgversion(JCGEOutput)
-    output_version >= MINIMUM_OUTPUT_VERSION || error(
-        "Supplementary equation generation requires JCGEOutput $(MINIMUM_OUTPUT_VERSION) or later; found $(output_version).")
-
     baseline_context = _build_context(CERiseCGE.multi_region_model())
     baseline_families = _equation_families(baseline_context)
     baseline_signatures = _family_expression_signatures(baseline_families)
