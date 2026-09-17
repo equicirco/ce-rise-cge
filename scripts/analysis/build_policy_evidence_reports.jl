@@ -18,7 +18,7 @@ const DIRECT_POLICY_ROUTES = Dict(
 )
 
 const EVIDENCE_PARAMETER_PAIRS = Dict(
-    "virgin_metal_tax" => ("Armington elasticity", "CET transformation elasticity"),
+    "virgin_metal_tax" => ("CET transformation elasticity", "Armington elasticity"),
     "recycling_support" => ("CET transformation elasticity", "Metal-substitution elasticity"),
     "refurbishment_support" => ("CET transformation elasticity", "Circular-service elasticity"),
     "repair_support" => ("CET transformation elasticity", "Circular-service elasticity"),
@@ -58,22 +58,6 @@ const REGION_COLOURS = Dict(
     "REU" => colorant"#A64D79",
     "SK" => colorant"#7A7A7A",
 )
-
-"""Return the common two-plus-three policy-panel layout used in article figures."""
-function policy_panel_slot(grid::GridLayout, index::Integer)
-    if index == 1
-        return grid[1, 1:3]
-    elseif index == 2
-        return grid[1, 4:6]
-    elseif index == 3
-        return grid[2, 1:2]
-    elseif index == 4
-        return grid[2, 3:4]
-    elseif index == 5
-        return grid[2, 5:6]
-    end
-    error("Policy-panel index must be between 1 and 5.")
-end
 
 function at_evidence_wedge(table::DataFrame)
     return filter(:wedge_percent => ==(EVIDENCE_WEDGE_PERCENT), table)
@@ -130,13 +114,37 @@ function selected_boundary_evidence(pair_summary::DataFrame;
     selected = DataFrame()
     for instrument in POLICY_ORDER
         x_parameter, y_parameter = EVIDENCE_PARAMETER_PAIRS[instrument]
-        rows = filter(row ->
+        direct_rows = filter(row ->
             row.instrument == instrument &&
             row.wedge_percent == wedge_percent &&
             row.x_parameter == x_parameter &&
             row.y_parameter == y_parameter,
             pair_summary)
-        append!(selected, rows)
+        if !isempty(direct_rows)
+            append!(selected, direct_rows)
+            continue
+        end
+        reversed_rows = filter(row ->
+            row.instrument == instrument &&
+            row.wedge_percent == wedge_percent &&
+            row.x_parameter == y_parameter &&
+            row.y_parameter == x_parameter,
+            pair_summary)
+        for row in eachrow(reversed_rows)
+            push!(selected, (
+                instrument = row.instrument,
+                wedge_percent = row.wedge_percent,
+                x_parameter = x_parameter,
+                x_value = row.y_value,
+                y_parameter = y_parameter,
+                y_value = row.x_value,
+                valid_remaining_parameter_configurations = row.valid_remaining_parameter_configurations,
+                median_reduction_tonnes = row.median_reduction_tonnes,
+                minimum_reduction_tonnes = row.minimum_reduction_tonnes,
+                maximum_reduction_tonnes = row.maximum_reduction_tonnes,
+                material_outcome_regime = row.material_outcome_regime,
+            ))
+        end
     end
     sort!(selected, [:instrument, :x_value, :y_value])
     return selected
@@ -217,18 +225,21 @@ function factor_utilisation_evidence(connection)
 end
 
 function regional_household_income_figure(table::DataFrame; filename::AbstractString)
-    figure = Figure(size=(1200, 900), fontsize=24, backgroundcolor=:white)
-    grid = figure[1, 1] = GridLayout()
+    figure, grid, legend_row = policy_panel_figure(shared_xlabel="Region")
     regions = filter(region -> region in unique(table.region), REGION_ORDER)
+    ylimits = common_limits(table.lower_quartile_absolute_change,
+        table.upper_quartile_absolute_change)
     for (index, instrument) in enumerate(POLICY_ORDER)
         rows = filter(:instrument => ==(instrument), table)
         sort!(rows, :region, by=region -> findfirst(==(region), regions))
         x = 1:length(regions)
         axis = standard_figure_axis(policy_panel_slot(grid, index);
             title=POLICY_LABELS[instrument],
-            xlabel="Region",
+            xlabel="",
             ylabel=index in (1, 4) ? "Household-income change\n(million EUR)" : "",
             xticks=(x, regions))
+        index <= 3 && hide_shared_x_decorations!(axis)
+        index in (2, 3, 5) && hide_shared_y_decorations!(axis)
         barplot!(axis, x, rows.median_absolute_change;
             color=POLICY_COLOURS[instrument], strokecolor=:black, strokewidth=0.5)
         lower = rows.median_absolute_change .- rows.lower_quartile_absolute_change
@@ -236,13 +247,13 @@ function regional_household_income_figure(table::DataFrame; filename::AbstractSt
         errorbars!(axis, x, rows.median_absolute_change, lower, upper;
             color=:black, whiskerwidth=10, linewidth=2)
         hlines!(axis, [0.0]; color=:black, linewidth=1, linestyle=:dash)
+        ylims!(axis, ylimits...)
     end
-    Label(grid[0, 1:6], "Bars: median    Whiskers: interquartile range    Policy wedge: 2%",
-        tellwidth=false, halign=:center, valign=:center, fontsize=22)
-    rowsize!(grid, 1, Relative(0.5))
-    rowsize!(grid, 2, Relative(0.5))
-    colgap!(grid, 18)
-    rowgap!(grid, 18)
+    bottom_legend!(grid, legend_row,
+        [PolyElement(color=POLICY_COLOURS["virgin_metal_tax"], strokecolor=:black),
+            LineElement(color=:black, linewidth=2)],
+        ["Median", "Interquartile range"])
+    finalize_policy_panel_layout!(grid, legend_row)
     save(filename, figure)
     return nothing
 end
@@ -255,8 +266,7 @@ function activity_transmission_figure(table::DataFrame; filename::AbstractString
     colour_limit = maximum(abs, selected.median_output_change_percent)
     colour_limit = max(colour_limit, 0.01)
 
-    figure = Figure(size=(1800, 1200), fontsize=32, backgroundcolor=:white)
-    grid = figure[1, 1] = GridLayout()
+    figure, grid, legend_row = policy_panel_figure(shared_xlabel="Region")
     heatmap_plot = nothing
     for (index, instrument) in enumerate(POLICY_ORDER)
         rows = filter(:instrument => ==(instrument), selected)
@@ -268,25 +278,23 @@ function activity_transmission_figure(table::DataFrame; filename::AbstractString
         end
         axis = wide_figure_axis(policy_panel_slot(grid, index);
             title=POLICY_LABELS[instrument],
-            xlabel="Industry",
-            ylabel=index in (1, 4) ? "Region" : "",
-            xticks=(1:length(activity_groups), activity_groups),
-            yticks=(1:length(regions), regions),
-            xticklabelrotation=pi / 4,
+            xlabel="",
+            ylabel=index in (1, 4) ? "Industry" : "",
+            xticks=(1:length(regions), regions),
+            yticks=(1:length(activity_groups), activity_groups),
             yreversed=true)
-        heatmap_plot = heatmap!(axis, 1:length(activity_groups), 1:length(regions), values;
+        index <= 3 && hide_shared_x_decorations!(axis)
+        index in (2, 3, 5) && hide_shared_y_decorations!(axis)
+        heatmap_plot = heatmap!(axis, 1:length(regions), 1:length(activity_groups), permutedims(values);
             colormap=:PuOr,
             colorrange=(-colour_limit, colour_limit))
     end
-    Colorbar(figure[2, 1], heatmap_plot;
+    Colorbar(grid[legend_row, 1:3], heatmap_plot;
         vertical=false,
         label="Median output-volume change (%)",
-        labelsize=34,
-        ticklabelsize=28)
-    rowsize!(grid, 1, Relative(0.46))
-    rowsize!(grid, 2, Relative(0.46))
-    colgap!(grid, 20)
-    rowgap!(grid, 36)
+        labelsize=30,
+        ticklabelsize=24)
+    finalize_policy_panel_layout!(grid, legend_row)
     save(filename, figure)
     return nothing
 end
@@ -314,8 +322,8 @@ function parameter_axis_label(parameter::AbstractString, axis::AbstractString)
 end
 
 function parameter_boundary_figure(table::DataFrame; filename::AbstractString)
-    figure = Figure(size=(1800, 1200), fontsize=32, backgroundcolor=:white)
-    grid = figure[1, 1] = GridLayout()
+    figure, grid, legend_row = policy_panel_figure(
+        shared_xlabel="CET transformation elasticity")
     for (index, instrument) in enumerate(POLICY_ORDER)
         rows = filter(:instrument => ==(instrument), table)
         x_values = sort(unique(rows.x_value))
@@ -330,10 +338,12 @@ function parameter_boundary_figure(table::DataFrame; filename::AbstractString)
         end
         axis = wide_figure_axis(policy_panel_slot(grid, index);
             title=POLICY_LABELS[instrument],
-            xlabel=parameter_axis_label(first(rows.x_parameter), ""),
-            ylabel=parameter_axis_label(first(rows.y_parameter), ""),
+            xlabel="",
+            ylabel=index == 5 ? "" : parameter_axis_label(first(rows.y_parameter), ""),
             xticks=(x_positions, string.(x_values)),
             yticks=(y_positions, string.(y_values)))
+        index <= 3 && hide_shared_x_decorations!(axis)
+        index == 5 && hide_shared_y_decorations!(axis)
         heatmap!(axis, x_positions, y_positions, regimes;
             colormap=[REGIME_COLOURS["primary_metal_saving"],
                 REGIME_COLOURS["parameter_dependent"],
@@ -351,20 +361,16 @@ function parameter_boundary_figure(table::DataFrame; filename::AbstractString)
         "parameter_dependent" => "Saving or increase, depending on remaining settings",
         "primary_metal_increase" => "Increase for all remaining settings",
     )
-    Legend(grid[0, 1:6], legend_elements, [legend_labels[regime] for regime in displayed_regimes];
-        tellwidth=false, halign=:center, valign=:center, labelsize=28, orientation=:horizontal)
-    rowsize!(grid, 1, Relative(0.5))
-    rowsize!(grid, 2, Relative(0.5))
-    colgap!(grid, 18)
-    rowgap!(grid, 18)
+    bottom_legend!(grid, legend_row, legend_elements,
+        [legend_labels[regime] for regime in displayed_regimes]; nbanks=2)
+    finalize_policy_panel_layout!(grid, legend_row)
     save(filename, figure)
     return nothing
 end
 
 """Plot primary-metal saving against each policy's most influential condition."""
 function policy_condition_response_figure(table::DataFrame; filename::AbstractString)
-    figure = Figure(size=(1800, 1200), fontsize=32, backgroundcolor=:white)
-    grid = figure[1, 1] = GridLayout()
+    figure, grid, legend_row = policy_panel_figure()
     panel_rows = Dict{String, DataFrame}()
     for instrument in POLICY_ORDER
         parameter = KEY_POLICY_CONDITIONS[instrument]
@@ -387,8 +393,9 @@ function policy_condition_response_figure(table::DataFrame; filename::AbstractSt
         axis = wide_figure_axis(policy_panel_slot(grid, index);
             title=POLICY_LABELS[instrument],
             xlabel=parameter_axis_label(parameter, ""),
-            ylabel="Primary-metal saving (t)",
+            ylabel=index in (1, 4) ? "Primary-metal saving (t)" : "",
             xticks=(vcat(0.0, rows.value), vcat("0", string.(rows.value))))
+        index in (2, 3, 5) && hide_shared_y_decorations!(axis)
         for row_index in eachindex(rows.value)
             start_value = row_index == firstindex(rows.value) ? 0.0 : rows.value[row_index - 1]
             start_lower = row_index == firstindex(rows.value) ? 0.0 :
@@ -410,13 +417,10 @@ function policy_condition_response_figure(table::DataFrame; filename::AbstractSt
     end
     legend_elements = [LineElement(color=CONDITION_RESPONSE_COLOURS[value],
         linewidth=3) for value in CONDITION_RESPONSE_VALUES]
-    Legend(grid[0, 1:6], legend_elements,
+    bottom_legend!(grid, legend_row, legend_elements,
         ["Condition value: $(value)" for value in CONDITION_RESPONSE_VALUES];
-        tellwidth=false, halign=:center, valign=:center, labelsize=28, orientation=:horizontal)
-    rowsize!(grid, 1, Relative(0.5))
-    rowsize!(grid, 2, Relative(0.5))
-    colgap!(grid, 28)
-    rowgap!(grid, 40)
+        nbanks=1)
+    finalize_policy_panel_layout!(grid, legend_row)
     save(filename, figure)
     return nothing
 end
@@ -430,15 +434,16 @@ function policy_intensity_response_figure(table::DataFrame; filename::AbstractSt
     padding = 0.05 * (upper - lower)
     ylimits = (lower - padding, upper + padding)
 
-    figure = Figure(size=(1800, 1200), fontsize=32, backgroundcolor=:white)
-    grid = figure[1, 1] = GridLayout()
+    figure, grid, legend_row = policy_panel_figure(shared_xlabel="Policy wedge (%)")
     for (index, instrument) in enumerate(POLICY_ORDER)
         parameter = KEY_POLICY_CONDITIONS[instrument]
         axis = wide_figure_axis(policy_panel_slot(grid, index);
             title="$(POLICY_LABELS[instrument])\n$(parameter_axis_label(parameter, ""))",
-            xlabel="Policy wedge (%)",
-            ylabel="Primary-metal saving (t)",
+            xlabel="",
+            ylabel=index in (1, 4) ? "Primary-metal saving (t)" : "",
             xticks=([0.0, 0.25, 0.5, 1.0, 2.0], ["0", "0.25", "0.5", "1", "2"]))
+        index <= 3 && hide_shared_x_decorations!(axis)
+        index in (2, 3, 5) && hide_shared_y_decorations!(axis)
         for value in CONDITION_RESPONSE_VALUES
             rows = filter(row -> row.instrument == instrument &&
                 row.parameter == parameter && row.value == value, table)
@@ -457,13 +462,10 @@ function policy_intensity_response_figure(table::DataFrame; filename::AbstractSt
     end
     legend_elements = [LineElement(color=CONDITION_RESPONSE_COLOURS[value],
         linewidth=3) for value in CONDITION_RESPONSE_VALUES]
-    Legend(grid[0, 1:6], legend_elements,
+    bottom_legend!(grid, legend_row, legend_elements,
         ["Condition value: $(value)" for value in CONDITION_RESPONSE_VALUES];
-        tellwidth=false, halign=:center, valign=:center, labelsize=28, orientation=:horizontal)
-    rowsize!(grid, 1, Relative(0.5))
-    rowsize!(grid, 2, Relative(0.5))
-    colgap!(grid, 28)
-    rowgap!(grid, 40)
+        nbanks=1)
+    finalize_policy_panel_layout!(grid, legend_row)
     save(filename, figure)
     return nothing
 end
@@ -481,7 +483,7 @@ end
 function latex_value_with_iqr(median, lower, upper; digits::Int=1)
     value = latex_number(median; digits=digits)
     interval = "[$(latex_number(lower; digits=digits)), $(latex_number(upper; digits=digits))]"
-    return "\\shortstack[r]{$(value) \\\\ \\mbox{$(interval)}}"
+    return "\\shortstack[r]{\\strut $(value) \\\\[0.35em] $(interval)\\strut}"
 end
 
 function _table_row(table::DataFrame, predicate)
@@ -493,9 +495,10 @@ function write_material_fiscal_table(path::AbstractString, primary::DataFrame, f
         println(io, "\\begin{table}[htbp]")
         println(io, "\\centering")
         println(io, "\\footnotesize")
+        println(io, "\\setlength{\\tabcolsep}{3pt}")
         println(io, "\\caption{Primary-metal outcome and fiscal scale at a 2\\% policy wedge. The first line reports the median and the second line the interquartile range across the declared sensitivity design. Fiscal flow is tax revenue for the tax and support expenditure for support instruments.}")
         println(io, "\\label{tab:policy-material-fiscal}")
-        println(io, "\\begin{tabularx}{\\textwidth}{@{}>{\\raggedright\\arraybackslash}p{0.19\\textwidth}>{\\raggedleft\\arraybackslash}p{0.26\\textwidth}>{\\raggedright\\arraybackslash}p{0.18\\textwidth}>{\\raggedleft\\arraybackslash}X@{}}")
+        println(io, "\\begin{tabular}{@{}L{0.18\\textwidth}R{0.27\\textwidth}L{0.18\\textwidth}R{0.28\\textwidth}@{}}")
         println(io, "\\hline")
         println(io, "Intervention & Primary-metal saving (t) & Fiscal basis & Fiscal flow (million EUR) \\\\")
         println(io, "\\hline")
@@ -512,7 +515,7 @@ function write_material_fiscal_table(path::AbstractString, primary::DataFrame, f
             instrument == last(POLICY_ORDER) || println(io, "\\lightrule")
         end
         println(io, "\\hline")
-        println(io, "\\end{tabularx}")
+        println(io, "\\end{tabular}")
         println(io, "\\end{table}")
     end
     return nothing
@@ -523,9 +526,10 @@ function write_support_efficiency_table(path::AbstractString, efficiency::DataFr
         println(io, "\\begin{table}[htbp]")
         println(io, "\\centering")
         println(io, "\\footnotesize")
+        println(io, "\\setlength{\\tabcolsep}{3pt}")
         println(io, "\\caption{Primary-metal saving per million euro of support expenditure at a 2\\% support wedge. The first line reports the median and the second line the interquartile range across the declared sensitivity design.}")
         println(io, "\\label{tab:policy-support-efficiency}")
-        println(io, "\\begin{tabularx}{0.78\\textwidth}{@{}>{\\raggedright\\arraybackslash}X>{\\raggedleft\\arraybackslash}p{0.34\\textwidth}@{}}")
+        println(io, "\\begin{tabular}{@{}L{0.34\\textwidth}R{0.36\\textwidth}@{}}")
         println(io, "\\hline")
         println(io, "Support instrument & Primary-metal saving (t per million EUR) \\\\")
         println(io, "\\hline")
@@ -538,7 +542,7 @@ function write_support_efficiency_table(path::AbstractString, efficiency::DataFr
             instrument == last(support_instruments) || println(io, "\\lightrule")
         end
         println(io, "\\hline")
-        println(io, "\\end{tabularx}")
+        println(io, "\\end{tabular}")
         println(io, "\\end{table}")
     end
     return nothing
@@ -550,9 +554,10 @@ function write_new_product_displacement_table(path::AbstractString,
         println(io, "\\begin{table}[htbp]")
         println(io, "\\centering")
         println(io, "\\footnotesize")
+        println(io, "\\setlength{\\tabcolsep}{3pt}")
         println(io, "\\caption{Displacement of new product output and its metal inputs under life-extension and reuse support at a 2\\% wedge. Positive values denote lower new-product output or lower metal use in new production relative to the matching zero-policy solution. The first line reports the median and the second line the interquartile range across the declared sensitivity design.}")
         println(io, "\\label{tab:new-product-displacement}")
-        println(io, "\\begin{tabularx}{\\textwidth}{@{}>{\\raggedright\\arraybackslash}p{0.16\\textwidth}>{\\raggedright\\arraybackslash}p{0.10\\textwidth}>{\\raggedleft\\arraybackslash}X>{\\raggedleft\\arraybackslash}X>{\\raggedleft\\arraybackslash}X@{}}")
+        println(io, "\\begin{tabular}{@{}L{0.145\\textwidth}L{0.095\\textwidth}R{0.225\\textwidth}R{0.225\\textwidth}R{0.225\\textwidth}@{}}")
         println(io, "\\hline")
         println(io, "Support & Product family & Avoided new output (t) & Avoided primary-metal input (t) & Avoided recovered-metal input (t) \\\\")
         println(io, "\\hline")
@@ -573,7 +578,7 @@ function write_new_product_displacement_table(path::AbstractString,
             end
         end
         println(io, "\\hline")
-        println(io, "\\end{tabularx}")
+        println(io, "\\end{tabular}")
         println(io, "\\end{table}")
     end
     return nothing
@@ -584,9 +589,10 @@ function write_household_incidence_table(path::AbstractString, income::DataFrame
         println(io, "\\begin{table}[htbp]")
         println(io, "\\centering")
         println(io, "\\footnotesize")
+        println(io, "\\setlength{\\tabcolsep}{3pt}")
         println(io, "\\caption{Median change in regional household disposable income at a 2\\% policy wedge (million EUR). Values are reported by policy and region; the accompanying figure reports interquartile ranges.}")
         println(io, "\\label{tab:regional-household-incidence}")
-        println(io, "\\begin{tabularx}{\\textwidth}{@{}>{\\raggedright\\arraybackslash}p{0.12\\textwidth}>{\\raggedleft\\arraybackslash}X>{\\raggedleft\\arraybackslash}X>{\\raggedleft\\arraybackslash}X>{\\raggedleft\\arraybackslash}X>{\\raggedleft\\arraybackslash}X@{}}")
+        println(io, "\\begin{tabular}{@{}L{0.13\\textwidth}R{0.15\\textwidth}R{0.15\\textwidth}R{0.15\\textwidth}R{0.15\\textwidth}R{0.15\\textwidth}@{}}")
         println(io, "\\hline")
         println(io, "Region & Virgin-metal tax & Recycling support & Refurbishment support & Repair support & Reuse support \\\\")
         println(io, "\\hline")
@@ -600,7 +606,7 @@ function write_household_incidence_table(path::AbstractString, income::DataFrame
             region == last(REGION_ORDER) || println(io, "\\lightrule")
         end
         println(io, "\\hline")
-        println(io, "\\end{tabularx}")
+        println(io, "\\end{tabular}")
         println(io, "\\end{table}")
     end
     return nothing

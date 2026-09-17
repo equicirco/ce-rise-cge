@@ -41,28 +41,102 @@ const POLICY_COLOURS = Dict(
     "reuse_support" => colorant"#8064A2",
 )
 
-"""Create a consistently legible axis for standard-width, multi-panel figures."""
+const POLICY_PANEL_FIGURE_SIZE = (1800, 1500)
+const POLICY_PANEL_ROW_HEIGHT = 490
+const POLICY_PANEL_LEGEND_HEIGHT = 120
+const POLICY_PANEL_SHARED_LABEL_HEIGHT = 64
+
+"""Create a consistently legible axis for fixed-size policy small multiples."""
 function standard_figure_axis(position; kwargs...)
     return Axis(position;
-        titlesize=32,
-        xlabelsize=24,
-        ylabelsize=24,
-        xticklabelsize=21,
-        yticklabelsize=21,
+        titlesize=34,
+        xlabelsize=30,
+        ylabelsize=30,
+        xticklabelsize=24,
+        yticklabelsize=24,
         backgroundcolor=:white,
         kwargs...)
 end
 
-"""Create a consistently legible axis for wide, multi-panel figures."""
-function wide_figure_axis(position; kwargs...)
-    return Axis(position;
-        titlesize=44,
-        xlabelsize=32,
-        ylabelsize=32,
-        xticklabelsize=28,
-        yticklabelsize=28,
-        backgroundcolor=:white,
-        kwargs...)
+"""Alias retained for the evidence-report generator."""
+wide_figure_axis(position; kwargs...) = standard_figure_axis(position; kwargs...)
+
+"""Create a fixed 3+2 small-multiple canvas with a bottom legend band."""
+function policy_panel_figure(; shared_xlabel::Union{Nothing,AbstractString}=nothing)
+    figure = Figure(size=POLICY_PANEL_FIGURE_SIZE, fontsize=32, backgroundcolor=:white,
+        figure_padding=(70, 60, 80, 100))
+    grid = figure[1, 1] = GridLayout()
+    if isnothing(shared_xlabel)
+        legend_row = 3
+    else
+        Label(grid[3, 1:3], shared_xlabel;
+            tellwidth=false, halign=:center, valign=:center, fontsize=30)
+        legend_row = 4
+    end
+    colgap!(grid, 24)
+    rowgap!(grid, 24)
+    return figure, grid, legend_row
+end
+
+"""Fix panel and legend bands after all rows have been populated."""
+function finalize_policy_panel_layout!(grid::GridLayout, legend_row::Integer)
+    rowsize!(grid, 1, Fixed(POLICY_PANEL_ROW_HEIGHT))
+    rowsize!(grid, 2, Fixed(POLICY_PANEL_ROW_HEIGHT))
+    if legend_row == 3
+        rowsize!(grid, 3, Fixed(POLICY_PANEL_LEGEND_HEIGHT))
+    else
+        rowsize!(grid, 3, Fixed(POLICY_PANEL_SHARED_LABEL_HEIGHT))
+        rowsize!(grid, 4, Fixed(POLICY_PANEL_LEGEND_HEIGHT))
+    end
+    return nothing
+end
+
+"""Return the common left-aligned 3+2 policy-panel layout."""
+function policy_panel_slot(grid::GridLayout, index::Integer)
+    index in eachindex(POLICY_ORDER) || error("Policy-panel index must be between 1 and $(length(POLICY_ORDER)).")
+    return index <= 3 ? grid[1, index] : grid[2, index - 3]
+end
+
+"""Remove repeated horizontal decorations while preserving the shared scale."""
+function hide_shared_x_decorations!(axis::Axis)
+    hidexdecorations!(axis; label=true, ticklabels=true, ticks=true)
+    return nothing
+end
+
+"""Remove repeated vertical decorations while preserving the shared scale."""
+function hide_shared_y_decorations!(axis::Axis)
+    hideydecorations!(axis; label=true, ticklabels=true, ticks=true)
+    return nothing
+end
+
+"""Return padded common limits from one or more finite vectors."""
+function common_limits(values...; include_zero::Bool=true)
+    finite_values = Float64[]
+    for value_set in values
+        append!(finite_values, Float64.(filter(isfinite, collect(skipmissing(value_set)))))
+    end
+    isempty(finite_values) && return (-1.0, 1.0)
+    lower = minimum(finite_values)
+    upper = maximum(finite_values)
+    include_zero && (lower = min(lower, 0.0); upper = max(upper, 0.0))
+    span = upper - lower
+    padding = span == 0.0 ? max(abs(upper) * 0.08, 1.0) : 0.06 * span
+    return (lower - padding, upper + padding)
+end
+
+"""Add a bottom legend that remains inside the figure boundary."""
+function bottom_legend!(grid::GridLayout, legend_row::Integer, elements, labels;
+    nbanks::Integer=1)
+    return Legend(grid[legend_row, 1:3], elements, labels;
+        tellwidth=false, halign=:center, valign=:center,
+        labelsize=26, orientation=:horizontal, nbanks=nbanks)
+end
+
+function summary_legend_elements()
+    return [
+        LineElement(color=:black, linewidth=3),
+        PolyElement(color=(colorant"#6C7A89", 0.22), strokecolor=:transparent),
+    ], ["Median", "Interquartile range"]
 end
 
 function command_options(args)
@@ -570,15 +644,16 @@ end
 
 function policy_grid_figure(table::DataFrame, value, lower, upper;
     ylabel::AbstractString, filename::AbstractString)
-    figure = Figure(size=(1200, 900), fontsize=24, backgroundcolor=:white)
-    grid = figure[1, 1] = GridLayout()
+    figure, grid, legend_row = policy_panel_figure(shared_xlabel="Policy wedge (%)")
+    ylimits = common_limits(table[!, lower], table[!, upper])
     for (index, instrument) in enumerate(POLICY_ORDER)
-        position = index <= 3 ? (1, index) : (2, index - 3)
-        axis = standard_figure_axis(grid[position...];
+        axis = standard_figure_axis(policy_panel_slot(grid, index);
             title=POLICY_LABELS[instrument],
-            xlabel="Policy wedge (%)",
+            xlabel="",
             ylabel=index in (1, 4) ? ylabel : "",
             xticks=[0.25, 0.5, 1.0, 2.0])
+        index <= 3 && hide_shared_x_decorations!(axis)
+        index in (2, 3, 5) && hide_shared_y_decorations!(axis)
         rows = instrument_rows(table, instrument)
         x = rows.wedge_percent
         band!(axis, x, rows[!, lower], rows[!, upper];
@@ -586,14 +661,11 @@ function policy_grid_figure(table::DataFrame, value, lower, upper;
         lines!(axis, x, rows[!, value]; color=POLICY_COLOURS[instrument], linewidth=3)
         scatter!(axis, x, rows[!, value]; color=POLICY_COLOURS[instrument], markersize=10)
         hlines!(axis, [0.0]; color=:black, linewidth=1, linestyle=:dash)
+        ylims!(axis, ylimits...)
     end
-    Label(grid[2, 3], "Line and points: median\nShaded band: interquartile range",
-        tellwidth=false,
-        halign=:center, valign=:center, fontsize=22)
-    rowsize!(grid, 1, Relative(0.5))
-    rowsize!(grid, 2, Relative(0.5))
-    colgap!(grid, 14)
-    rowgap!(grid, 18)
+    elements, labels = summary_legend_elements()
+    bottom_legend!(grid, legend_row, elements, labels)
+    finalize_policy_panel_layout!(grid, legend_row)
     save(filename, figure)
     return nothing
 end
@@ -617,15 +689,17 @@ const ROUTE_COLOURS = Dict(
 )
 
 function circular_route_figure(table::DataFrame; filename::AbstractString)
-    figure = Figure(size=(1200, 900), fontsize=24, backgroundcolor=:white)
-    grid = figure[1, 1] = GridLayout()
+    figure, grid, legend_row = policy_panel_figure(shared_xlabel="Policy wedge (%)")
+    ylimits = common_limits(table.lower_quartile_change_percent,
+        table.upper_quartile_change_percent)
     for (index, instrument) in enumerate(POLICY_ORDER)
-        position = index <= 3 ? (1, index) : (2, index - 3)
-        axis = standard_figure_axis(grid[position...];
+        axis = standard_figure_axis(policy_panel_slot(grid, index);
             title=POLICY_LABELS[instrument],
-            xlabel="Policy wedge (%)",
+            xlabel="",
             ylabel=index in (1, 4) ? "Change in route input mass (%)" : "",
             xticks=[0.25, 0.5, 1.0, 2.0])
+        index <= 3 && hide_shared_x_decorations!(axis)
+        index in (2, 3, 5) && hide_shared_y_decorations!(axis)
         policy_rows = filter(:instrument => ==(instrument), table)
         for route in ROUTE_ORDER
             rows = filter(:route => ==(route), policy_rows)
@@ -640,30 +714,28 @@ function circular_route_figure(table::DataFrame; filename::AbstractString)
                 color=ROUTE_COLOURS[route], markersize=9)
         end
         hlines!(axis, [0.0]; color=:black, linewidth=1, linestyle=:dash)
+        ylims!(axis, ylimits...)
     end
     legend_elements = [LineElement(color=ROUTE_COLOURS[route], linewidth=3) for route in ROUTE_ORDER]
-    Legend(grid[2, 3], legend_elements, [ROUTE_LABELS[route] for route in ROUTE_ORDER];
-        tellwidth=false, halign=:center, valign=:center, labelsize=22)
-    rowsize!(grid, 1, Relative(0.5))
-    rowsize!(grid, 2, Relative(0.5))
-    colgap!(grid, 14)
-    rowgap!(grid, 18)
+    bottom_legend!(grid, legend_row, legend_elements, [ROUTE_LABELS[route] for route in ROUTE_ORDER])
+    finalize_policy_panel_layout!(grid, legend_row)
     save(filename, figure)
     return nothing
 end
 
 function support_efficiency_figure(table::DataFrame; filename::AbstractString)
     support_instruments = filter(!=("virgin_metal_tax"), POLICY_ORDER)
-    figure = Figure(size=(1200, 800), fontsize=24, backgroundcolor=:white)
-    grid = figure[1, 1] = GridLayout()
+    figure, grid, legend_row = policy_panel_figure(shared_xlabel="Policy wedge (%)")
+    ylimits = common_limits(table.lower_quartile_tonnes_per_million_eur,
+        table.upper_quartile_tonnes_per_million_eur)
     for (index, instrument) in enumerate(support_instruments)
-        row = index <= 2 ? 1 : 2
-        column = isodd(index) ? 1 : 2
-        axis = standard_figure_axis(grid[row, column];
+        axis = standard_figure_axis(policy_panel_slot(grid, index);
             title=POLICY_LABELS[instrument],
-            xlabel="Policy wedge (%)",
-            ylabel=column == 1 ? "Primary-metal reduction\n(t / million EUR support)" : "",
+            xlabel="",
+            ylabel=index in (1, 4) ? "Primary-metal reduction\n(t / million EUR support)" : "",
             xticks=[0.25, 0.5, 1.0, 2.0])
+        index <= 3 && hide_shared_x_decorations!(axis)
+        index in (2, 3) && hide_shared_y_decorations!(axis)
         rows = instrument_rows(table, instrument)
         band!(axis, rows.wedge_percent,
             rows.lower_quartile_tonnes_per_million_eur,
@@ -674,9 +746,11 @@ function support_efficiency_figure(table::DataFrame; filename::AbstractString)
         scatter!(axis, rows.wedge_percent, rows.median_tonnes_per_million_eur;
             color=POLICY_COLOURS[instrument], markersize=10)
         hlines!(axis, [0.0]; color=:black, linewidth=1, linestyle=:dash)
+        ylims!(axis, ylimits...)
     end
-    rowgap!(grid, 18)
-    colgap!(grid, 20)
+    elements, labels = summary_legend_elements()
+    bottom_legend!(grid, legend_row, elements, labels)
+    finalize_policy_panel_layout!(grid, legend_row)
     save(filename, figure)
     return nothing
 end
