@@ -59,6 +59,22 @@ const REGION_COLOURS = Dict(
     "SK" => colorant"#7A7A7A",
 )
 
+"""Return the common two-plus-three policy-panel layout used in article figures."""
+function policy_panel_slot(grid::GridLayout, index::Integer)
+    if index == 1
+        return grid[1, 1:3]
+    elseif index == 2
+        return grid[1, 4:6]
+    elseif index == 3
+        return grid[2, 1:2]
+    elseif index == 4
+        return grid[2, 3:4]
+    elseif index == 5
+        return grid[2, 5:6]
+    end
+    error("Policy-panel index must be between 1 and 5.")
+end
+
 function at_evidence_wedge(table::DataFrame)
     return filter(:wedge_percent => ==(EVIDENCE_WEDGE_PERCENT), table)
 end
@@ -205,11 +221,10 @@ function regional_household_income_figure(table::DataFrame; filename::AbstractSt
     grid = figure[1, 1] = GridLayout()
     regions = filter(region -> region in unique(table.region), REGION_ORDER)
     for (index, instrument) in enumerate(POLICY_ORDER)
-        position = index <= 3 ? (1, index) : (2, index - 3)
         rows = filter(:instrument => ==(instrument), table)
         sort!(rows, :region, by=region -> findfirst(==(region), regions))
         x = 1:length(regions)
-        axis = standard_figure_axis(grid[position...];
+        axis = standard_figure_axis(policy_panel_slot(grid, index);
             title=POLICY_LABELS[instrument],
             xlabel="Region",
             ylabel=index in (1, 4) ? "Household-income change\n(million EUR)" : "",
@@ -222,11 +237,11 @@ function regional_household_income_figure(table::DataFrame; filename::AbstractSt
             color=:black, whiskerwidth=10, linewidth=2)
         hlines!(axis, [0.0]; color=:black, linewidth=1, linestyle=:dash)
     end
-    Label(grid[2, 3], "Bars: median\nWhiskers: interquartile range\nPolicy wedge: 2%",
+    Label(grid[0, 1:6], "Bars: median    Whiskers: interquartile range    Policy wedge: 2%",
         tellwidth=false, halign=:center, valign=:center, fontsize=22)
     rowsize!(grid, 1, Relative(0.5))
     rowsize!(grid, 2, Relative(0.5))
-    colgap!(grid, 14)
+    colgap!(grid, 18)
     rowgap!(grid, 18)
     save(filename, figure)
     return nothing
@@ -303,7 +318,6 @@ function parameter_boundary_figure(table::DataFrame; filename::AbstractString)
     figure = Figure(size=(1200, 900), fontsize=24, backgroundcolor=:white)
     grid = figure[1, 1] = GridLayout()
     for (index, instrument) in enumerate(POLICY_ORDER)
-        position = index <= 3 ? (1, index) : (2, index - 3)
         rows = filter(:instrument => ==(instrument), table)
         x_values = sort(unique(rows.x_value))
         y_values = sort(unique(rows.y_value))
@@ -315,7 +329,7 @@ function parameter_boundary_figure(table::DataFrame; filename::AbstractString)
             y_index = findfirst(==(row.y_value), y_values)
             regimes[x_index, y_index] = REGIME_VALUES[row.material_outcome_regime]
         end
-        axis = standard_figure_axis(grid[position...];
+        axis = standard_figure_axis(policy_panel_slot(grid, index);
             title=POLICY_LABELS[instrument],
             xlabel=parameter_axis_label(first(rows.x_parameter), ""),
             ylabel=parameter_axis_label(first(rows.y_parameter), ""),
@@ -338,11 +352,11 @@ function parameter_boundary_figure(table::DataFrame; filename::AbstractString)
         "parameter_dependent" => "Saving or increase, depending on remaining settings",
         "primary_metal_increase" => "Increase for all remaining settings",
     )
-    Legend(grid[2, 3], legend_elements, [legend_labels[regime] for regime in displayed_regimes];
-        tellwidth=false, halign=:center, valign=:center, labelsize=22)
+    Legend(grid[0, 1:6], legend_elements, [legend_labels[regime] for regime in displayed_regimes];
+        tellwidth=false, halign=:center, valign=:center, labelsize=22, orientation=:horizontal)
     rowsize!(grid, 1, Relative(0.5))
     rowsize!(grid, 2, Relative(0.5))
-    colgap!(grid, 14)
+    colgap!(grid, 18)
     rowgap!(grid, 18)
     save(filename, figure)
     return nothing
@@ -369,27 +383,40 @@ function policy_condition_response_figure(table::DataFrame; filename::AbstractSt
     ylimits = (lower - padding, upper + padding)
 
     for (index, instrument) in enumerate(POLICY_ORDER)
-        position = index <= 3 ? (1, index) : (2, index - 3)
         parameter = KEY_POLICY_CONDITIONS[instrument]
         rows = panel_rows[instrument]
-        axis = wide_figure_axis(grid[position...];
+        axis = wide_figure_axis(policy_panel_slot(grid, index);
             title=POLICY_LABELS[instrument],
             xlabel=parameter_axis_label(parameter, ""),
             ylabel="Primary-metal saving (t)",
-            xticks=(rows.value, string.(rows.value)))
-        band!(axis, rows.value, rows.lower_quartile_reduction_tonnes,
-            rows.upper_quartile_reduction_tonnes;
-            color=(POLICY_COLOURS[instrument], 0.25))
-        lines!(axis, rows.value, rows.median_reduction_tonnes;
-            color=POLICY_COLOURS[instrument], linewidth=3)
-        scatter!(axis, rows.value, rows.median_reduction_tonnes;
-            color=POLICY_COLOURS[instrument], markersize=10)
+            xticks=(vcat(0.0, rows.value), vcat("0", string.(rows.value))))
+        for row_index in eachindex(rows.value)
+            start_value = row_index == firstindex(rows.value) ? 0.0 : rows.value[row_index - 1]
+            start_lower = row_index == firstindex(rows.value) ? 0.0 :
+                rows.lower_quartile_reduction_tonnes[row_index - 1]
+            start_upper = row_index == firstindex(rows.value) ? 0.0 :
+                rows.upper_quartile_reduction_tonnes[row_index - 1]
+            colour = CONDITION_RESPONSE_COLOURS[rows.value[row_index]]
+            band!(axis, [start_value, rows.value[row_index]],
+                [start_lower, rows.lower_quartile_reduction_tonnes[row_index]],
+                [start_upper, rows.upper_quartile_reduction_tonnes[row_index]];
+                color=(colour, 0.25))
+            lines!(axis, [start_value, rows.value[row_index]],
+                [row_index == firstindex(rows.value) ? 0.0 : rows.median_reduction_tonnes[row_index - 1],
+                    rows.median_reduction_tonnes[row_index]];
+                color=colour, linewidth=3)
+        end
         hlines!(axis, [0.0]; color=:black, linewidth=1, linestyle=:dash)
         ylims!(axis, ylimits...)
     end
+    legend_elements = [LineElement(color=CONDITION_RESPONSE_COLOURS[value],
+        linewidth=3) for value in CONDITION_RESPONSE_VALUES]
+    Legend(grid[0, 1:6], legend_elements,
+        ["Condition value: $(value)" for value in CONDITION_RESPONSE_VALUES];
+        tellwidth=false, halign=:center, valign=:center, labelsize=28, orientation=:horizontal)
     rowsize!(grid, 1, Relative(0.5))
     rowsize!(grid, 2, Relative(0.5))
-    colgap!(grid, 36)
+    colgap!(grid, 28)
     rowgap!(grid, 40)
     save(filename, figure)
     return nothing
@@ -407,9 +434,8 @@ function policy_intensity_response_figure(table::DataFrame; filename::AbstractSt
     figure = Figure(size=(1800, 1200), fontsize=32, backgroundcolor=:white)
     grid = figure[1, 1] = GridLayout()
     for (index, instrument) in enumerate(POLICY_ORDER)
-        position = index <= 3 ? (1, index) : (2, index - 3)
         parameter = KEY_POLICY_CONDITIONS[instrument]
-        axis = wide_figure_axis(grid[position...];
+        axis = wide_figure_axis(policy_panel_slot(grid, index);
             title="$(POLICY_LABELS[instrument])\n$(parameter_axis_label(parameter, ""))",
             xlabel="Policy wedge (%)",
             ylabel="Primary-metal saving (t)",
@@ -432,12 +458,12 @@ function policy_intensity_response_figure(table::DataFrame; filename::AbstractSt
     end
     legend_elements = [LineElement(color=CONDITION_RESPONSE_COLOURS[value],
         linewidth=3) for value in CONDITION_RESPONSE_VALUES]
-    Legend(grid[2, 3], legend_elements,
+    Legend(grid[0, 1:6], legend_elements,
         ["Condition value: $(value)" for value in CONDITION_RESPONSE_VALUES];
-        tellwidth=false, halign=:center, valign=:center, labelsize=28)
+        tellwidth=false, halign=:center, valign=:center, labelsize=28, orientation=:horizontal)
     rowsize!(grid, 1, Relative(0.5))
     rowsize!(grid, 2, Relative(0.5))
-    colgap!(grid, 36)
+    colgap!(grid, 28)
     rowgap!(grid, 40)
     save(filename, figure)
     return nothing
