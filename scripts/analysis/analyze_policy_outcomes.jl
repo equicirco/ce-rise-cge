@@ -41,6 +41,30 @@ const POLICY_COLOURS = Dict(
     "reuse_support" => colorant"#8064A2",
 )
 
+"""Create a consistently legible axis for standard-width, multi-panel figures."""
+function standard_figure_axis(position; kwargs...)
+    return Axis(position;
+        titlesize=32,
+        xlabelsize=24,
+        ylabelsize=24,
+        xticklabelsize=21,
+        yticklabelsize=21,
+        backgroundcolor=:white,
+        kwargs...)
+end
+
+"""Create a consistently legible axis for wide, multi-panel figures."""
+function wide_figure_axis(position; kwargs...)
+    return Axis(position;
+        titlesize=44,
+        xlabelsize=32,
+        ylabelsize=32,
+        xticklabelsize=28,
+        yticklabelsize=28,
+        backgroundcolor=:white,
+        kwargs...)
+end
+
 function command_options(args)
     database = DEFAULT_DATABASE
     output_dir = DEFAULT_OUTPUT_DIR
@@ -546,16 +570,15 @@ end
 
 function policy_grid_figure(table::DataFrame, value, lower, upper;
     ylabel::AbstractString, filename::AbstractString)
-    figure = Figure(size=(1200, 900), fontsize=18)
+    figure = Figure(size=(1200, 900), fontsize=24, backgroundcolor=:white)
     grid = figure[1, 1] = GridLayout()
     for (index, instrument) in enumerate(POLICY_ORDER)
         position = index <= 3 ? (1, index) : (2, index - 3)
-        axis = Axis(grid[position...];
+        axis = standard_figure_axis(grid[position...];
             title=POLICY_LABELS[instrument],
             xlabel="Policy wedge (%)",
             ylabel=index in (1, 4) ? ylabel : "",
-            xticks=[0.25, 0.5, 1.0, 2.0],
-            backgroundcolor=:gray95)
+            xticks=[0.25, 0.5, 1.0, 2.0])
         rows = instrument_rows(table, instrument)
         x = rows.wedge_percent
         band!(axis, x, rows[!, lower], rows[!, upper];
@@ -566,7 +589,7 @@ function policy_grid_figure(table::DataFrame, value, lower, upper;
     end
     Label(grid[2, 3], "Line and points: median\nShaded band: interquartile range",
         tellwidth=false,
-        halign=:center, valign=:center, fontsize=15)
+        halign=:center, valign=:center, fontsize=22)
     rowsize!(grid, 1, Relative(0.5))
     rowsize!(grid, 2, Relative(0.5))
     colgap!(grid, 14)
@@ -594,16 +617,15 @@ const ROUTE_COLOURS = Dict(
 )
 
 function circular_route_figure(table::DataFrame; filename::AbstractString)
-    figure = Figure(size=(1200, 900), fontsize=18)
+    figure = Figure(size=(1200, 900), fontsize=24, backgroundcolor=:white)
     grid = figure[1, 1] = GridLayout()
     for (index, instrument) in enumerate(POLICY_ORDER)
         position = index <= 3 ? (1, index) : (2, index - 3)
-        axis = Axis(grid[position...];
+        axis = standard_figure_axis(grid[position...];
             title=POLICY_LABELS[instrument],
             xlabel="Policy wedge (%)",
             ylabel=index in (1, 4) ? "Change in route input mass (%)" : "",
-            xticks=[0.25, 0.5, 1.0, 2.0],
-            backgroundcolor=:gray95)
+            xticks=[0.25, 0.5, 1.0, 2.0])
         policy_rows = filter(:instrument => ==(instrument), table)
         for route in ROUTE_ORDER
             rows = filter(:route => ==(route), policy_rows)
@@ -621,7 +643,7 @@ function circular_route_figure(table::DataFrame; filename::AbstractString)
     end
     legend_elements = [LineElement(color=ROUTE_COLOURS[route], linewidth=3) for route in ROUTE_ORDER]
     Legend(grid[2, 3], legend_elements, [ROUTE_LABELS[route] for route in ROUTE_ORDER];
-        tellwidth=false, halign=:center, valign=:center, labelsize=15)
+        tellwidth=false, halign=:center, valign=:center, labelsize=22)
     rowsize!(grid, 1, Relative(0.5))
     rowsize!(grid, 2, Relative(0.5))
     colgap!(grid, 14)
@@ -632,17 +654,16 @@ end
 
 function support_efficiency_figure(table::DataFrame; filename::AbstractString)
     support_instruments = filter(!=("virgin_metal_tax"), POLICY_ORDER)
-    figure = Figure(size=(1200, 800), fontsize=18)
+    figure = Figure(size=(1200, 800), fontsize=24, backgroundcolor=:white)
     grid = figure[1, 1] = GridLayout()
     for (index, instrument) in enumerate(support_instruments)
         row = index <= 2 ? 1 : 2
         column = isodd(index) ? 1 : 2
-        axis = Axis(grid[row, column];
+        axis = standard_figure_axis(grid[row, column];
             title=POLICY_LABELS[instrument],
             xlabel="Policy wedge (%)",
             ylabel=column == 1 ? "Primary-metal reduction\n(t / million EUR support)" : "",
-            xticks=[0.25, 0.5, 1.0, 2.0],
-            backgroundcolor=:gray95)
+            xticks=[0.25, 0.5, 1.0, 2.0])
         rows = instrument_rows(table, instrument)
         band!(axis, rows.wedge_percent,
             rows.lower_quartile_tonnes_per_million_eur,

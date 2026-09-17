@@ -201,7 +201,7 @@ function factor_utilisation_evidence(connection)
 end
 
 function regional_household_income_figure(table::DataFrame; filename::AbstractString)
-    figure = Figure(size=(1200, 900), fontsize=18)
+    figure = Figure(size=(1200, 900), fontsize=24, backgroundcolor=:white)
     grid = figure[1, 1] = GridLayout()
     regions = filter(region -> region in unique(table.region), REGION_ORDER)
     for (index, instrument) in enumerate(POLICY_ORDER)
@@ -209,12 +209,11 @@ function regional_household_income_figure(table::DataFrame; filename::AbstractSt
         rows = filter(:instrument => ==(instrument), table)
         sort!(rows, :region, by=region -> findfirst(==(region), regions))
         x = 1:length(regions)
-        axis = Axis(grid[position...];
+        axis = standard_figure_axis(grid[position...];
             title=POLICY_LABELS[instrument],
             xlabel="Region",
             ylabel=index in (1, 4) ? "Household-income change\n(million EUR)" : "",
-            xticks=(x, regions),
-            backgroundcolor=:gray95)
+            xticks=(x, regions))
         barplot!(axis, x, rows.median_absolute_change;
             color=POLICY_COLOURS[instrument], strokecolor=:black, strokewidth=0.5)
         lower = rows.median_absolute_change .- rows.lower_quartile_absolute_change
@@ -224,7 +223,7 @@ function regional_household_income_figure(table::DataFrame; filename::AbstractSt
         hlines!(axis, [0.0]; color=:black, linewidth=1, linestyle=:dash)
     end
     Label(grid[2, 3], "Bars: median\nWhiskers: interquartile range\nPolicy wedge: 2%",
-        tellwidth=false, halign=:center, valign=:center, fontsize=15)
+        tellwidth=false, halign=:center, valign=:center, fontsize=22)
     rowsize!(grid, 1, Relative(0.5))
     rowsize!(grid, 2, Relative(0.5))
     colgap!(grid, 14)
@@ -241,7 +240,7 @@ function activity_transmission_figure(table::DataFrame; filename::AbstractString
     colour_limit = maximum(abs, selected.median_output_change_percent)
     colour_limit = max(colour_limit, 0.01)
 
-    figure = Figure(size=(1800, 1200), fontsize=17)
+    figure = Figure(size=(1800, 1200), fontsize=32, backgroundcolor=:white)
     grid = figure[1, 1] = GridLayout()
     heatmap_plot = nothing
     for (index, instrument) in enumerate(POLICY_ORDER)
@@ -253,17 +252,14 @@ function activity_transmission_figure(table::DataFrame; filename::AbstractString
             region_index = findfirst(==(row.region), regions)
             values[activity_index, region_index] = row.median_output_change_percent
         end
-        axis = Axis(grid[position...];
+        axis = wide_figure_axis(grid[position...];
             title=POLICY_LABELS[instrument],
             xlabel="Industry",
             ylabel=index in (1, 4) ? "Region" : "",
-            xlabelsize=13,
-            ylabelsize=13,
             xticks=(1:length(activity_groups), activity_groups),
             yticks=(1:length(regions), regions),
             xticklabelrotation=pi / 4,
-            yreversed=true,
-            backgroundcolor=:gray95)
+            yreversed=true)
         heatmap_plot = heatmap!(axis, 1:length(activity_groups), 1:length(regions), values;
             colormap=:PuOr,
             colorrange=(-colour_limit, colour_limit))
@@ -271,8 +267,8 @@ function activity_transmission_figure(table::DataFrame; filename::AbstractString
     Colorbar(figure[2, 1], heatmap_plot;
         vertical=false,
         label="Median output-volume change (%)",
-        labelsize=14,
-        ticklabelsize=13)
+        labelsize=34,
+        ticklabelsize=28)
     rowsize!(grid, 1, Relative(0.46))
     rowsize!(grid, 2, Relative(0.46))
     colgap!(grid, 28)
@@ -304,7 +300,7 @@ function parameter_axis_label(parameter::AbstractString, axis::AbstractString)
 end
 
 function parameter_boundary_figure(table::DataFrame; filename::AbstractString)
-    figure = Figure(size=(1200, 900), fontsize=17)
+    figure = Figure(size=(1200, 900), fontsize=24, backgroundcolor=:white)
     grid = figure[1, 1] = GridLayout()
     for (index, instrument) in enumerate(POLICY_ORDER)
         position = index <= 3 ? (1, index) : (2, index - 3)
@@ -319,15 +315,12 @@ function parameter_boundary_figure(table::DataFrame; filename::AbstractString)
             y_index = findfirst(==(row.y_value), y_values)
             regimes[x_index, y_index] = REGIME_VALUES[row.material_outcome_regime]
         end
-        axis = Axis(grid[position...];
+        axis = standard_figure_axis(grid[position...];
             title=POLICY_LABELS[instrument],
             xlabel=parameter_axis_label(first(rows.x_parameter), ""),
             ylabel=parameter_axis_label(first(rows.y_parameter), ""),
-            xlabelsize=13,
-            ylabelsize=13,
             xticks=(x_positions, string.(x_values)),
-            yticks=(y_positions, string.(y_values)),
-            backgroundcolor=:gray95)
+            yticks=(y_positions, string.(y_values)))
         heatmap!(axis, x_positions, y_positions, regimes;
             colormap=[REGIME_COLOURS["primary_metal_saving"],
                 REGIME_COLOURS["parameter_dependent"],
@@ -346,7 +339,7 @@ function parameter_boundary_figure(table::DataFrame; filename::AbstractString)
         "primary_metal_increase" => "Increase for all remaining settings",
     )
     Legend(grid[2, 3], legend_elements, [legend_labels[regime] for regime in displayed_regimes];
-        tellwidth=false, halign=:center, valign=:center, labelsize=14)
+        tellwidth=false, halign=:center, valign=:center, labelsize=22)
     rowsize!(grid, 1, Relative(0.5))
     rowsize!(grid, 2, Relative(0.5))
     colgap!(grid, 14)
@@ -357,7 +350,7 @@ end
 
 """Plot primary-metal saving against each policy's most influential condition."""
 function policy_condition_response_figure(table::DataFrame; filename::AbstractString)
-    figure = Figure(size=(1800, 1200), fontsize=17)
+    figure = Figure(size=(1800, 1200), fontsize=32, backgroundcolor=:white)
     grid = figure[1, 1] = GridLayout()
     panel_rows = Dict{String, DataFrame}()
     for instrument in POLICY_ORDER
@@ -379,14 +372,11 @@ function policy_condition_response_figure(table::DataFrame; filename::AbstractSt
         position = index <= 3 ? (1, index) : (2, index - 3)
         parameter = KEY_POLICY_CONDITIONS[instrument]
         rows = panel_rows[instrument]
-        axis = Axis(grid[position...];
+        axis = wide_figure_axis(grid[position...];
             title=POLICY_LABELS[instrument],
             xlabel=parameter_axis_label(parameter, ""),
             ylabel="Primary-metal saving (t)",
-            xlabelsize=13,
-            ylabelsize=13,
-            xticks=(rows.value, string.(rows.value)),
-            backgroundcolor=:gray95)
+            xticks=(rows.value, string.(rows.value)))
         band!(axis, rows.value, rows.lower_quartile_reduction_tonnes,
             rows.upper_quartile_reduction_tonnes;
             color=(POLICY_COLOURS[instrument], 0.25))
@@ -414,19 +404,16 @@ function policy_intensity_response_figure(table::DataFrame; filename::AbstractSt
     padding = 0.05 * (upper - lower)
     ylimits = (lower - padding, upper + padding)
 
-    figure = Figure(size=(1800, 1200), fontsize=17)
+    figure = Figure(size=(1800, 1200), fontsize=32, backgroundcolor=:white)
     grid = figure[1, 1] = GridLayout()
     for (index, instrument) in enumerate(POLICY_ORDER)
         position = index <= 3 ? (1, index) : (2, index - 3)
         parameter = KEY_POLICY_CONDITIONS[instrument]
-        axis = Axis(grid[position...];
+        axis = wide_figure_axis(grid[position...];
             title="$(POLICY_LABELS[instrument])\n$(parameter_axis_label(parameter, ""))",
             xlabel="Policy wedge (%)",
             ylabel="Primary-metal saving (t)",
-            xlabelsize=13,
-            ylabelsize=13,
-            xticks=([0.0, 0.25, 0.5, 1.0, 2.0], ["0", "0.25", "0.5", "1", "2"]),
-            backgroundcolor=:gray95)
+            xticks=([0.0, 0.25, 0.5, 1.0, 2.0], ["0", "0.25", "0.5", "1", "2"]))
         for value in CONDITION_RESPONSE_VALUES
             rows = filter(row -> row.instrument == instrument &&
                 row.parameter == parameter && row.value == value, table)
@@ -447,7 +434,7 @@ function policy_intensity_response_figure(table::DataFrame; filename::AbstractSt
         linewidth=3) for value in CONDITION_RESPONSE_VALUES]
     Legend(grid[2, 3], legend_elements,
         ["Condition value: $(value)" for value in CONDITION_RESPONSE_VALUES];
-        tellwidth=false, halign=:center, valign=:center, labelsize=14)
+        tellwidth=false, halign=:center, valign=:center, labelsize=28)
     rowsize!(grid, 1, Relative(0.5))
     rowsize!(grid, 2, Relative(0.5))
     colgap!(grid, 36)
