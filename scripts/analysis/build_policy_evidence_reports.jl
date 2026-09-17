@@ -236,10 +236,10 @@ function regional_household_income_figure(table::DataFrame; filename::AbstractSt
         axis = standard_figure_axis(policy_panel_slot(grid, index);
             title=POLICY_LABELS[instrument],
             xlabel="",
-            ylabel=index in (1, 4) ? "Household-income change\n(million EUR)" : "",
+            ylabel=policy_panel_leftmost(index) ? "Household-income change\n(million EUR)" : "",
             xticks=(x, regions))
-        index <= 3 && hide_shared_x_decorations!(axis)
-        index in (2, 3, 5) && hide_shared_y_decorations!(axis)
+        policy_panel_top(index) && hide_shared_x_decorations!(axis)
+        !policy_panel_leftmost(index) && hide_shared_y_decorations!(axis)
         barplot!(axis, x, rows.median_absolute_change;
             color=POLICY_COLOURS[instrument], strokecolor=:black, strokewidth=0.5)
         lower = rows.median_absolute_change .- rows.lower_quartile_absolute_change
@@ -279,17 +279,17 @@ function activity_transmission_figure(table::DataFrame; filename::AbstractString
         axis = wide_figure_axis(policy_panel_slot(grid, index);
             title=POLICY_LABELS[instrument],
             xlabel="",
-            ylabel=index in (1, 4) ? "Industry" : "",
+            ylabel=policy_panel_leftmost(index) ? "Industry" : "",
             xticks=(1:length(regions), regions),
             yticks=(1:length(activity_groups), activity_groups),
             yreversed=true)
-        index <= 3 && hide_shared_x_decorations!(axis)
-        index in (2, 3, 5) && hide_shared_y_decorations!(axis)
+        policy_panel_top(index) && hide_shared_x_decorations!(axis)
+        !policy_panel_leftmost(index) && hide_shared_y_decorations!(axis)
         heatmap_plot = heatmap!(axis, 1:length(regions), 1:length(activity_groups), permutedims(values);
             colormap=:PuOr,
             colorrange=(-colour_limit, colour_limit))
     end
-    Colorbar(grid[legend_row, 1:3], heatmap_plot;
+    Colorbar(grid[legend_row, 1:6], heatmap_plot;
         vertical=false,
         label="Median output-volume change (%)",
         labelsize=30,
@@ -339,11 +339,11 @@ function parameter_boundary_figure(table::DataFrame; filename::AbstractString)
         axis = wide_figure_axis(policy_panel_slot(grid, index);
             title=POLICY_LABELS[instrument],
             xlabel="",
-            ylabel=index == 5 ? "" : parameter_axis_label(first(rows.y_parameter), ""),
+            ylabel=index in (4, 5) ? "" : parameter_axis_label(first(rows.y_parameter), ""),
             xticks=(x_positions, string.(x_values)),
             yticks=(y_positions, string.(y_values)))
-        index <= 3 && hide_shared_x_decorations!(axis)
-        index == 5 && hide_shared_y_decorations!(axis)
+        policy_panel_top(index) && hide_shared_x_decorations!(axis)
+        index in (4, 5) && hide_shared_y_decorations!(axis)
         heatmap!(axis, x_positions, y_positions, regimes;
             colormap=[REGIME_COLOURS["primary_metal_saving"],
                 REGIME_COLOURS["parameter_dependent"],
@@ -393,9 +393,9 @@ function policy_condition_response_figure(table::DataFrame; filename::AbstractSt
         axis = wide_figure_axis(policy_panel_slot(grid, index);
             title=POLICY_LABELS[instrument],
             xlabel=parameter_axis_label(parameter, ""),
-            ylabel=index in (1, 4) ? "Primary-metal saving (t)" : "",
+            ylabel=policy_panel_leftmost(index) ? "Primary-metal saving (t)" : "",
             xticks=(vcat(0.0, rows.value), vcat("0", string.(rows.value))))
-        index in (2, 3, 5) && hide_shared_y_decorations!(axis)
+        !policy_panel_leftmost(index) && hide_shared_y_decorations!(axis)
         for row_index in eachindex(rows.value)
             start_value = row_index == firstindex(rows.value) ? 0.0 : rows.value[row_index - 1]
             start_lower = row_index == firstindex(rows.value) ? 0.0 :
@@ -440,10 +440,10 @@ function policy_intensity_response_figure(table::DataFrame; filename::AbstractSt
         axis = wide_figure_axis(policy_panel_slot(grid, index);
             title="$(POLICY_LABELS[instrument])\n$(parameter_axis_label(parameter, ""))",
             xlabel="",
-            ylabel=index in (1, 4) ? "Primary-metal saving (t)" : "",
+            ylabel=policy_panel_leftmost(index) ? "Primary-metal saving (t)" : "",
             xticks=([0.0, 0.25, 0.5, 1.0, 2.0], ["0", "0.25", "0.5", "1", "2"]))
-        index <= 3 && hide_shared_x_decorations!(axis)
-        index in (2, 3, 5) && hide_shared_y_decorations!(axis)
+        policy_panel_top(index) && hide_shared_x_decorations!(axis)
+        !policy_panel_leftmost(index) && hide_shared_y_decorations!(axis)
         for value in CONDITION_RESPONSE_VALUES
             rows = filter(row -> row.instrument == instrument &&
                 row.parameter == parameter && row.value == value, table)
@@ -483,7 +483,7 @@ end
 function latex_value_with_iqr(median, lower, upper; digits::Int=1)
     value = latex_number(median; digits=digits)
     interval = "[$(latex_number(lower; digits=digits)), $(latex_number(upper; digits=digits))]"
-    return "\\shortstack[r]{\\strut $(value) \\\\[0.35em] $(interval)\\strut}"
+    return "\\shortstack[r]{\\strut $(value) \\\\ $(interval)\\strut}"
 end
 
 function _table_row(table::DataFrame, predicate)

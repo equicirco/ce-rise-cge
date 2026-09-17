@@ -61,7 +61,7 @@ end
 """Alias retained for the evidence-report generator."""
 wide_figure_axis(position; kwargs...) = standard_figure_axis(position; kwargs...)
 
-"""Create a fixed 3+2 small-multiple canvas with a bottom legend band."""
+"""Create fixed-size 2+3 policy panels, centred above a bottom legend band."""
 function policy_panel_figure(; shared_xlabel::Union{Nothing,AbstractString}=nothing)
     figure = Figure(size=POLICY_PANEL_FIGURE_SIZE, fontsize=32, backgroundcolor=:white,
         figure_padding=(70, 60, 80, 100))
@@ -69,7 +69,7 @@ function policy_panel_figure(; shared_xlabel::Union{Nothing,AbstractString}=noth
     if isnothing(shared_xlabel)
         legend_row = 3
     else
-        Label(grid[3, 1:3], shared_xlabel;
+        Label(grid[3, 1:6], shared_xlabel;
             tellwidth=false, halign=:center, valign=:center, fontsize=30)
         legend_row = 4
     end
@@ -80,6 +80,9 @@ end
 
 """Fix panel and legend bands after all rows have been populated."""
 function finalize_policy_panel_layout!(grid::GridLayout, legend_row::Integer)
+    for column in 1:6
+        colsize!(grid, column, Relative(1 / 6))
+    end
     rowsize!(grid, 1, Fixed(POLICY_PANEL_ROW_HEIGHT))
     rowsize!(grid, 2, Fixed(POLICY_PANEL_ROW_HEIGHT))
     if legend_row == 3
@@ -91,11 +94,20 @@ function finalize_policy_panel_layout!(grid::GridLayout, legend_row::Integer)
     return nothing
 end
 
-"""Return the common left-aligned 3+2 policy-panel layout."""
+"""Return the common 2+3 layout without resizing individual policy panels."""
 function policy_panel_slot(grid::GridLayout, index::Integer)
     index in eachindex(POLICY_ORDER) || error("Policy-panel index must be between 1 and $(length(POLICY_ORDER)).")
-    return index <= 3 ? grid[1, index] : grid[2, index - 3]
+    return index == 1 ? grid[1, 2:3] :
+        index == 2 ? grid[1, 4:5] :
+        index == 3 ? grid[2, 1:2] :
+        index == 4 ? grid[2, 3:4] : grid[2, 5:6]
 end
+
+"""Whether a policy panel begins a row with a shared vertical measure."""
+policy_panel_leftmost(index::Integer) = index in (1, 3)
+
+"""Whether a policy panel belongs to the centred first row."""
+policy_panel_top(index::Integer) = index <= 2
 
 """Remove repeated horizontal decorations while preserving the shared scale."""
 function hide_shared_x_decorations!(axis::Axis)
@@ -127,7 +139,7 @@ end
 """Add a bottom legend that remains inside the figure boundary."""
 function bottom_legend!(grid::GridLayout, legend_row::Integer, elements, labels;
     nbanks::Integer=1)
-    return Legend(grid[legend_row, 1:3], elements, labels;
+    return Legend(grid[legend_row, 1:6], elements, labels;
         tellwidth=false, halign=:center, valign=:center,
         labelsize=26, orientation=:horizontal, nbanks=nbanks)
 end
@@ -650,10 +662,10 @@ function policy_grid_figure(table::DataFrame, value, lower, upper;
         axis = standard_figure_axis(policy_panel_slot(grid, index);
             title=POLICY_LABELS[instrument],
             xlabel="",
-            ylabel=index in (1, 4) ? ylabel : "",
+            ylabel=policy_panel_leftmost(index) ? ylabel : "",
             xticks=[0.25, 0.5, 1.0, 2.0])
-        index <= 3 && hide_shared_x_decorations!(axis)
-        index in (2, 3, 5) && hide_shared_y_decorations!(axis)
+        policy_panel_top(index) && hide_shared_x_decorations!(axis)
+        !policy_panel_leftmost(index) && hide_shared_y_decorations!(axis)
         rows = instrument_rows(table, instrument)
         x = rows.wedge_percent
         band!(axis, x, rows[!, lower], rows[!, upper];
@@ -696,10 +708,10 @@ function circular_route_figure(table::DataFrame; filename::AbstractString)
         axis = standard_figure_axis(policy_panel_slot(grid, index);
             title=POLICY_LABELS[instrument],
             xlabel="",
-            ylabel=index in (1, 4) ? "Change in route input mass (%)" : "",
+            ylabel=policy_panel_leftmost(index) ? "Change in route input mass (%)" : "",
             xticks=[0.25, 0.5, 1.0, 2.0])
-        index <= 3 && hide_shared_x_decorations!(axis)
-        index in (2, 3, 5) && hide_shared_y_decorations!(axis)
+        policy_panel_top(index) && hide_shared_x_decorations!(axis)
+        !policy_panel_leftmost(index) && hide_shared_y_decorations!(axis)
         policy_rows = filter(:instrument => ==(instrument), table)
         for route in ROUTE_ORDER
             rows = filter(:route => ==(route), policy_rows)
@@ -732,10 +744,10 @@ function support_efficiency_figure(table::DataFrame; filename::AbstractString)
         axis = standard_figure_axis(policy_panel_slot(grid, index);
             title=POLICY_LABELS[instrument],
             xlabel="",
-            ylabel=index in (1, 4) ? "Primary-metal reduction\n(t / million EUR support)" : "",
+            ylabel=policy_panel_leftmost(index) ? "Primary-metal reduction\n(t / million EUR support)" : "",
             xticks=[0.25, 0.5, 1.0, 2.0])
-        index <= 3 && hide_shared_x_decorations!(axis)
-        index in (2, 3) && hide_shared_y_decorations!(axis)
+        policy_panel_top(index) && hide_shared_x_decorations!(axis)
+        !policy_panel_leftmost(index) && hide_shared_y_decorations!(axis)
         rows = instrument_rows(table, instrument)
         band!(axis, rows.wedge_percent,
             rows.lower_quartile_tonnes_per_million_eur,
