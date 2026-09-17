@@ -463,8 +463,7 @@ end
 latex_number(value; digits::Int=1) = string(round(Float64(value), digits=digits))
 
 function latex_interval(median, lower, upper; digits::Int=1)
-    return "$(latex_number(median; digits=digits)) [$(latex_number(lower; digits=digits)), " *
-        "$(latex_number(upper; digits=digits))]"
+    return latex_value_with_iqr(median, lower, upper; digits=digits)
 end
 
 function latex_value_with_iqr(median, lower, upper; digits::Int=1)
@@ -484,7 +483,7 @@ function write_material_fiscal_table(path::AbstractString, primary::DataFrame, f
         println(io, "\\footnotesize")
         println(io, "\\caption{Primary-metal outcome and fiscal scale at a 2\\% policy wedge. The first line reports the median and the second line the interquartile range across the declared sensitivity design. Fiscal flow is tax revenue for the tax and support expenditure for support instruments.}")
         println(io, "\\label{tab:policy-material-fiscal}")
-        println(io, "\\begin{tabular}{@{}>{\\raggedright\\arraybackslash}m{0.22\\textwidth}>{\\raggedleft\\arraybackslash}m{0.23\\textwidth}>{\\raggedright\\arraybackslash}m{0.20\\textwidth}>{\\raggedleft\\arraybackslash}m{0.28\\textwidth}@{}}")
+        println(io, "\\begin{tabularx}{\\textwidth}{@{}>{\\raggedright\\arraybackslash}p{0.19\\textwidth}>{\\raggedleft\\arraybackslash}p{0.26\\textwidth}>{\\raggedright\\arraybackslash}p{0.18\\textwidth}>{\\raggedleft\\arraybackslash}X@{}}")
         println(io, "\\hline")
         println(io, "Intervention & Primary-metal saving (t) & Fiscal basis & Fiscal flow (million EUR) \\\\")
         println(io, "\\hline")
@@ -501,7 +500,7 @@ function write_material_fiscal_table(path::AbstractString, primary::DataFrame, f
             instrument == last(POLICY_ORDER) || println(io, "\\lightrule")
         end
         println(io, "\\hline")
-        println(io, "\\end{tabular}")
+        println(io, "\\end{tabularx}")
         println(io, "\\end{table}")
     end
     return nothing
@@ -512,9 +511,9 @@ function write_support_efficiency_table(path::AbstractString, efficiency::DataFr
         println(io, "\\begin{table}[htbp]")
         println(io, "\\centering")
         println(io, "\\footnotesize")
-        println(io, "\\caption{Primary-metal saving per million euro of support expenditure at a 2\\% support wedge. Brackets give the interquartile range across the sensitivity design.}")
+        println(io, "\\caption{Primary-metal saving per million euro of support expenditure at a 2\\% support wedge. The first line reports the median and the second line the interquartile range across the declared sensitivity design.}")
         println(io, "\\label{tab:policy-support-efficiency}")
-        println(io, "\\begin{tabularx}{0.72\\textwidth}{>{\\raggedright\\arraybackslash}X>{\\raggedleft\\arraybackslash}p{0.34\\textwidth}}")
+        println(io, "\\begin{tabularx}{0.78\\textwidth}{@{}>{\\raggedright\\arraybackslash}X>{\\raggedleft\\arraybackslash}p{0.34\\textwidth}@{}}")
         println(io, "\\hline")
         println(io, "Support instrument & Primary-metal saving (t per million EUR) \\\\")
         println(io, "\\hline")
@@ -539,11 +538,11 @@ function write_new_product_displacement_table(path::AbstractString,
         println(io, "\\begin{table}[htbp]")
         println(io, "\\centering")
         println(io, "\\footnotesize")
-        println(io, "\\caption{Displacement of new product output and its metal inputs under life-extension and reuse support at a 2\\% wedge. Positive values denote lower new-product output or lower metal use in new production relative to the matching zero-policy solution. Brackets give the interquartile range across the sensitivity design.}")
+        println(io, "\\caption{Displacement of new product output and its metal inputs under life-extension and reuse support at a 2\\% wedge. Positive values denote lower new-product output or lower metal use in new production relative to the matching zero-policy solution. The first line reports the median and the second line the interquartile range across the declared sensitivity design.}")
         println(io, "\\label{tab:new-product-displacement}")
-        println(io, "\\begin{tabularx}{\\textwidth}{>{\\raggedright\\arraybackslash}p{0.15\\textwidth}>{\\raggedright\\arraybackslash}p{0.11\\textwidth}>{\\raggedleft\\arraybackslash}p{0.24\\textwidth}>{\\raggedleft\\arraybackslash}p{0.24\\textwidth}>{\\raggedleft\\arraybackslash}X}")
+        println(io, "\\begin{tabularx}{\\textwidth}{@{}>{\\raggedright\\arraybackslash}p{0.16\\textwidth}>{\\raggedright\\arraybackslash}p{0.10\\textwidth}>{\\raggedleft\\arraybackslash}X>{\\raggedleft\\arraybackslash}X>{\\raggedleft\\arraybackslash}X@{}}")
         println(io, "\\hline")
-        println(io, "Support & Product family & Avoided new-product output (t) & Avoided primary METAL use in new production (t) & Avoided recycled METAL use in new production (t) \\\\")
+        println(io, "Support & Product family & Avoided new output (t) & Avoided primary-metal input (t) & Avoided recovered-metal input (t) \\\\")
         println(io, "\\hline")
         families = ["ELMA", "OFMA", "RATV"]
         instruments = ["refurbishment_support", "repair_support", "reuse_support"]
@@ -575,7 +574,7 @@ function write_household_incidence_table(path::AbstractString, income::DataFrame
         println(io, "\\footnotesize")
         println(io, "\\caption{Median change in regional household disposable income at a 2\\% policy wedge (million EUR). Values are reported by policy and region; the accompanying figure reports interquartile ranges.}")
         println(io, "\\label{tab:regional-household-incidence}")
-        println(io, "\\begin{tabularx}{\\textwidth}{>{\\raggedright\\arraybackslash}p{0.12\\textwidth}>{\\raggedleft\\arraybackslash}p{0.176\\textwidth}>{\\raggedleft\\arraybackslash}p{0.176\\textwidth}>{\\raggedleft\\arraybackslash}p{0.176\\textwidth}>{\\raggedleft\\arraybackslash}p{0.176\\textwidth}>{\\raggedleft\\arraybackslash}X}")
+        println(io, "\\begin{tabularx}{\\textwidth}{@{}>{\\raggedright\\arraybackslash}p{0.12\\textwidth}>{\\raggedleft\\arraybackslash}X>{\\raggedleft\\arraybackslash}X>{\\raggedleft\\arraybackslash}X>{\\raggedleft\\arraybackslash}X>{\\raggedleft\\arraybackslash}X@{}}")
         println(io, "\\hline")
         println(io, "Region & Virgin-metal tax & Recycling support & Refurbishment support & Repair support & Reuse support \\\\")
         println(io, "\\hline")
