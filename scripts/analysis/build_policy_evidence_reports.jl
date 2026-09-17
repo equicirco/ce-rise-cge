@@ -259,7 +259,6 @@ function activity_transmission_figure(table::DataFrame; filename::AbstractString
     grid = figure[1, 1] = GridLayout()
     heatmap_plot = nothing
     for (index, instrument) in enumerate(POLICY_ORDER)
-        position = index <= 3 ? (1, index) : (2, index - 3)
         rows = filter(:instrument => ==(instrument), selected)
         values = fill(NaN, length(activity_groups), length(regions))
         for row in eachrow(rows)
@@ -267,7 +266,7 @@ function activity_transmission_figure(table::DataFrame; filename::AbstractString
             region_index = findfirst(==(row.region), regions)
             values[activity_index, region_index] = row.median_output_change_percent
         end
-        axis = wide_figure_axis(grid[position...];
+        axis = wide_figure_axis(policy_panel_slot(grid, index);
             title=POLICY_LABELS[instrument],
             xlabel="Industry",
             ylabel=index in (1, 4) ? "Region" : "",
@@ -286,7 +285,7 @@ function activity_transmission_figure(table::DataFrame; filename::AbstractString
         ticklabelsize=28)
     rowsize!(grid, 1, Relative(0.46))
     rowsize!(grid, 2, Relative(0.46))
-    colgap!(grid, 28)
+    colgap!(grid, 20)
     rowgap!(grid, 36)
     save(filename, figure)
     return nothing
@@ -315,7 +314,7 @@ function parameter_axis_label(parameter::AbstractString, axis::AbstractString)
 end
 
 function parameter_boundary_figure(table::DataFrame; filename::AbstractString)
-    figure = Figure(size=(1200, 900), fontsize=24, backgroundcolor=:white)
+    figure = Figure(size=(1800, 1200), fontsize=32, backgroundcolor=:white)
     grid = figure[1, 1] = GridLayout()
     for (index, instrument) in enumerate(POLICY_ORDER)
         rows = filter(:instrument => ==(instrument), table)
@@ -329,7 +328,7 @@ function parameter_boundary_figure(table::DataFrame; filename::AbstractString)
             y_index = findfirst(==(row.y_value), y_values)
             regimes[x_index, y_index] = REGIME_VALUES[row.material_outcome_regime]
         end
-        axis = standard_figure_axis(policy_panel_slot(grid, index);
+        axis = wide_figure_axis(policy_panel_slot(grid, index);
             title=POLICY_LABELS[instrument],
             xlabel=parameter_axis_label(first(rows.x_parameter), ""),
             ylabel=parameter_axis_label(first(rows.y_parameter), ""),
@@ -353,7 +352,7 @@ function parameter_boundary_figure(table::DataFrame; filename::AbstractString)
         "primary_metal_increase" => "Increase for all remaining settings",
     )
     Legend(grid[0, 1:6], legend_elements, [legend_labels[regime] for regime in displayed_regimes];
-        tellwidth=false, halign=:center, valign=:center, labelsize=22, orientation=:horizontal)
+        tellwidth=false, halign=:center, valign=:center, labelsize=28, orientation=:horizontal)
     rowsize!(grid, 1, Relative(0.5))
     rowsize!(grid, 2, Relative(0.5))
     colgap!(grid, 18)
