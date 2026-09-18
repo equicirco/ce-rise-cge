@@ -1,5 +1,5 @@
 """
-Generate the model-derived equation listing for the Supplementary Information.
+Generate the standalone model-derived equation listing.
 
 The mathematical content is produced directly by `JCGEOutput` from the
 registered equation AST. This script does not rename symbols, replace terms,
@@ -14,8 +14,7 @@ using JCGERuntime
 using DataFrames
 
 const PROJECT_ROOT = normpath(joinpath(@__DIR__, "..", ".."))
-const EQUATION_OUTPUT = joinpath(PROJECT_ROOT, "article", "generated",
-    "si_model_equation_inventory.tex")
+const EQUATION_OUTPUT = joinpath(PROJECT_ROOT, "equations.tex")
 
 function _build_context(model::CERiseCGE.MultiRegionModelSpec)
     spec = CERiseCGE.run_spec(model)
@@ -615,12 +614,21 @@ function _model_report_mappings(context::JCGERuntime.KernelContext,
 end
 
 function main()
-    isdir(dirname(EQUATION_OUTPUT)) || error("Missing article generated directory.")
     model = CERiseCGE.multi_region_model()
     context = _build_context(model)
     report = JCGEOutput.render_equation_report(context; format=:latex, view=:indexed,
         report_mappings=_model_report_mappings(context, model))
-    write(EQUATION_OUTPUT, report)
+    document = join([
+        "\\documentclass[11pt]{article}",
+        "\\usepackage[margin=2.5cm]{geometry}",
+        "\\usepackage{amsmath}",
+        "\\begin{document}",
+        "\\section*{Model equation listing}",
+        "This document is generated directly from the implemented model using JCGEOutput.",
+        report,
+        "\\end{document}",
+    ], "\n\n")
+    write(EQUATION_OUTPUT, document)
     println("Wrote $(EQUATION_OUTPUT).")
 end
 

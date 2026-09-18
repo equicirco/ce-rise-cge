@@ -12,6 +12,7 @@ Primary and manufactured products clear through common EU markets with one EU pr
 - `scripts/analysis/`: policy-sensitivity analysis and reproducible solution workflows.
 - `src/`: the Julia implementation of the CGE model.
 - `test/`: model and calibration tests.
+- `equations.tex`: standalone equation listing generated directly from the model.
 - `Project.toml` and `Manifest.toml`: the Julia environment.
 
 ## Reproduce policy-sensitivity solutions
