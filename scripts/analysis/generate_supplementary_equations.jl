@@ -645,15 +645,17 @@ function _top_level_products(text::AbstractString)
     return terms
 end
 
-function _pack_terms(terms::Vector{String}; width::Int)
+function _pack_terms(terms::Vector{String}; width::Int, first_width::Int=width)
     isempty(terms) && return String[]
     chunks = String[]
     current = first(terms)
+    current_width = first_width
     for term in terms[2:end]
         candidate = string(current, " ", term)
-        if ncodeunits(candidate) > width
+        if ncodeunits(candidate) > current_width
             push!(chunks, current)
             current = term
+            current_width = width
         else
             current = candidate
         end
@@ -662,19 +664,21 @@ function _pack_terms(terms::Vector{String}; width::Int)
     return chunks
 end
 
-function _multiline_sum(text::AbstractString; width::Int, alignment::AbstractString)
+function _multiline_sum(text::AbstractString; width::Int, alignment::AbstractString,
+    first_width::Int=width)
     terms = _top_level_terms(text)
     length(terms) <= 1 && return String(text)
-    chunks = _pack_terms(terms; width=width)
+    chunks = _pack_terms(terms; width=width, first_width=first_width)
     length(chunks) <= 1 && return String(text)
     return join([first(chunks); [string(alignment, "{}", chunk) for chunk in chunks[2:end]]],
         string("\\\\", '\n'))
 end
 
-function _multiline_product(text::AbstractString; width::Int, alignment::AbstractString)
+function _multiline_product(text::AbstractString; width::Int, alignment::AbstractString,
+    first_width::Int=width)
     terms = _top_level_products(text)
     length(terms) <= 1 && return String(text)
-    chunks = _pack_terms(terms; width=width)
+    chunks = _pack_terms(terms; width=width, first_width=first_width)
     length(chunks) <= 1 && return String(text)
     return join([first(chunks); [string(alignment, "{}", chunk) for chunk in chunks[2:end]]],
         string("\\\\", '\n'))
@@ -734,9 +738,13 @@ function _wrap_equation_line(line::AbstractString; width::Int=132)
         lhs = formatted[firstindex(formatted):first(location) - 1]
         rhs_start = last(location) + 1
         rhs = formatted[rhs_start:end]
+        first_width = max(1, width - ncodeunits(lhs) - ncodeunits(relation))
         wrapped_rhs = _multiline_sum(rhs; width=width, alignment="&\\quad ")
-        wrapped_rhs == rhs && (wrapped_rhs = _multiline_product(rhs;
-            width=width, alignment="&\\quad "))
+        if wrapped_rhs == rhs
+            product_first_width = ncodeunits(rhs) > width ? first_width : width
+            wrapped_rhs = _multiline_product(rhs; width=width,
+                first_width=product_first_width, alignment="&\\quad ")
+        end
         return string(lhs, relation, wrapped_rhs)
     end
     return formatted
