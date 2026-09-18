@@ -197,7 +197,8 @@ function _add_report_mapping!(mappings::Vector{EquationReportMapping},
     domain_labels::Dict{Symbol,Symbol}=Dict{Symbol,Symbol}(),
     index_projections::AbstractDict=Dict{Symbol,Tuple{Vararg{Symbol}}}(),
     reference_patterns::Dict{Symbol,Tuple{Vararg{Symbol}}}=Dict{Symbol,Tuple{Vararg{Symbol}}}(),
-    reference_overrides::Dict{Tuple{Symbol,Symbol,Tuple},Tuple}=Dict{Tuple{Symbol,Symbol,Tuple},Tuple}())
+    reference_overrides::Dict{Tuple{Symbol,Symbol,Tuple},Tuple}=Dict{Tuple{Symbol,Symbol,Tuple},Tuple}(),
+    additive_sums=AdditiveSumMapping[])
     equations = [equation for equation in JCGERuntime.list_equations(context)
         if equation.block === source_block && equation.tag === source_tag]
     isempty(equations) && return nothing
@@ -225,6 +226,7 @@ function _add_report_mapping!(mappings::Vector{EquationReportMapping},
         index_projections = _selected_index_projections(equations, index_projections),
         reference_indices = _selected_reference_indices(equations, reference_patterns,
             reference_overrides),
+        additive_sums = additive_sums,
     ))
     return nothing
 end
@@ -433,6 +435,15 @@ function _model_report_mappings(context::JCGERuntime.KernelContext,
             coordinates_for=region_only,
             index_projections=Dict(:region => (:region,)))
     end
+
+    add_mapping(; source_block=:common_eu_trade, source_tag=:eu_market_clearing,
+        index_names=(:product,), coordinates_for=source -> (only(source),),
+        additive_sums=[
+            AdditiveSumMapping(path=(:lhs,), index=:region,
+                domain=model.outline.regions, term_name=:EU_SALE, index_position=2),
+            AdditiveSumMapping(path=(:rhs,), index=:region,
+                domain=model.outline.regions, term_name=:EU_PURCHASE, index_position=2),
+        ])
 
     # Standard production and the EOL-productivity variant share the same
     # declared regional activity, factor, and input-product coordinates.
