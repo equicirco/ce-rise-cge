@@ -22,6 +22,6 @@ Security: For vulnerabilities.
 
 ### Changed
 - Replaced bilateral intra-European Armington/CET trade with common EU product markets for primary and manufactured products. Regional services retain fixed calibrated net EU balances and do not relocate endogenously across regions.
-- Updated the model environment to the registered JCGEBlocks 0.1.7 and JCGEOutput 0.1.4 releases.
+- Updated the model environment to the registered JCGEBlocks 0.1.7 and JCGEOutput 0.1.6 releases.
 - Tightened the data-configured Ipopt convergence tolerances used for calibration replication.
 - Policy scenarios now retain per-point solver time and retry counts, while a configured Ipopt CPU-time limit records hard points as numerical rejections instead of allowing a worker to run indefinitely.
