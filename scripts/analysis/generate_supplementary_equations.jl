@@ -624,6 +624,27 @@ function _top_level_terms(text::AbstractString)
     return terms
 end
 
+function _top_level_products(text::AbstractString)
+    chars = collect(text)
+    terms = String[]
+    depth = 0
+    start = firstindex(chars)
+    for position in eachindex(chars)
+        char = chars[position]
+        if char == '{'
+            depth += 1
+        elseif char == '}'
+            depth -= 1
+        elseif depth == 0 && position > firstindex(chars) &&
+                _starts_with(chars, position, "\\cdot")
+            push!(terms, strip(String(chars[start:position - 1])))
+            start = position
+        end
+    end
+    push!(terms, strip(String(chars[start:end])))
+    return terms
+end
+
 function _pack_terms(terms::Vector{String}; width::Int)
     isempty(terms) && return String[]
     chunks = String[]
@@ -643,6 +664,15 @@ end
 
 function _multiline_sum(text::AbstractString; width::Int, alignment::AbstractString)
     terms = _top_level_terms(text)
+    length(terms) <= 1 && return String(text)
+    chunks = _pack_terms(terms; width=width)
+    length(chunks) <= 1 && return String(text)
+    return join([first(chunks); [string(alignment, "{}", chunk) for chunk in chunks[2:end]]],
+        string("\\\\", '\n'))
+end
+
+function _multiline_product(text::AbstractString; width::Int, alignment::AbstractString)
+    terms = _top_level_products(text)
     length(terms) <= 1 && return String(text)
     chunks = _pack_terms(terms; width=width)
     length(chunks) <= 1 && return String(text)
@@ -705,6 +735,8 @@ function _wrap_equation_line(line::AbstractString; width::Int=132)
         rhs_start = last(location) + 1
         rhs = formatted[rhs_start:end]
         wrapped_rhs = _multiline_sum(rhs; width=width, alignment="&\\quad ")
+        wrapped_rhs == rhs && (wrapped_rhs = _multiline_product(rhs;
+            width=width, alignment="&\\quad "))
         return string(lhs, relation, wrapped_rhs)
     end
     return formatted
