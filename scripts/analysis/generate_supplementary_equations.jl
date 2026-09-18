@@ -3,8 +3,8 @@ Generate the model-derived equation listing for the Supplementary Information.
 
 The mathematical content is produced directly by `JCGEOutput` from the
 registered equation AST. This script does not rename symbols, replace terms,
-or construct equations. Its sole presentation step inserts LaTeX line breaks
-at additive operators so that long generated expressions fit the SI page.
+construct equations, or format mathematical expressions. `JCGEOutput` renders
+the registered AST, including any necessary LaTeX continuation lines.
 """
 
 using CERiseCGE
@@ -614,165 +614,13 @@ function _model_report_mappings(context::JCGERuntime.KernelContext,
     return mappings
 end
 
-function _top_level_terms(text::AbstractString)
-    chars = collect(text)
-    terms = String[]
-    depth = 0
-    start = firstindex(chars)
-    for position in eachindex(chars)
-        char = chars[position]
-        if char == '{'
-            depth += 1
-        elseif char == '}'
-            depth -= 1
-        elseif depth == 0 && position > firstindex(chars) && position < lastindex(chars) &&
-                char in ('+', '-') && chars[position - 1] == ' ' && chars[position + 1] == ' '
-            push!(terms, strip(String(chars[start:position - 1])))
-            start = position
-        end
-    end
-    push!(terms, strip(String(chars[start:end])))
-    return terms
-end
-
-function _top_level_products(text::AbstractString)
-    chars = collect(text)
-    terms = String[]
-    depth = 0
-    start = firstindex(chars)
-    for position in eachindex(chars)
-        char = chars[position]
-        if char == '{'
-            depth += 1
-        elseif char == '}'
-            depth -= 1
-        elseif depth == 0 && position > firstindex(chars) &&
-                _starts_with(chars, position, "\\cdot")
-            push!(terms, strip(String(chars[start:position - 1])))
-            start = position
-        end
-    end
-    push!(terms, strip(String(chars[start:end])))
-    return terms
-end
-
-function _pack_terms(terms::Vector{String}; width::Int, first_width::Int=width)
-    isempty(terms) && return String[]
-    chunks = String[]
-    current = first(terms)
-    current_width = first_width
-    for term in terms[2:end]
-        candidate = string(current, " ", term)
-        if ncodeunits(candidate) > current_width
-            push!(chunks, current)
-            current = term
-            current_width = width
-        else
-            current = candidate
-        end
-    end
-    push!(chunks, current)
-    return chunks
-end
-
-function _multiline_sum(text::AbstractString; width::Int, alignment::AbstractString,
-    first_width::Int=width)
-    terms = _top_level_terms(text)
-    length(terms) <= 1 && return String(text)
-    chunks = _pack_terms(terms; width=width, first_width=first_width)
-    length(chunks) <= 1 && return String(text)
-    return join([first(chunks); [string(alignment, "{}", chunk) for chunk in chunks[2:end]]],
-        string("\\\\", '\n'))
-end
-
-function _multiline_product(text::AbstractString; width::Int, alignment::AbstractString,
-    first_width::Int=width)
-    terms = _top_level_products(text)
-    length(terms) <= 1 && return String(text)
-    chunks = _pack_terms(terms; width=width, first_width=first_width)
-    length(chunks) <= 1 && return String(text)
-    return join([first(chunks); [string(alignment, "{}", chunk) for chunk in chunks[2:end]]],
-        string("\\\\", '\n'))
-end
-
-function _starts_with(chars::Vector{Char}, position::Int, token::AbstractString)
-    token_chars = collect(token)
-    last_position = position + length(token_chars) - 1
-    last_position <= length(chars) || return false
-    return chars[position:last_position] == token_chars
-end
-
-function _braced_group(chars::Vector{Char}, opening::Int)
-    chars[opening] == '{' || error("Expected a braced LaTeX group.")
-    depth = 0
-    for position in opening:length(chars)
-        char = chars[position]
-        char == '{' && (depth += 1)
-        char == '}' && (depth -= 1)
-        depth == 0 && return String(chars[opening + 1:position - 1]), position
-    end
-    error("Unbalanced LaTeX group in generated equation report.")
-end
-
-function _format_long_fractions(text::AbstractString; width::Int)
-    chars = collect(text)
-    rendered = IOBuffer()
-    position = firstindex(chars)
-    while position <= lastindex(chars)
-        if _starts_with(chars, position, "\\frac{")
-            numerator, numerator_end = _braced_group(chars, position + 5)
-            denominator_start = numerator_end + 1
-            denominator, denominator_end = _braced_group(chars, denominator_start)
-            numerator = _format_long_fractions(numerator; width=width)
-            denominator = _format_long_fractions(denominator; width=width)
-            denominator_terms = _top_level_terms(denominator)
-            if length(denominator_terms) > 1 && ncodeunits(denominator) > width
-                denominator = "\\begin{aligned}\n" *
-                    _multiline_sum(denominator; width=width, alignment="") *
-                    "\n\\end{aligned}"
-            end
-            print(rendered, "\\frac{", numerator, "}{", denominator, "}")
-            position = denominator_end + 1
-        else
-            print(rendered, chars[position])
-            position += 1
-        end
-    end
-    return String(take!(rendered))
-end
-
-function _wrap_equation_line(line::AbstractString; width::Int=132)
-    formatted = _format_long_fractions(line; width=width)
-    for relation in (" &= ", " &\\le ", " &\\ge ")
-        location = findfirst(relation, formatted)
-        isnothing(location) && continue
-        lhs = formatted[firstindex(formatted):first(location) - 1]
-        rhs_start = last(location) + 1
-        rhs = formatted[rhs_start:end]
-        first_width = max(1, width - ncodeunits(lhs) - ncodeunits(relation))
-        wrapped_rhs = _multiline_sum(rhs; width=width, alignment="&\\quad ")
-        if wrapped_rhs == rhs
-            product_first_width = ncodeunits(rhs) > width ? first_width : width
-            wrapped_rhs = _multiline_product(rhs; width=width,
-                first_width=product_first_width, alignment="&\\quad ")
-        end
-        return string(lhs, relation, wrapped_rhs)
-    end
-    return formatted
-end
-
-function _format_for_si(report::AbstractString)
-    lines = split(report, '\n'; keepempty=true)
-    return join([_wrap_equation_line(line) for line in lines], "\n")
-end
-
 function main()
     isdir(dirname(EQUATION_OUTPUT)) || error("Missing article generated directory.")
     model = CERiseCGE.multi_region_model()
     context = _build_context(model)
     report = JCGEOutput.render_equation_report(context; format=:latex, view=:indexed,
         report_mappings=_model_report_mappings(context, model))
-    write(EQUATION_OUTPUT, _format_for_si(report))
+    write(EQUATION_OUTPUT, report)
     println("Wrote $(EQUATION_OUTPUT).")
 end
 
