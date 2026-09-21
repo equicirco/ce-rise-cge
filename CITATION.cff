@@ -1,7 +1,8 @@
 cff-version: 1.2.0
 title: CE-RISE Circular Economy CGE
 message: >-
-  v0.1.0 - Unreleased.
+  v0.1.0 - Initial public release.
+version: 0.1.0
 type: software
 authors:
   - given-names: Riccardo

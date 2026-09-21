@@ -10,15 +10,16 @@ Removed: For features removed in this release.
 Fixed: For any bug fixes.
 Security: For vulnerabilities.
 
-## [0.1.0] - Unreleased
+## [0.1.0] - 2026-09-21
 ### Added
-- Initial public repository structure for the CE-RISE CGE benchmark-construction workflow.
+- Initial public release of the CE-RISE Circular Economy CGE model.
 - Julia scripts to construct staged benchmark artifacts from FIGARO-based supply and use data and the CE-RISE disaggregation input.
 - Persisted public workflow outputs covering the initial source bundle, integrated SUT, final explicit SUT, balanced SUT, core SAM, and closed SAM.
 - Validation reports for the staged artifact chain and public-data scope curation for the repository.
 - Generic normalized physical-flow links for the 78 directly observed CE-RISE flows, with base-year tonne anchors and scenario projection through JCGEOutput.
 - Baseline tests covering physical-flow links, anchors, projections, and calibration-driver diagnostics.
 - Checkpointed policy-grid execution with one persistent status record and result file per sensitivity profile, plus a command-line status report for live monitoring and safe restart.
+- The associated Zenodo record will include the DuckDB policy-sensitivity results database.
 
 ### Changed
 - Replaced bilateral intra-European Armington/CET trade with common EU product markets for primary and manufactured products. Regional services retain fixed calibrated net EU balances and do not relocate endogenously across regions.
