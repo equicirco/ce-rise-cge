@@ -1,6 +1,6 @@
 {
   "title": "CE-RISE Circular Economy CGE",
-  "description": "Empirical circular-economy computable general equilibrium benchmark-construction workflow for CE-RISE value chains, implemented in Julia and structured for JCGE calibration.",
+  "description": "Empirical circular-economy computable general equilibrium for CE-RISE value chains, implemented in Julia and JCGE.",
   "license": "EUPL-1.2",
   "upload_type": "software",
   "creators": [
