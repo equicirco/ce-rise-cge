@@ -35,5 +35,5 @@ manufacturing	C26	CPA_C26	Computer, electronic and optical products	C26	C26	RATV
 manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	BAT	Batteries	child	CPA_C27_BAT	C27_BAT
 manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	ELMA_c	Other electrical machinery and apparatus	child	CPA_C27_ELMA_c	C27_ELMA_c
 manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	ELMA_res	Residual electrical equipment outside CE-RISE disaggregation	residual	CPA_C27_ELMA_res	C27_ELMA_res
-manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	HPP	Household appliances	child	CPA_C27_HPP	C27_HPP
+manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	HPP	Heat pumps	child	CPA_C27_HPP	C27_HPP
 manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	PV	Photovoltaic equipment	child	CPA_C27_PV	C27_PV

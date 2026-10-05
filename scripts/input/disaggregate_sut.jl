@@ -52,7 +52,7 @@ const CE_RISE_PARENT_LABELS = Dict(
 )
 
 const CE_RISE_SPLIT_LABELS = Dict(
-    "HPP" => "Household appliances",
+    "HPP" => "Heat pumps",
     "PV" => "Photovoltaic equipment",
     "BAT" => "Batteries",
     "ELMA_c" => "Other electrical machinery and apparatus",

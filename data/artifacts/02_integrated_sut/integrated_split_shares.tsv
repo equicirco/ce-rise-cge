@@ -11,7 +11,7 @@ DE	manufacturing	C26	CPA_C26	Computer, electronic and optical products	C26	C26	R
 DE	manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	BAT	Batteries	child	CPA_C27_BAT	C27_BAT	0.004531819310985878
 DE	manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	ELMA_c	Other electrical machinery and apparatus	child	CPA_C27_ELMA_c	C27_ELMA_c	0.6727441399632553
 DE	manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	ELMA_res	Residual electrical equipment outside CE-RISE disaggregation	residual	CPA_C27_ELMA_res	C27_ELMA_res	0.3
-DE	manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	HPP	Household appliances	child	CPA_C27_HPP	C27_HPP	0.022724040725758732
+DE	manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	HPP	Heat pumps	child	CPA_C27_HPP	C27_HPP	0.022724040725758732
 DE	manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	PV	Photovoltaic equipment	child	CPA_C27_PV	C27_PV	0.0
 DE	circular_parent	REPAIR_MACHINERY	CPA_C33	Repair and installation services of machinery and equipment	C33	Repair and installation of machinery and equipment	ELMA	Electrical machinery and apparatus n.e.c.-linked share of Repair and installation services of machinery and equipment	family_split	CPA_C33_ELMA	C33_ELMA	0.03420292387654392
 DE	circular_parent	REPAIR_MACHINERY	CPA_C33	Repair and installation services of machinery and equipment	C33	Repair and installation of machinery and equipment	OFMA	Office machinery and computers-linked share of Repair and installation services of machinery and equipment	family_split	CPA_C33_OFMA	C33_OFMA	9.107367797947057e-7
@@ -49,7 +49,7 @@ FR	manufacturing	C26	CPA_C26	Computer, electronic and optical products	C26	C26	R
 FR	manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	BAT	Batteries	child	CPA_C27_BAT	C27_BAT	0.0007676826281887591
 FR	manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	ELMA_c	Other electrical machinery and apparatus	child	CPA_C27_ELMA_c	C27_ELMA_c	0.6781319233069223
 FR	manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	ELMA_res	Residual electrical equipment outside CE-RISE disaggregation	residual	CPA_C27_ELMA_res	C27_ELMA_res	0.30000000000000004
-FR	manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	HPP	Household appliances	child	CPA_C27_HPP	C27_HPP	0.021100394064888964
+FR	manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	HPP	Heat pumps	child	CPA_C27_HPP	C27_HPP	0.021100394064888964
 FR	manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	PV	Photovoltaic equipment	child	CPA_C27_PV	C27_PV	0.0
 FR	circular_parent	REPAIR_MACHINERY	CPA_C33	Repair and installation services of machinery and equipment	C33	Repair and installation of machinery and equipment	ELMA	Electrical machinery and apparatus n.e.c.-linked share of Repair and installation services of machinery and equipment	family_split	CPA_C33_ELMA	C33_ELMA	0.0022674253876314235
 FR	circular_parent	REPAIR_MACHINERY	CPA_C33	Repair and installation services of machinery and equipment	C33	Repair and installation of machinery and equipment	OFMA	Office machinery and computers-linked share of Repair and installation services of machinery and equipment	family_split	CPA_C33_OFMA	C33_OFMA	2.627697007484482e-7
@@ -87,7 +87,7 @@ IT	manufacturing	C26	CPA_C26	Computer, electronic and optical products	C26	C26	R
 IT	manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	BAT	Batteries	child	CPA_C27_BAT	C27_BAT	0.00036006763123113403
 IT	manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	ELMA_c	Other electrical machinery and apparatus	child	CPA_C27_ELMA_c	C27_ELMA_c	0.6914443036188803
 IT	manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	ELMA_res	Residual electrical equipment outside CE-RISE disaggregation	residual	CPA_C27_ELMA_res	C27_ELMA_res	0.3
-IT	manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	HPP	Household appliances	child	CPA_C27_HPP	C27_HPP	0.008195628749888564
+IT	manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	HPP	Heat pumps	child	CPA_C27_HPP	C27_HPP	0.008195628749888564
 IT	manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	PV	Photovoltaic equipment	child	CPA_C27_PV	C27_PV	0.0
 IT	circular_parent	REPAIR_MACHINERY	CPA_C33	Repair and installation services of machinery and equipment	C33	Repair and installation of machinery and equipment	ELMA	Electrical machinery and apparatus n.e.c.-linked share of Repair and installation services of machinery and equipment	family_split	CPA_C33_ELMA	C33_ELMA	0.01409237818301972
 IT	circular_parent	REPAIR_MACHINERY	CPA_C33	Repair and installation services of machinery and equipment	C33	Repair and installation of machinery and equipment	OFMA	Office machinery and computers-linked share of Repair and installation services of machinery and equipment	family_split	CPA_C33_OFMA	C33_OFMA	0.0007331840643210981
@@ -125,7 +125,7 @@ PL	manufacturing	C26	CPA_C26	Computer, electronic and optical products	C26	C26	R
 PL	manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	BAT	Batteries	child	CPA_C27_BAT	C27_BAT	0.0034584239428590248
 PL	manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	ELMA_c	Other electrical machinery and apparatus	child	CPA_C27_ELMA_c	C27_ELMA_c	0.6904022226299952
 PL	manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	ELMA_res	Residual electrical equipment outside CE-RISE disaggregation	residual	CPA_C27_ELMA_res	C27_ELMA_res	0.3
-PL	manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	HPP	Household appliances	child	CPA_C27_HPP	C27_HPP	0.0061393534271458414
+PL	manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	HPP	Heat pumps	child	CPA_C27_HPP	C27_HPP	0.0061393534271458414
 PL	manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	PV	Photovoltaic equipment	child	CPA_C27_PV	C27_PV	0.0
 PL	circular_parent	REPAIR_MACHINERY	CPA_C33	Repair and installation services of machinery and equipment	C33	Repair and installation of machinery and equipment	ELMA	Electrical machinery and apparatus n.e.c.-linked share of Repair and installation services of machinery and equipment	family_split	CPA_C33_ELMA	C33_ELMA	0.028902736209032436
 PL	circular_parent	REPAIR_MACHINERY	CPA_C33	Repair and installation services of machinery and equipment	C33	Repair and installation of machinery and equipment	OFMA	Office machinery and computers-linked share of Repair and installation services of machinery and equipment	family_split	CPA_C33_OFMA	C33_OFMA	8.552281580665377e-5
@@ -163,7 +163,7 @@ REU	manufacturing	C26	CPA_C26	Computer, electronic and optical products	C26	C26	
 REU	manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	BAT	Batteries	child	CPA_C27_BAT	C27_BAT	0.00018301759308112365
 REU	manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	ELMA_c	Other electrical machinery and apparatus	child	CPA_C27_ELMA_c	C27_ELMA_c	0.6530054686259745
 REU	manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	ELMA_res	Residual electrical equipment outside CE-RISE disaggregation	residual	CPA_C27_ELMA_res	C27_ELMA_res	0.2981207897052545
-REU	manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	HPP	Household appliances	child	CPA_C27_HPP	C27_HPP	0.02259199125173694
+REU	manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	HPP	Heat pumps	child	CPA_C27_HPP	C27_HPP	0.02259199125173694
 REU	manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	PV	Photovoltaic equipment	child	CPA_C27_PV	C27_PV	0.026098732823952926
 REU	circular_parent	REPAIR_MACHINERY	CPA_C33	Repair and installation services of machinery and equipment	C33	Repair and installation of machinery and equipment	ELMA	Electrical machinery and apparatus n.e.c.-linked share of Repair and installation services of machinery and equipment	family_split	CPA_C33_ELMA	C33_ELMA	0.012061364500356388
 REU	circular_parent	REPAIR_MACHINERY	CPA_C33	Repair and installation services of machinery and equipment	C33	Repair and installation of machinery and equipment	OFMA	Office machinery and computers-linked share of Repair and installation services of machinery and equipment	family_split	CPA_C33_OFMA	C33_OFMA	0.0005921998669165069
@@ -201,7 +201,7 @@ ROW	manufacturing	C26	CPA_C26	Computer, electronic and optical products	C26	C26	
 ROW	manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	BAT	Batteries	child	CPA_C27_BAT	C27_BAT	0.0012822975263564577
 ROW	manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	ELMA_c	Other electrical machinery and apparatus	child	CPA_C27_ELMA_c	C27_ELMA_c	0.6512530712751069
 ROW	manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	ELMA_res	Residual electrical equipment outside CE-RISE disaggregation	residual	CPA_C27_ELMA_res	C27_ELMA_res	0.29618564024554533
-ROW	manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	HPP	Household appliances	child	CPA_C27_HPP	C27_HPP	0.022251196163672292
+ROW	manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	HPP	Heat pumps	child	CPA_C27_HPP	C27_HPP	0.022251196163672292
 ROW	manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	PV	Photovoltaic equipment	child	CPA_C27_PV	C27_PV	0.029027794789319068
 ROW	circular_parent	REPAIR_MACHINERY	CPA_C33	Repair and installation services of machinery and equipment	C33	Repair and installation of machinery and equipment	ELMA	Electrical machinery and apparatus n.e.c.-linked share of Repair and installation services of machinery and equipment	family_split	CPA_C33_ELMA	C33_ELMA	0.024429218358838555
 ROW	circular_parent	REPAIR_MACHINERY	CPA_C33	Repair and installation services of machinery and equipment	C33	Repair and installation of machinery and equipment	OFMA	Office machinery and computers-linked share of Repair and installation services of machinery and equipment	family_split	CPA_C33_OFMA	C33_OFMA	0.010156178271465907
@@ -239,7 +239,7 @@ SK	manufacturing	C26	CPA_C26	Computer, electronic and optical products	C26	C26	R
 SK	manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	BAT	Batteries	child	CPA_C27_BAT	C27_BAT	0.011689344161944388
 SK	manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	ELMA_c	Other electrical machinery and apparatus	child	CPA_C27_ELMA_c	C27_ELMA_c	0.6749995381901526
 SK	manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	ELMA_res	Residual electrical equipment outside CE-RISE disaggregation	residual	CPA_C27_ELMA_res	C27_ELMA_res	0.3
-SK	manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	HPP	Household appliances	child	CPA_C27_HPP	C27_HPP	0.013311117647903027
+SK	manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	HPP	Heat pumps	child	CPA_C27_HPP	C27_HPP	0.013311117647903027
 SK	manufacturing	C27	CPA_C27	Electrical equipment	C27	C27	PV	Photovoltaic equipment	child	CPA_C27_PV	C27_PV	0.0
 SK	circular_parent	REPAIR_MACHINERY	CPA_C33	Repair and installation services of machinery and equipment	C33	Repair and installation of machinery and equipment	ELMA	Electrical machinery and apparatus n.e.c.-linked share of Repair and installation services of machinery and equipment	family_split	CPA_C33_ELMA	C33_ELMA	0.009364307400684325
 SK	circular_parent	REPAIR_MACHINERY	CPA_C33	Repair and installation services of machinery and equipment	C33	Repair and installation of machinery and equipment	OFMA	Office machinery and computers-linked share of Repair and installation services of machinery and equipment	family_split	CPA_C33_OFMA	C33_OFMA	1.5313847763132858e-7
