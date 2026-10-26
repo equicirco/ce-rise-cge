@@ -20,6 +20,9 @@ artifact chain through the balanced SUT, the core SAM bridge, and the final
 closed SAM used as the benchmark calibration base.
 """
 
+include(joinpath(@__DIR__, "bonsai_family_outputs.jl"))
+using .BonsaiFamilyOutputs
+
 const ROOT_DIR = normpath(joinpath(@__DIR__, "..", ".."))
 const SUT_DIR = joinpath(ROOT_DIR, "data", "interim", "sut_2016")
 const ARTIFACT_DIR = joinpath(ROOT_DIR, "data", "artifacts")
@@ -29,6 +32,7 @@ const BASE_USE = joinpath(SUT_DIR, "sut_use_base_2016.tsv")
 const MANUFACTURING_SUPPLY = joinpath(SUT_DIR, "sut_supply_disaggregated_unbalanced.tsv")
 const MANUFACTURING_USE = joinpath(SUT_DIR, "sut_use_disaggregated_unbalanced.tsv")
 const MANUFACTURING_MAP = joinpath(SUT_DIR, "sut_parent_child_figaro_map.tsv")
+const MANUFACTURING_SHARES = joinpath(SUT_DIR, "sut_split_output_shares.tsv")
 const INTERMEDIATE_SUPPLY = joinpath(SUT_DIR, "sut_supply_intermediate_augmented.tsv")
 const INTERMEDIATE_USE = joinpath(SUT_DIR, "sut_use_intermediate_augmented.tsv")
 const INTERMEDIATE_MAP = joinpath(SUT_DIR, "sut_intermediate_split_map.tsv")
@@ -759,6 +763,49 @@ function append_stage8_checks!(rows)
     ))
 end
 
+function manufacturing_family_check(path = MANUFACTURING_SHARES)
+    if !isfile(path)
+        return artifact_row("manufacturing", "complete_family_allocation", "FAIL", path,
+            "missing", "complete V2 family allocation", "Required manufacturing share table.")
+    end
+    region_map = Dict(row[1] => row[2] for row in read_tsv(
+        joinpath(ROOT_DIR, "data", "mappings", "figaro_region_map.tsv"))[2:end])
+    expected = aggregate_family_outputs(region_map)
+    family_groups = Dict(row[1][3:end] => row[4] for row in read_tsv(
+        joinpath(ROOT_DIR, "data", "mappings", "ce_rise_parent_to_figaro.tsv"))[2:end])
+    group_totals = Dict{Tuple{String,String},Float64}()
+    for ((region, family), tonnes) in expected
+        group = (region, family_groups[family])
+        group_totals[group] = get(group_totals, group, 0.0) + tonnes
+    end
+    table = read_tsv(path)
+    index = Dict(name => i for (i, name) in enumerate(table[1]))
+    seen = Set{Tuple{String,String}}()
+    valid = true
+    for row in table[2:end]
+        value(name) = row[index[name]]
+        family = value("ce_rise_parent")[3:end]
+        key = (value("region"), family)
+        if !haskey(expected, key) || key in seen
+            valid = false
+            continue
+        end
+        push!(seen, key)
+        group_total = group_totals[(key[1], family_groups[family])]
+        valid &= value("split_kind") == "family" && value("split_label") == family &&
+            value("shared_parent_group") == family_groups[family] &&
+            parse(Float64, value("within_parent_share")) == 1.0 &&
+            isapprox(parse(Float64, value("output_tonnes")), expected[key]; rtol = 1e-12) &&
+            isapprox(parse(Float64, value("parent_output_tonnes")), expected[key]; rtol = 1e-12) &&
+            isapprox(parse(Float64, value("group_output_tonnes")), group_total; rtol = 1e-12) &&
+            isapprox(parse(Float64, value("within_group_share")), expected[key] / group_total; rtol = 1e-12)
+    end
+    valid &= seen == Set(keys(expected))
+    return artifact_row("manufacturing", "complete_family_allocation", artifact_status(valid), path,
+        "family allocations=$(length(seen)); complete=$valid", "$(length(expected)) complete V2 family allocations",
+        "Each V2 family output is retained once; C27 is assigned to ELMA and C26 is divided between OFMA and RATV.")
+end
+
 function artifact_report_rows()
     rows = Vector{Vector{String}}()
 
@@ -767,6 +814,7 @@ function artifact_report_rows()
         push!(rows, artifact_row("01_initial_data", filename, artifact_status(isfile(path)), path, isfile(path) ? "present" : "missing", "present", "Required stage-1 source artifact."))
     end
 
+    push!(rows, manufacturing_family_check())
     append_stage_table_status!(rows, "02_integrated_sut", STAGE2_VALIDATION, "integrated_table")
     append_stage_table_status!(rows, "03_final_preparation", STAGE3_VALIDATION, "final_table")
     append_stage4_checks!(rows)
@@ -842,4 +890,6 @@ function main()
     print_summary(validations)
 end
 
-main()
+if abspath(PROGRAM_FILE) == @__FILE__
+    main()
+end

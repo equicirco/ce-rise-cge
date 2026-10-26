@@ -1,5 +1,6 @@
 using Test
 include("input_data.jl")
+include("manufacturing_allocation.jl")
 using DataFrames: DataFrame, nrow
 using CERiseCGE
 using JCGEBlocks

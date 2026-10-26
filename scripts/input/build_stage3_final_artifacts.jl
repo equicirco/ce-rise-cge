@@ -30,6 +30,16 @@ const OUT_VALIDATION = joinpath(OUTDIR, "final_validation.tsv")
 const FINAL_DEMAND_CODES = Set(["P3_S13", "P3_S14", "P3_S15", "P51G", "P5M"])
 const SPECIAL_USE_PRODUCT_ROWS = Set(["B2A3G", "D1", "D21X31", "D29X39", "OP_NRES", "OP_RES"])
 const TOL = 1.0e-6
+const MANUFACTURING_PRODUCT_TARGETS = Dict(
+    "CPA_C27_ELMA" => "NEW_ELMA",
+    "CPA_C26_OFMA" => "NEW_OFMA",
+    "CPA_C26_RATV" => "NEW_RATV",
+)
+const MANUFACTURING_ACTIVITY_TARGETS = Dict(
+    "C27_ELMA" => "NEW_ELMA",
+    "C26_OFMA" => "NEW_OFMA",
+    "C26_RATV" => "NEW_RATV",
+)
 
 function ensure_dir(path::AbstractString)
     isdir(path) || mkpath(path)
@@ -133,9 +143,11 @@ end
 function explicit_product_targets(region::AbstractString, code::AbstractString, waste_shares, waste_fallback)
     code in SPECIAL_USE_PRODUCT_ROWS && return [(code, 1.0)]
 
-    code in ("CPA_C27_HPP", "CPA_C27_PV", "CPA_C27_BAT", "CPA_C27_ELMA_c") && return [("NEW_ELMA", 1.0)]
-    code in ("CPA_C26_DES", "CPA_C26_LAP", "CPA_C26_PRI", "CPA_C26_OFMA_c") && return [("NEW_OFMA", 1.0)]
-    code in ("CPA_C26_MOB", "CPA_C26_MON", "CPA_C26_RATV_c") && return [("NEW_RATV", 1.0)]
+    if code in ("CPA_C26", "CPA_C27") || startswith(code, "CPA_C26_") || startswith(code, "CPA_C27_")
+        haskey(MANUFACTURING_PRODUCT_TARGETS, code) ||
+            error("Expected a complete electronics-family product, got $code; regenerate the manufacturing and integrated SUT")
+        return [(MANUFACTURING_PRODUCT_TARGETS[code], 1.0)]
+    end
 
     code == "CPA_S95_ELMA" && return [("REP_ELMA", 1.0)]
     code == "CPA_S95_OFMA" && return [("REP_OFMA", 1.0)]
@@ -174,7 +186,6 @@ function explicit_product_targets(region::AbstractString, code::AbstractString, 
     startswith(code, "CPA_H") && return [("TRANSPORT", 1.0)]
     code in ("CPA_O84", "CPA_P85", "CPA_Q86", "CPA_Q87_88", "CPA_Q87_Q88") && return [("PUBLIC_SOCIAL", 1.0)]
 
-    code in ("CPA_C26_OFMA_res", "CPA_C26_RATV_res", "CPA_C27_ELMA_res") && return [("OTHER_MANUFACTURING", 1.0)]
     code in ("CPA_C33_res", "CPA_S95_res", "CPA_N77_res") && return [("OTHER_SERVICES", 1.0)]
 
     startswith(code, "CPA_C") && return [("OTHER_MANUFACTURING", 1.0)]
@@ -194,9 +205,11 @@ end
 function explicit_use_targets(region::AbstractString, code::AbstractString, waste_shares, waste_fallback)
     code in FINAL_DEMAND_CODES && return [(code, 1.0)]
 
-    code in ("C27_HPP", "C27_PV", "C27_BAT", "C27_ELMA_c") && return [("NEW_ELMA", 1.0)]
-    code in ("C26_DES", "C26_LAP", "C26_PRI", "C26_OFMA_c") && return [("NEW_OFMA", 1.0)]
-    code in ("C26_MOB", "C26_MON", "C26_RATV_c") && return [("NEW_RATV", 1.0)]
+    if code in ("C26", "C27") || startswith(code, "C26_") || startswith(code, "C27_")
+        haskey(MANUFACTURING_ACTIVITY_TARGETS, code) ||
+            error("Expected a complete electronics-family industry, got $code; regenerate the manufacturing and integrated SUT")
+        return [(MANUFACTURING_ACTIVITY_TARGETS[code], 1.0)]
+    end
 
     code == "S95_ELMA" && return [("REP_ELMA", 1.0)]
     code == "S95_OFMA" && return [("REP_OFMA", 1.0)]
@@ -235,7 +248,6 @@ function explicit_use_targets(region::AbstractString, code::AbstractString, wast
     startswith(code, "H") && return [("TRANSPORT", 1.0)]
     code in ("O84", "P85", "Q86", "Q87_88", "Q87_Q88") && return [("PUBLIC_SOCIAL", 1.0)]
 
-    code in ("C26_OFMA_res", "C26_RATV_res", "C27_ELMA_res") && return [("OTHER_MANUFACTURING", 1.0)]
     code in ("C33_res", "S95_res", "N77_res") && return [("OTHER_SERVICES", 1.0)]
 
     startswith(code, "C") && return [("OTHER_MANUFACTURING", 1.0)]
@@ -340,4 +352,6 @@ function main()
     println("Wrote stage-3 artifacts to ", OUTDIR)
 end
 
-main()
+if abspath(PROGRAM_FILE) == @__FILE__
+    main()
+end

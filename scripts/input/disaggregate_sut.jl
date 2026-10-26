@@ -1,20 +1,19 @@
 #!/usr/bin/env julia
 
 """
-Disaggregate the FIGARO 2016 target SUT sectors using the CE-RISE overlay.
+Allocate the FIGARO 2016 electronics industries to complete BONSAI families.
 
 This script is the first monetary split step after the region mapping.
 
 What it does:
 1. reads the mapped CE-RISE -> FIGARO parent correspondence,
-2. derives regional output shares from the CE-RISE overlay,
-3. creates explicit residual sectors when the overlay does not exhaust
-   the FIGARO parent total,
+2. derives regional family shares from the archived V2 parent outputs,
+3. assigns C27 to ELMA and divides C26 between OFMA and RATV,
 4. writes the first disaggregated supply and use tables.
 
 Current rule set:
 - supply rows with a target product and target activity in the same region
-  and same parent group are split diagonally across the child sectors,
+  and same parent group are split diagonally across the families,
   because these rows represent the own-output portion of the parent sector;
 - all other two-sided splits are done with independent product/activity
   shares and therefore remain unbalanced approximations until the next step;
@@ -25,12 +24,14 @@ This script preserves the monetary totals of every original row. Exact
 account balancing is deferred to the following balancing step.
 """
 
+include(joinpath(@__DIR__, "bonsai_family_outputs.jl"))
+using .BonsaiFamilyOutputs
+
 const ROOT_DIR = normpath(joinpath(@__DIR__, "..", ".."))
 const SUT_DIR = joinpath(ROOT_DIR, "data", "interim", "sut_2016")
 
 const PARENT_MAP_FILE = joinpath(SUT_DIR, "sut_parent_figaro_map.tsv")
-const PARENT_CHILDREN_FILE = joinpath(SUT_DIR, "sut_parent_children.tsv")
-const OVERLAY_FILE = joinpath(SUT_DIR, "sut_disaggregation_overlay_regions.tsv")
+const REGION_MAP_FILE = joinpath(ROOT_DIR, "data", "mappings", "figaro_region_map.tsv")
 const SUPPLY_FILE = joinpath(SUT_DIR, "sut_supply_base_2016.tsv")
 const USE_FILE = joinpath(SUT_DIR, "sut_use_base_2016.tsv")
 
@@ -49,23 +50,6 @@ const CE_RISE_PARENT_LABELS = Dict(
     "A_ELMA" => "Electrical machinery and apparatus n.e.c.",
     "A_OFMA" => "Office machinery and computers",
     "A_RATV" => "Radio, television and communication equipment and apparatus",
-)
-
-const CE_RISE_SPLIT_LABELS = Dict(
-    "HPP" => "Heat pumps",
-    "PV" => "Photovoltaic equipment",
-    "BAT" => "Batteries",
-    "ELMA_c" => "Other electrical machinery and apparatus",
-    "ELMA_res" => "Residual electrical equipment outside CE-RISE disaggregation",
-    "LAP" => "Laptops",
-    "DES" => "Desktop computers",
-    "PRI" => "Printers",
-    "OFMA_c" => "Other office machinery and computers",
-    "OFMA_res" => "Residual office machinery and computer equipment outside CE-RISE disaggregation",
-    "MOB" => "Mobile phones",
-    "MON" => "Monitors",
-    "RATV_c" => "Other radio, television and communication equipment",
-    "RATV_res" => "Residual radio, television and communication equipment outside CE-RISE disaggregation",
 )
 
 struct ParentEntry
@@ -106,9 +90,7 @@ function write_tsv(path::AbstractString, header::Vector{String}, rows::Vector{Ve
     end
 end
 
-strip_activity_prefix(code::AbstractString) = code[3:end]
-strip_commodity_prefix(code::AbstractString) = code[3:end]
-short_parent(parent::AbstractString) = strip_activity_prefix(parent)
+short_parent(parent::AbstractString) = parent[3:end]
 
 function load_parent_map()
     rows = read_tsv(PARENT_MAP_FILE)
@@ -120,60 +102,27 @@ function load_parent_map()
 end
 
 parent_label(parent::AbstractString) = get(CE_RISE_PARENT_LABELS, parent, parent)
-split_label_text(label::AbstractString) = get(CE_RISE_SPLIT_LABELS, label, label)
+split_label_text(label::AbstractString) = parent_label("A_" * label)
 figaro_parent_label(code::AbstractString) = get(FIGARO_PARENT_LABELS, code, code)
 
-function load_parent_children()
-    rows = read_tsv(PARENT_CHILDREN_FILE)
-    children = Dict{String, Vector{String}}()
-    for row in rows[2:end]
-        parent = row[1]
-        child = row[2]
-        get!(children, parent, String[])
-        push!(children[parent], child)
-    end
-    return children
-end
-
-function parse_overlay_outputs(parent_entries, parent_children)
+function load_parent_outputs(parent_entries)
     parent_set = Set(entry.parent for entry in parent_entries)
-    child_to_parent = Dict{String, String}()
-    for (parent, children) in parent_children
-        for child in children
-            child_to_parent[child] = parent
-        end
+    region_map = Dict(row[1] => row[2] for row in read_tsv(REGION_MAP_FILE)[2:end])
+    parent_output = Dict{Tuple{String,String},Float64}()
+    for ((region, family), tonnes) in aggregate_family_outputs(region_map)
+        parent = "A_" * family
+        parent in parent_set || continue
+        parent_output[(region, parent)] = tonnes
     end
-
-    parent_output = Dict{Tuple{String, String}, Float64}()
-    child_output = Dict{Tuple{String, String, String}, Float64}()
-    rows = read_tsv(OVERLAY_FILE)
-    for row in rows[2:end]
-        from_region, from_node, to_region, to_node, unit, value_str = row
-        unit == "tonnes" || continue
-        from_region == to_region || continue
-        startswith(from_node, "A_") || continue
-        startswith(to_node, "C_") || continue
-        label_from = strip_activity_prefix(from_node)
-        label_to = strip_commodity_prefix(to_node)
-        label_from == label_to || continue
-
-        value = parse(Float64, value_str)
-        if from_node in parent_set
-            parent_output[(from_region, from_node)] = get(parent_output, (from_region, from_node), 0.0) + value
-        elseif haskey(child_to_parent, label_from)
-            parent = child_to_parent[label_from]
-            child_output[(from_region, parent, label_from)] = get(child_output, (from_region, parent, label_from), 0.0) + value
-        end
-    end
-
-    return parent_output, child_output
+    return parent_output
 end
 
 function make_sector_codes(entry::ParentEntry, label::String)
     return string(entry.product_code, "_", label), string(entry.activity_code, "_", label)
 end
 
-function build_split_sectors(parent_entries, parent_children, parent_output, child_output)
+function build_split_sectors(parent_entries, parent_output; output_dir = SUT_DIR)
+    mkpath(output_dir)
     regions = sort(unique(key[1] for key in keys(parent_output)))
     groups = sort(unique(entry.group for entry in parent_entries))
 
@@ -195,7 +144,7 @@ function build_split_sectors(parent_entries, parent_children, parent_output, chi
             group_total = 0.0
             for entry in entries_by_group[group]
                 value = get(parent_output, (region, entry.parent), 0.0)
-                value > 0.0 || error("Missing positive parent output for $(entry.parent) in $(region)")
+                isfinite(value) && value > 0.0 || error("Missing positive parent output for $(entry.parent) in $(region)")
                 group_total += value
             end
             group_total > 0.0 || error("Missing positive group output for $(group) in $(region)")
@@ -203,40 +152,19 @@ function build_split_sectors(parent_entries, parent_children, parent_output, chi
             group_splits = SplitSector[]
             for entry in entries_by_group[group]
                 parent_total = get(parent_output, (region, entry.parent), 0.0)
-                child_sum = 0.0
-                for child in get(parent_children, entry.parent, String[])
-                    output = get(child_output, (region, entry.parent, child), 0.0)
-                    child_sum += output
-                    product_code, activity_code = make_sector_codes(entry, child)
-                    split = SplitSector(
-                        entry.parent,
-                        child,
-                        "child",
-                        product_code,
-                        activity_code,
-                        output,
-                        output / parent_total,
-                        output / group_total,
-                    )
-                    push!(group_splits, split)
-                end
-
-                residual_output = parent_total - child_sum
-                residual_output >= -1.0e-8 || error("Child outputs exceed parent output for $(entry.parent) in $(region)")
-                residual_output = max(residual_output, 0.0)
-                residual_label = string(short_parent(entry.parent), "_res")
-                product_code, activity_code = make_sector_codes(entry, residual_label)
-                residual = SplitSector(
+                family = short_parent(entry.parent)
+                product_code, activity_code = make_sector_codes(entry, family)
+                split = SplitSector(
                     entry.parent,
-                    residual_label,
-                    "residual",
+                    family,
+                    "family",
                     product_code,
                     activity_code,
-                    residual_output,
-                    residual_output / parent_total,
-                    residual_output / group_total,
+                    parent_total,
+                    1.0,
+                    parent_total / group_total,
                 )
-                push!(group_splits, residual)
+                push!(group_splits, split)
             end
 
             total_share = sum(item.within_group_share for item in group_splits)
@@ -292,7 +220,7 @@ function build_split_sectors(parent_entries, parent_children, parent_output, chi
     unique_parent_child_rows = unique(parent_child_rows)
     sort!(unique_parent_child_rows, by = x -> join(x, '\t'))
     write_tsv(
-        OUT_SPLIT_MAP,
+        joinpath(output_dir, basename(OUT_SPLIT_MAP)),
         [
             "shared_parent_group",
             "ce_rise_parent",
@@ -306,7 +234,7 @@ function build_split_sectors(parent_entries, parent_children, parent_output, chi
         unique_map_rows,
     )
     write_tsv(
-        OUT_PARENT_CHILD_MAP,
+        joinpath(output_dir, basename(OUT_PARENT_CHILD_MAP)),
         [
             "shared_parent_group",
             "ce_rise_parent",
@@ -323,7 +251,7 @@ function build_split_sectors(parent_entries, parent_children, parent_output, chi
         unique_parent_child_rows,
     )
     write_tsv(
-        OUT_SHARES,
+        joinpath(output_dir, basename(OUT_SHARES)),
         [
             "region",
             "shared_parent_group",
@@ -358,15 +286,16 @@ function write_row(io, fields::AbstractVector{<:AbstractString})
     println(io, join(fields, '\t'))
 end
 
-function split_supply(parent_entries, splits, product_group, activity_group)
+function split_supply(parent_entries, splits, product_group, activity_group;
+                      infile = SUPPLY_FILE, outfile = OUT_SUPPLY)
     input_rows = 0
     output_rows = 0
     input_total = 0.0
     output_total = 0.0
 
-    open(OUT_SUPPLY, "w") do out
+    open(outfile, "w") do out
         println(out, "product_region\tproduct_code\tactivity_region\tactivity_code\tvalue_meur")
-        open(SUPPLY_FILE, "r") do io
+        open(infile, "r") do io
             readline(io)
             for line in eachline(io)
                 input_rows += 1
@@ -426,15 +355,16 @@ function split_supply(parent_entries, splits, product_group, activity_group)
     return input_rows, output_rows, input_total, output_total
 end
 
-function split_use(parent_entries, splits, product_group, activity_group)
+function split_use(parent_entries, splits, product_group, activity_group;
+                   infile = USE_FILE, outfile = OUT_USE)
     input_rows = 0
     output_rows = 0
     input_total = 0.0
     output_total = 0.0
 
-    open(OUT_USE, "w") do out
+    open(outfile, "w") do out
         println(out, "product_region\tproduct_code\tuse_region\tuse_code\tvalue_meur")
-        open(USE_FILE, "r") do io
+        open(infile, "r") do io
             readline(io)
             for line in eachline(io)
                 input_rows += 1
@@ -488,9 +418,8 @@ end
 
 function main()
     parent_entries = load_parent_map()
-    parent_children = load_parent_children()
-    parent_output, child_output = parse_overlay_outputs(parent_entries, parent_children)
-    splits = build_split_sectors(parent_entries, parent_children, parent_output, child_output)
+    parent_output = load_parent_outputs(parent_entries)
+    splits = build_split_sectors(parent_entries, parent_output)
     product_group, activity_group = target_group_maps(parent_entries)
 
     supply_stats = split_supply(parent_entries, splits, product_group, activity_group)
@@ -507,4 +436,6 @@ function main()
     println("Use rows:    ", use_stats[1], " -> ", use_stats[2], "   total=", use_stats[3], " -> ", use_stats[4])
 end
 
-main()
+if abspath(PROGRAM_FILE) == @__FILE__
+    main()
+end
