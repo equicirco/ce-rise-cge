@@ -1,4 +1,5 @@
 using Test
+include("input_data.jl")
 using DataFrames: DataFrame, nrow
 using CERiseCGE
 using JCGEBlocks

@@ -7,7 +7,7 @@ Only direct BONSAI flows recorded in tonnes are retained.  The output does not
 construct product counts, metal contents, recovery yields, or a complete
 end-of-life stream.  It records:
 
-- family-level new-product output from parent activity-to-product flows;
+- family-level new-product output from the V2 workbook's parent production;
 - identified mass flows from family markets to repair, reuse, recycling, and
   incineration/landfill activities.
 
@@ -15,6 +15,9 @@ The latter are labelled `route_input_mass`: they are observed inputs to an
 identified circular route, not an assertion that they exhaust all end-of-life
 products in a region.
 """
+
+include(joinpath(@__DIR__, "bonsai_family_outputs.jl"))
+using .BonsaiFamilyOutputs
 
 const ROOT_DIR = normpath(joinpath(@__DIR__, "..", ".."))
 const DISAGGREGATION_FILE = joinpath(
@@ -30,11 +33,6 @@ const OUT_SUMMARY = joinpath(OUTDIR, "regional_observed_physical_flows.tsv")
 const OUT_VALIDATION = joinpath(OUTDIR, "physical_satellite_validation.tsv")
 
 const MODEL_REGIONS = Set(["DE", "FR", "IT", "PL", "SK", "REU"])
-const PARENT_OUTPUTS = Dict(
-    "A_ELMA" => (family = "ELMA", product = "C_ELMA"),
-    "A_OFMA" => (family = "OFMA", product = "C_OFMA"),
-    "A_RATV" => (family = "RATV", product = "C_RATV"),
-)
 const FAMILY_MARKETS = Dict(
     "M_ELMA" => "ELMA",
     "M_ELMA_c" => "ELMA",
@@ -125,12 +123,6 @@ function collected_flows(region_map)
             value = parse(Float64, fields[index["value"]])
             value > 0.0 || continue
 
-            if haskey(PARENT_OUTPUTS, source) && target == PARENT_OUTPUTS[source].product
-                family = PARENT_OUTPUTS[source].family
-                key = (region, family, "NEW", "new_product_output", origin_country, source, target, unit)
-                detail[key] = get(detail, key, 0.0) + value
-            end
-
             family = get(FAMILY_MARKETS, source, nothing)
             route = route_for_activity(target)
             if family !== nothing && route !== nothing
@@ -138,6 +130,16 @@ function collected_flows(region_map)
                 detail[key] = get(detail, key, 0.0) + value
             end
         end
+    end
+    # NEW output uses the archived V2 parent_production observations, also
+    # used when preparing the monetary SUT. Other route inputs retain their
+    # supplied-file provenance.
+    for ((country, family), tonnes) in load_family_outputs()
+        region = get(region_map, country, nothing)
+        region in MODEL_REGIONS || continue
+        key = (region, family, "NEW", "new_product_output", country,
+               "A_" * family, "C_" * family, "tonnes")
+        detail[key] = tonnes
     end
     return detail
 end
@@ -166,7 +168,7 @@ function summary_rows(detail)
             string(value),
             string(count),
             "observed",
-            "BONSAI-derived CE-RISE disaggregation",
+            flow_kind == "new_product_output" ? "BONSAI V2; DOI " * SOURCE_DOI : "BONSAI-derived CE-RISE disaggregation",
             source_rule,
         ])
     end
@@ -206,7 +208,7 @@ function main()
             unit,
             string(detail[key]),
             "observed",
-            "BONSAI-derived CE-RISE disaggregation",
+            flow_kind == "new_product_output" ? "BONSAI V2; DOI " * SOURCE_DOI : "BONSAI-derived CE-RISE disaggregation",
         ])
     end
     summary = summary_rows(detail)
@@ -228,4 +230,6 @@ function main()
     println("  ", OUT_VALIDATION)
 end
 
-main()
+if abspath(PROGRAM_FILE) == @__FILE__
+    main()
+end

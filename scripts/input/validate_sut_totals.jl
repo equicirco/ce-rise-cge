@@ -52,6 +52,7 @@ const STAGE1_FILES = [
     "figaro_reference_supply.tsv",
     "figaro_reference_use.tsv",
     "bonsai_relevant_overlay_regions.tsv",
+    "bonsai_family_outputs.tsv",
     "ce_rise_parent_to_figaro.tsv",
 ]
 const STAGE2_VALIDATION = joinpath(STAGE2_DIR, "integrated_validation.tsv")

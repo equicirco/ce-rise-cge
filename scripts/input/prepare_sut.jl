@@ -23,6 +23,10 @@ Node prefixes in the collaborator data:
 - M_: market
 
 Important:
+- parent-family production comes from the V2 workbook (DOI
+  10.5281/zenodo.23342753), imported into bonsai_family_outputs.tsv;
+- normalization replaces only the supplied parent activity-to-product
+  outputs in tonnes; other supplied transactions retain their source values;
 - the collaborator disaggregation overlay is not globally balanced on its own
 - it must be applied to a full monetary SUT base
 - balancing comes after the overlay is mapped into the monetary layer
@@ -32,6 +36,9 @@ This script does not yet do the final balancing. It prepares:
 2. a cleaned CE-RISE disaggregation overlay
 3. simple summaries needed for the next SUT-disaggregation step
 """
+
+include(joinpath(@__DIR__, "bonsai_family_outputs.jl"))
+using .BonsaiFamilyOutputs
 
 const ROOT_DIR = normpath(joinpath(@__DIR__, "..", ".."))
 const FIGARO_DIR = joinpath(ROOT_DIR, "data", "interim", "figaro_2016")
@@ -92,11 +99,16 @@ function parse_csv_line(line::AbstractString)
     return split(chomp(line), ',')
 end
 
-function normalize_disaggregation_overlay()
-    infile = joinpath(DISAGG_DIR, "parent_and_disaggregated_rows_sup_and_use.csv")
-    outfile = joinpath(OUTDIR, "sut_disaggregation_overlay.tsv")
+function normalize_disaggregation_overlay(;
+    infile = joinpath(DISAGG_DIR, "parent_and_disaggregated_rows_sup_and_use.csv"),
+    outfile = joinpath(OUTDIR, "sut_disaggregation_overlay.tsv"),
+    units_file = joinpath(OUTDIR, "sut_disaggregation_units.tsv"),
+    family_output_file = FAMILY_OUTPUT_FILE,
+)
+    family_outputs = load_family_outputs(family_output_file)
     unit_summary = Dict{String, Int}()
     row_count = 0
+    replaced_outputs = Set{Tuple{String,String}}()
 
     open(infile, "r") do input
         header = parse_csv_line(readline(input))
@@ -125,6 +137,14 @@ function normalize_disaggregation_overlay()
                 to_node = fields[idx["to_node_name"]]
                 unit = fields[idx["unit"]]
                 value = fields[idx["value"]]
+                family = output_family(from_country, from_node, to_country, to_node, unit)
+                if family !== nothing
+                    key = (String(from_country), family)
+                    key in replaced_outputs && error("Duplicate supplied parent output: $key")
+                    haskey(family_outputs, key) || error("Missing V2 family output: $key")
+                    value = string(family_outputs[key])
+                    push!(replaced_outputs, key)
+                end
                 println(output, join([from_country, from_node, to_country, to_node, unit, value], '\t'))
                 unit_summary[unit] = get(unit_summary, unit, 0) + 1
                 row_count += 1
@@ -133,7 +153,7 @@ function normalize_disaggregation_overlay()
     end
 
     summary_rows = [String[unit, string(count)] for (unit, count) in sort(collect(unit_summary), by = x -> x[1])]
-    write_lines(joinpath(OUTDIR, "sut_disaggregation_units.tsv"), ["unit", "rows"], summary_rows)
+    write_lines(units_file, ["unit", "rows"], summary_rows)
 
     return outfile, row_count
 end
@@ -168,4 +188,6 @@ function main()
     println("and then apply the disaggregation overlay before balancing the monetary SUT.")
 end
 
-main()
+if abspath(PROGRAM_FILE) == @__FILE__
+    main()
+end
