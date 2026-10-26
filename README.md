@@ -7,7 +7,7 @@ Primary and manufactured products clear through common EU markets with one EU pr
 
 - `data/disaggregation/`: the supplied electronics SUT extract, family-production totals from the [BONSAI V2 archive](https://doi.org/10.5281/zenodo.23342753), and discarded-equipment treatment records from the [2016 supply table](https://doi.org/10.5281/zenodo.23157221). Julia importers are in `scripts/input/`.
 - `data/mappings/`: regional, sectoral, and model-configuration mappings.
-- `data/artifacts/`: persisted supply-use, input-output, and social-accounting-matrix artifacts.
+- `data/artifacts/`: persisted supply-use, input-output, and social-accounting-matrix artifacts, plus 18 verified family-production mass anchors.
 - `scripts/input/`: data preparation, balancing, validation, and calibration-data construction scripts.
 - `scripts/analysis/`: policy-sensitivity analysis and reproducible solution workflows.
 - `src/`: the Julia implementation of the CGE model.

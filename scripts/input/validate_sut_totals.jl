@@ -854,6 +854,40 @@ function treatment_allocation_check(path = STAGE3_TREATMENT_ALLOCATION;
         "Recorded treatment-service quantities remain separate from the assumed positive disposal seed; recycling and disposal preserve their monetary total.")
 end
 
+function physical_anchor_check(path = joinpath(STAGE8_DIR, "regional_observed_physical_flows.tsv"))
+    if !isfile(path)
+        return artifact_row("08_six_region_bundle", "verified_physical_anchors", "FAIL", path,
+            "missing", "18 V2 production anchors", "Required physical observation table.")
+    end
+    region_map = Dict(row[1] => row[2] for row in read_tsv(
+        joinpath(ROOT_DIR, "data", "mappings", "figaro_region_map.tsv"))[2:end])
+    source = aggregate_family_outputs(region_map)
+    expected = Set((region, family) for region in ("DE", "FR", "IT", "PL", "SK", "REU")
+        for family in ("ELMA", "OFMA", "RATV"))
+    table = read_tsv(path)
+    index = Dict(name => i for (i, name) in enumerate(table[1]))
+    seen = Set{Tuple{String,String}}()
+    valid = true
+    max_gap = 0.0
+    for row in table[2:end]
+        field(name) = row[index[name]]
+        key = (field("region"), field("family"))
+        if !(key in expected) || key in seen
+            valid = false
+            continue
+        end
+        push!(seen, key)
+        value = parse(Float64, field("value_tonnes"))
+        valid &= field("route") == "NEW" && field("flow_kind") == "new_product_output" &&
+            field("physical_unit") == "tonnes" && field("status") == "observed" && isfinite(value) && value > 0
+        max_gap = max(max_gap, abs(value - source[key]))
+    end
+    valid &= seen == expected && max_gap <= 1e-6
+    return artifact_row("08_six_region_bundle", "verified_physical_anchors", artifact_status(valid), path,
+        "anchors=$(length(seen)); max_source_gap_tonnes=$max_gap", "18 production anchors; source gap <= 1e-6 tonnes",
+        "Only independently identified family-production observations anchor physical quantities; route-service proxies and bottle reuse are excluded.")
+end
+
 function artifact_report_rows()
     rows = Vector{Vector{String}}()
 
@@ -873,6 +907,7 @@ function artifact_report_rows()
     append_stage6_checks!(rows)
     append_stage7_checks!(rows)
     append_stage8_checks!(rows)
+    push!(rows, physical_anchor_check())
 
     return rows
 end

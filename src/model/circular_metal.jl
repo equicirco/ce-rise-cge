@@ -5,13 +5,13 @@ Every monetary use and output of `BASIC_METALS` and `REC_EE` is converted
 with one fixed external METAL price.  This gives a common physical unit to
 all industries, the CE-RISE routes, final demand, and extra-European exports.
 Domestic primary and recycled supply are the corresponding physical outputs
-of `BASIC_METALS` and `REC_EE`.  The observed recycling-throughput series and
-its recovery-yield sensitivity are retained as a separate physical satellite;
-they do not stand in for the full calibrated `REC_EE` output.  External
-imports close the common physical material balance.
+of `BASIC_METALS` and `REC_EE`. Independently validated recycling-throughput
+anchors can support an additional satellite; the current data provide only
+new-product production anchors. External imports close the common physical
+material balance.
 """
 
-"""Return the physical coefficients needed by the baseline METAL market."""
+"""Return metal-account coefficients; recovery yield applies only with validated recycling-mass anchors."""
 function circular_metal_parameter_schema(model::MultiRegionModelSpec)
     required = Set(["external_price", "recovery_yield"])
     return filter(row -> String(row.coefficient_kind) in required,
@@ -725,7 +725,8 @@ function circular_metal_blocks(model::MultiRegionModelSpec,
     lower = Float64(positive_lower)
     lower > 0.0 || error("Circular-metal variable lower bound must be strictly positive.")
     structure = _circular_metal_structure(model, profile)
-    blocks = Any[
+    blocks = Any[]
+    isempty(structure.recovery_driver) || push!(blocks,
         JCGEBlocks.quantity_link(
             :observed_recycling_throughput,
             sort!(collect(keys(structure.recovery_driver))),
@@ -733,8 +734,7 @@ function circular_metal_blocks(model::MultiRegionModelSpec,
             quantity_var = _CIRCULAR_METAL_VAR,
             lower = 0.0,
             params = (coefficient = structure.recovery_coefficient,),
-        ),
-    ]
+        ))
     isempty(structure.observed_recycled_inputs) || push!(blocks,
         JCGEBlocks.quantity_transformation(
             :observed_recycled_metal_output,
@@ -827,7 +827,7 @@ end
 function circular_metal_coverage(model::MultiRegionModelSpec)
     observed = model.outline.bundle.physical_flows
     rows = NamedTuple[]
-    for route in (:NEW, :REF, :REP, :REU, :REC)
+    for route in (:NEW, :REF, :REP, :REU, :REC, :INC)
         kind = route === :NEW ? :new_product_output : :route_input_mass
         count_rows = count(row -> String(row.status) == "observed" &&
             Symbol(row.route) === route && Symbol(row.flow_kind) === kind,

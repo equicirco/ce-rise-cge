@@ -41,7 +41,6 @@ const FAMILY_MARKETS = Set([
 const EXACT_CIRCULAR_NODES = Set([
     "A_REPAIR", "A_REP_INST", "A_ORGA|A_PERS_SER|A_REPAIR",
     "M_REPAIR", "M_REP_INST", "M_ORGA|M_PERS_SER|M_REPAIR",
-    "A_GLAS_reuse",
 ])
 
 function ensure_dir(path::AbstractString)

@@ -2,6 +2,7 @@ using Test
 include("input_data.jl")
 include("manufacturing_allocation.jl")
 include("treatment_allocation.jl")
+include("physical_anchor_coverage.jl")
 using DataFrames: DataFrame, nrow
 using CERiseCGE
 using JCGEBlocks
@@ -9,6 +10,7 @@ using JCGECore
 using JCGEOutput
 using JCGERuntime
 using JuMP
+include("physical_anchor_loader.jl")
 
 bundle = default_calibration_bundle()
 
@@ -189,7 +191,7 @@ blocks = multi_region_blocks(model.outline, model.calibration, model.scenario;
 @test blocks.utility isa CERiseCGE.CircularHouseholdUtilityBlock
 @test blocks.circular_policy === nothing
 @test blocks.physical_quantity_links isa JCGEBlocks.QuantityLinkBlock
-@test length(blocks.physical_quantity_links.quantities) == 78
+@test length(blocks.physical_quantity_links.quantities) == 18
 @test JCGEBlocks.inventory_treatment(blocks.trade) == JCGEBlocks.inventory_treatment(blocks.investment_pool)
 @test JCGEBlocks.inventory_treatment(blocks.trade) == JCGEBlocks.inventory_treatment(blocks.market_clearing)
 @test JCGEBlocks.inventory_treatment(blocks.trade).mode == :stock_change
@@ -421,7 +423,7 @@ recycling_sweep = policy_sweep_summary(baseline_result, model, recycling_path)
 physical_spec = physical_satellite_spec(model)
 @test nrow(physical_spec.quantity_bridge) == 126
 @test nrow(physical_spec.coefficients) == 138
-@test nrow(physical_spec.observed_flows) == 78
+@test nrow(physical_spec.observed_flows) == 18
 physical_readiness = physical_satellite_readiness(model)
 @test !physical_readiness.ready
 @test !physical_readiness.quantity_value_column
@@ -430,7 +432,7 @@ physical_readiness = physical_satellite_readiness(model)
 @test physical_readiness.template_coefficient_rows == 138
 @test physical_readiness.model_anchor_rows == 84
 @test physical_readiness.unbound_anchor_rows == 42
-@test physical_readiness.observed_flow_rows == 78
+@test physical_readiness.observed_flow_rows == 18
 @test physical_readiness.observed_new_output_rows == 18
 @test physical_readiness.observed_anchor_ready
 physical_indices = physical_quantity_indices(baseline_result, model)
@@ -444,15 +446,15 @@ physical_requirements = physical_mass_balance_requirements(model)
 @test count(==( :life_extension_yield), physical_requirements.balance) == 54
 @test count(==( :recycling_metal_yield), physical_requirements.balance) == 6
 physical_flows = observed_physical_flows(model)
-@test nrow(physical_flows) == 78
+@test nrow(physical_flows) == 18
 @test count(row -> row.route == "NEW" && row.flow_kind == "new_product_output", eachrow(physical_flows)) == 18
 @test all(row -> row.physical_unit == "tonnes" && row.status == "observed" && row.value_tonnes > 0.0, eachrow(physical_flows))
 physical_anchors = physical_flow_anchors(model)
-@test length(physical_anchors) == 78
+@test length(physical_anchors) == 18
 @test all(anchor -> anchor isa SatelliteAnchor && anchor.unit == "tonnes" &&
     anchor.base_quantity > 0.0 && anchor.base_driver == 1.0, physical_anchors)
 physical_projection = physical_flow_projection(baseline_result, model)
-@test nrow(physical_projection) == 78
+@test nrow(physical_projection) == 18
 @test all(==( :projected), physical_projection.status)
 @test all(value -> isfinite(value) && value > 0.0, physical_projection.projected_tonnes)
 @test all(isapprox(row.model_quantity_index, 1.0; atol = 1.0e-12, rtol = 0.0)
@@ -468,9 +470,9 @@ physical_driver_report = physical_calibration_driver_report(baseline_result, mod
 @test all(isfinite, physical_driver_report.relative_difference)
 physical_report = physical_baseline_report(baseline_result, model)
 @test physical_report.readiness == physical_readiness
-@test nrow(physical_report.observed_flows) == 78
+@test nrow(physical_report.observed_flows) == 18
 @test nrow(physical_report.quantity_indices) == 126
-@test nrow(physical_report.flow_projection) == 78
+@test nrow(physical_report.flow_projection) == 18
 @test physical_report.flow_reference.id == physical_reference.id
 @test physical_report.flow_reference.drivers == physical_reference.drivers
 @test nrow(physical_report.calibration_driver_report) == nrow(physical_projection)
@@ -487,10 +489,11 @@ metal_model = multi_region_model(; bundle = bundle, circular_metal = metal_profi
 metal_spec = run_spec(metal_model)
 metal_blocks = multi_region_blocks(metal_model.outline, metal_model.calibration,
     metal_model.scenario; circular_metal = metal_profile)
-@test length(metal_blocks.circular_metal) == 6
+@test length(metal_blocks.circular_metal) == 4
 @test length(metal_spec.model.blocks) == length(spec.model.blocks)
 metal_coverage = circular_metal_coverage(metal_model)
-@test metal_coverage.complete == Bool[true, false, true, false, false]
+@test metal_coverage.complete == Bool[true, false, false, false, false, false]
+@test all(==(0), metal_coverage.observed_rows[2:end])
 metal_result = run_baseline(metal_model; tol = 1.0e-4)
 @test JuMP.termination_status(metal_result.context.model) == JuMP.MOI.ALMOST_LOCALLY_SOLVED
 @test metal_result.scaled_summary.above_tol == 0
@@ -499,7 +502,7 @@ metal_projection = circular_metal_projection(metal_result, metal_model)
 @test all(isfinite, metal_projection.tonnes)
 @test all(row -> row.quantity_kind === :metal_inventory_change || row.tonnes >= -1.0e-2,
     eachrow(metal_projection))
-@test count(==( :observed_recycled_metal_output), metal_projection.quantity_kind) == 6
+@test count(==( :observed_recycled_metal_output), metal_projection.quantity_kind) == 0
 @test count(==( :recycled_metal_output), metal_projection.quantity_kind) == 6
 @test count(==( :primary_metal_output), metal_projection.quantity_kind) == 6
 @test sum(metal_projection.tonnes[metal_projection.quantity_kind .== :primary_metal_output]) > 0.0
@@ -523,4 +526,4 @@ metal_physical_report = physical_baseline_report(metal_result, metal_model)
 summary = summary_row(model)
 @test summary.regions == 6
 @test summary.industries == 150
-@test summary.observed_physical_flow_rows == 78
+@test summary.observed_physical_flow_rows == 18

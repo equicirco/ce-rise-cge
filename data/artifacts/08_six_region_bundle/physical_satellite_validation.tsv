@@ -1,5 +1,6 @@
 check	status	observed	expected	notes
-new_product_output_coverage	pass	18	18	All region-family new-product mass anchors are present.
-positive_mass_flows	pass	all_positive	all_positive	Observed physical flows must be strictly positive.
-tonnes_only	pass	tonnes	tonnes	The first satellite retains the observed mass basis without product-count conversion.
-observed_only	pass	observed	observed	This stage does not construct physical values.
+new_product_output_coverage	pass	18	18	One production anchor for each modeled region and electronics family.
+verified_observation_scope	pass	NEW production only	NEW production only	Business purchases and bottle reuse do not measure used-device throughput.
+positive_mass_flows	pass	true	true	Verified production masses are finite and strictly positive.
+tonnes_only	pass	true	true	Production anchors use tonnes; treatment-service quantities remain allocation proxies.
+V2_source_output_match	pass	1.4901161193847656e-8	<= 1e-6 tonnes	Aggregated anchors reproduce the V2 source outputs within summation precision.

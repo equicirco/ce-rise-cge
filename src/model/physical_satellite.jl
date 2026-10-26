@@ -4,9 +4,9 @@ Physical-accounting interface for the CE-RISE model.
 Observed physical flows are represented by generic, normalized volume-index
 variables. `JCGEOutput` converts those indices to physical quantities through
 observed anchors and remains responsible for baseline-referenced projection
-and post-solution diagnostics.  When a `CircularMetalProfile` is supplied,
-additional tonne-level quantities transform observed route masses into metal
-use and recycled-metal output.
+and post-solution diagnostics. The current observations anchor new-product
+production. A `CircularMetalProfile` adds primary- and recycled-metal quantities
+derived from the calibrated economic accounts at a common metal price.
 """
 
 struct PhysicalSatelliteSpec

@@ -41,13 +41,31 @@ function _load_tsv(path::AbstractString)
     return DataFrame(CSV.File(path; delim = '\t'))
 end
 
+function _load_observed_physical_flows(path, sets)
+    flows = _load_tsv(path)
+    expected = Set((String(region), String(family)) for region in sets[:regions] for family in sets[:families])
+    seen = Set{Tuple{String,String}}()
+    for row in eachrow(flows)
+        String(row.route) == "NEW" && String(row.flow_kind) == "new_product_output" &&
+            String(row.status) == "observed" && String(row.physical_unit) == "tonnes" ||
+            error("Unsupported physical observation in $path; regenerate the verified family-production anchors.")
+        key = (String(row.region), String(row.family))
+        key in seen && error("Duplicate physical production anchor: $key")
+        push!(seen, key)
+        isfinite(row.value_tonnes) && row.value_tonnes > 0 || error("Invalid production mass for $key")
+    end
+    seen == expected || error("Physical production anchors do not cover the model's region-family combinations")
+    return flows
+end
+
 function load_calibration_bundle(name::Symbol = :eu_2016_six_region; data_dir::AbstractString = datadir())
     dir = bundle_dir(name; data_dir = data_dir)
     isdir(dir) || error("Calibration bundle directory does not exist: $(dir)")
+    sets = JCGECalibrate.load_canonical_sets(dir)
     return CalibrationBundle(
         name,
         dir,
-        JCGECalibrate.load_canonical_sets(dir),
+        sets,
         JCGECalibrate.load_canonical_labels(dir),
         JCGECalibrate.load_canonical_subsets(dir),
         _load_optional_csv(joinpath(dir, "mappings.csv")),
@@ -58,7 +76,7 @@ function load_calibration_bundle(name::Symbol = :eu_2016_six_region; data_dir::A
         _load_tsv(joinpath(dir, "regional_physical_coefficient_template.tsv")),
         _load_tsv(joinpath(dir, "regional_circular_metal_baseline.tsv")),
         _load_tsv(joinpath(dir, "regional_physical_quantity_bridge_template.tsv")),
-        _load_tsv(joinpath(dir, "regional_observed_physical_flows.tsv")),
+        _load_observed_physical_flows(joinpath(dir, "regional_observed_physical_flows.tsv"), sets),
         _load_tsv(joinpath(dir, "model_configuration.tsv")),
         _load_tsv(joinpath(dir, "policy_wedge_grid.tsv")),
         _load_tsv(joinpath(dir, "sensitivity_parameter_grid.tsv")),
