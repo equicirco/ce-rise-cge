@@ -1,0 +1,3 @@
+key	value	notes
+zero_disposal_share	0.0001	Assumed disposal share only where recorded disposal is zero; recycling receives the complement and the monetary treatment total is preserved.
+seed_bound_multiple	1000	Require a seeded disposal activity's output to exceed this multiple of the existing model positive lower bound.

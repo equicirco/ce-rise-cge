@@ -8,6 +8,9 @@ specification, including explicit constructed REF/REU sectors so the target
 SUT already matches the intended model routes.
 """
 
+include(joinpath(@__DIR__, "discarded_equipment_treatment.jl"))
+using .DiscardedEquipmentTreatment
+
 const ROOT_DIR = normpath(joinpath(@__DIR__, "..", ".."))
 const ARTIFACT2_DIR = joinpath(ROOT_DIR, "data", "artifacts", "02_integrated_sut")
 const STRUCTURE_DIR = joinpath(ROOT_DIR, "data", "interim", "structure")
@@ -16,7 +19,7 @@ const OUTDIR = joinpath(ROOT_DIR, "data", "artifacts", "03_final_preparation")
 
 const IN_SUPPLY = joinpath(ARTIFACT2_DIR, "integrated_supply.tsv")
 const IN_USE = joinpath(ARTIFACT2_DIR, "integrated_use.tsv")
-const ROUTE_TOTALS = joinpath(STRUCTURE_DIR, "circular_route_category_totals.tsv")
+const TREATMENT_SHARES = joinpath(STRUCTURE_DIR, "discarded_equipment_treatment_shares.tsv")
 const FINAL_REGISTRY = joinpath(MAP_DIR, "final_sector_registry.tsv")
 
 const OUT_SUPPLY = joinpath(OUTDIR, "final_supply_explicit.tsv")
@@ -26,6 +29,7 @@ const OUT_USE_MAP = joinpath(OUTDIR, "final_use_mapping.tsv")
 const OUT_EXPLICIT_REGISTRY = joinpath(OUTDIR, "explicit_final_sector_registry.tsv")
 const OUT_ROUTE_REGISTRY = joinpath(OUTDIR, "benchmark_construction_route_registry.tsv")
 const OUT_VALIDATION = joinpath(OUTDIR, "final_validation.tsv")
+const OUT_TREATMENT_ALLOCATION = joinpath(OUTDIR, "treatment_allocation.tsv")
 
 const FINAL_DEMAND_CODES = Set(["P3_S13", "P3_S14", "P3_S15", "P51G", "P5M"])
 const SPECIAL_USE_PRODUCT_ROWS = Set(["B2A3G", "D1", "D21X31", "D29X39", "OP_NRES", "OP_RES"])
@@ -77,44 +81,39 @@ function family_from_code(code::AbstractString)
     return nothing
 end
 
-function load_waste_route_shares()
-    rows = read_tsv(ROUTE_TOTALS)
-    totals = Dict{Tuple{String,String,String},Float64}()
-    family_global = Dict{Tuple{String,String},Float64}()
-
-    for row in rows[2:end]
-        region, family, route_category, _, value_str = row
-        value = parse(Float64, value_str)
-        totals[(region, family, route_category)] = value
-        family_global[(family, route_category)] = get(family_global, (family, route_category), 0.0) + value
-    end
-
-    shares = Dict{Tuple{String,String},Tuple{Float64,Float64}}()
-    for (region, family, _) in keys(totals)
-        if haskey(shares, (region, family))
-            continue
-        end
-        recycling = get(totals, (region, family, "recycling"), 0.0)
-        disposal = get(totals, (region, family, "incineration"), 0.0) + get(totals, (region, family, "landfill"), 0.0)
-        denominator = recycling + disposal
-        if denominator > 0.0
-            shares[(region, family)] = (recycling / denominator, disposal / denominator)
-        end
-    end
-
-    fallback = Dict{String,Tuple{Float64,Float64}}()
-    for family in ("ELMA", "OFMA", "RATV")
-        recycling = get(family_global, (family, "recycling"), 0.0)
-        disposal = get(family_global, (family, "incineration"), 0.0) + get(family_global, (family, "landfill"), 0.0)
-        denominator = recycling + disposal
-        fallback[family] = denominator > 0.0 ? (recycling / denominator, disposal / denominator) : (0.5, 0.5)
-    end
-
-    return shares, fallback
+function load_waste_route_shares(path = TREATMENT_SHARES)
+    rows = read_treatment_shares(path)
+    shares = Dict(row.region => (row.calibrated_rec, row.calibrated_inc) for row in rows)
+    return shares, rows
 end
 
-function waste_split(region::AbstractString, family::AbstractString, shares, fallback)
-    return get(shares, (region, family), fallback[family])
+function waste_split(region::AbstractString, family::AbstractString, shares, metadata)
+    family in ("ELMA", "OFMA", "RATV") || error("Unknown waste family $family")
+    haskey(shares, region) || error("Missing recorded treatment mix or external-trade allocation for $region")
+    return shares[region]
+end
+
+function write_treatment_allocation(path, supply_totals, metadata; source_file = IN_SUPPLY)
+    minimum_output = seed_output_floor()
+    budgets = treatment_budgets(source_file)
+    open(path, "w") do io
+        println(io, join(vcat(SHARE_HEADER, ["source_treatment_output_meur", "recycling_output_meur", "disposal_output_meur",
+            "total_treatment_output_meur", "disposal_seed_meur", "seed_above_bound_margin"]), '\t'))
+        for row in metadata
+            output(sector) = sum(value for (key, value) in supply_totals if key[3] == row.region && key[4] == sector; init = 0.0)
+            recycling, disposal = output("REC_EE"), output("INC_EE")
+            total = recycling + disposal
+            total > 0 || error("Missing allocated treatment output for $(row.region)")
+            isapprox(total, budgets[row.region]; atol = 1e-8, rtol = 1e-12) ||
+                error("Treatment allocation changes the source monetary total for $(row.region)")
+            isapprox(disposal / total, row.calibrated_inc; atol = 1e-12, rtol = 1e-12) ||
+                error("Treatment allocation differs from the calibrated share in $(row.region)")
+            above_bound = !row.seeded || disposal > minimum_output
+            above_bound || error("Disposal seed for $(row.region) is too close to the model's quantity lower bound")
+            seed = total * (row.calibrated_inc - row.observed_inc)
+            println(io, join(string.(vcat(collect(values(row)), Any[budgets[row.region], recycling, disposal, total, seed, above_bound])), '\t'))
+        end
+    end
 end
 
 function write_validation(path::AbstractString, supply_input_total::Float64, supply_output_total::Float64, use_input_total::Float64, use_output_total::Float64, supply_n_keys::Int, use_n_keys::Int)
@@ -140,7 +139,7 @@ function total_from_file(path::AbstractString)
     return total
 end
 
-function explicit_product_targets(region::AbstractString, code::AbstractString, waste_shares, waste_fallback)
+function explicit_product_targets(region::AbstractString, code::AbstractString, waste_shares, treatment_metadata)
     code in SPECIAL_USE_PRODUCT_ROWS && return [(code, 1.0)]
 
     if code in ("CPA_C26", "CPA_C27") || startswith(code, "CPA_C26_") || startswith(code, "CPA_C27_")
@@ -170,7 +169,7 @@ function explicit_product_targets(region::AbstractString, code::AbstractString, 
     if startswith(code, "CPA_E37-39_")
         family = family_from_code(code)
         family == "ELMA" || family == "OFMA" || family == "RATV" || error("Unknown waste family for $(code)")
-        rec_share, inc_share = waste_split(region, family, waste_shares, waste_fallback)
+        rec_share, inc_share = waste_split(region, family, waste_shares, treatment_metadata)
         return [("REC_EE", rec_share), ("INC_EE", inc_share)]
     end
 
@@ -202,7 +201,7 @@ function explicit_product_targets(region::AbstractString, code::AbstractString, 
     error("Unmapped product code $(code)")
 end
 
-function explicit_use_targets(region::AbstractString, code::AbstractString, waste_shares, waste_fallback)
+function explicit_use_targets(region::AbstractString, code::AbstractString, waste_shares, treatment_metadata)
     code in FINAL_DEMAND_CODES && return [(code, 1.0)]
 
     if code in ("C26", "C27") || startswith(code, "C26_") || startswith(code, "C27_")
@@ -232,7 +231,7 @@ function explicit_use_targets(region::AbstractString, code::AbstractString, wast
     if startswith(code, "E37-E39_")
         family = family_from_code(code)
         family == "ELMA" || family == "OFMA" || family == "RATV" || error("Unknown waste family for $(code)")
-        rec_share, inc_share = waste_split(region, family, waste_shares, waste_fallback)
+        rec_share, inc_share = waste_split(region, family, waste_shares, treatment_metadata)
         return [("REC_EE", rec_share), ("INC_EE", inc_share)]
     end
 
@@ -264,8 +263,8 @@ function explicit_use_targets(region::AbstractString, code::AbstractString, wast
     error("Unmapped use code $(code)")
 end
 
-function aggregate_supply(waste_shares, waste_fallback)
-    rows = read_tsv(IN_SUPPLY)
+function aggregate_supply(waste_shares, treatment_metadata; infile = IN_SUPPLY)
+    rows = read_tsv(infile)
     totals = Dict{NTuple{4,String},Float64}()
     map_rows = Vector{Vector{String}}()
 
@@ -273,8 +272,8 @@ function aggregate_supply(waste_shares, waste_fallback)
     for row in rows[2:end]
         product_region, product_code, activity_region, activity_code, value_str = row
         value = parse(Float64, value_str)
-        product_targets = explicit_product_targets(product_region, product_code, waste_shares, waste_fallback)
-        activity_targets = explicit_use_targets(activity_region, activity_code, waste_shares, waste_fallback)
+        product_targets = explicit_product_targets(product_region, product_code, waste_shares, treatment_metadata)
+        activity_targets = explicit_use_targets(activity_region, activity_code, waste_shares, treatment_metadata)
 
         for (psector, pshare) in product_targets
             map_key = (product_region, product_code, psector, string(pshare))
@@ -288,8 +287,8 @@ function aggregate_supply(waste_shares, waste_fallback)
     return totals, sort!(map_rows, by = x -> join(x, '\t'))
 end
 
-function aggregate_use(waste_shares, waste_fallback)
-    rows = read_tsv(IN_USE)
+function aggregate_use(waste_shares, treatment_metadata; infile = IN_USE)
+    rows = read_tsv(infile)
     totals = Dict{NTuple{4,String},Float64}()
     map_rows = Vector{Vector{String}}()
 
@@ -297,8 +296,8 @@ function aggregate_use(waste_shares, waste_fallback)
     for row in rows[2:end]
         product_region, product_code, use_region, use_code, value_str = row
         value = parse(Float64, value_str)
-        product_targets = explicit_product_targets(product_region, product_code, waste_shares, waste_fallback)
-        use_targets = explicit_use_targets(use_region, use_code, waste_shares, waste_fallback)
+        product_targets = explicit_product_targets(product_region, product_code, waste_shares, treatment_metadata)
+        use_targets = explicit_use_targets(use_region, use_code, waste_shares, treatment_metadata)
 
         for (use_sector, use_share) in use_targets
             map_key = (use_region, use_code, use_sector, string(use_share))
@@ -335,10 +334,10 @@ end
 
 function main()
     ensure_dir(OUTDIR)
-    waste_shares, waste_fallback = load_waste_route_shares()
+    waste_shares, treatment_metadata = load_waste_route_shares()
 
-    supply_totals, product_map_rows = aggregate_supply(waste_shares, waste_fallback)
-    use_totals, use_map_rows = aggregate_use(waste_shares, waste_fallback)
+    supply_totals, product_map_rows = aggregate_supply(waste_shares, treatment_metadata)
+    use_totals, use_map_rows = aggregate_use(waste_shares, treatment_metadata)
     supply_input_total = total_from_file(IN_SUPPLY)
     use_input_total = total_from_file(IN_USE)
 
@@ -347,6 +346,7 @@ function main()
     write_tsv(OUT_PRODUCT_MAP, ["region", "product_code", "product_sector", "share"], product_map_rows)
     write_tsv(OUT_USE_MAP, ["region", "product_code", "product_sector", "share"], use_map_rows)
     write_registry_slices()
+    write_treatment_allocation(OUT_TREATMENT_ALLOCATION, supply_totals, treatment_metadata)
     write_validation(OUT_VALIDATION, supply_input_total, sum(values(supply_totals)), use_input_total, sum(values(use_totals)), length(supply_totals), length(use_totals))
 
     println("Wrote stage-3 artifacts to ", OUTDIR)

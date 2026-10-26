@@ -25,6 +25,7 @@ const REGION_MAP = joinpath(MAP_DIR, "figaro_region_map.tsv")
 const PARENT_MAP = joinpath(MAP_DIR, "ce_rise_parent_to_figaro.tsv")
 const PARENT_CHILDREN = joinpath(SUT_DIR, "sut_parent_children.tsv")
 const FAMILY_OUTPUTS = joinpath(ROOT_DIR, "data", "disaggregation", "bonsai_family_outputs.tsv")
+const TREATMENT_OUTPUTS = joinpath(ROOT_DIR, "data", "disaggregation", "bonsai_discarded_equipment_treatment.tsv")
 
 const CE_RISE_PARENTS = Set(["A_ELMA", "A_OFMA", "A_RATV"])
 const CE_RISE_CHILDREN = Set([
@@ -116,6 +117,8 @@ function main()
     copy_tsv(PARENT_MAP, joinpath(OUTDIR, "ce_rise_parent_to_figaro.tsv"))
     copy_tsv(PARENT_CHILDREN, joinpath(OUTDIR, "ce_rise_parent_children.tsv"))
     copy_tsv(FAMILY_OUTPUTS, joinpath(OUTDIR, "bonsai_family_outputs.tsv"))
+    copy_tsv(TREATMENT_OUTPUTS, joinpath(OUTDIR, "bonsai_discarded_equipment_treatment.tsv"))
+    copy_tsv(joinpath(MAP_DIR, "treatment_allocation.tsv"), joinpath(OUTDIR, "treatment_allocation.tsv"))
 
     write_tsv(
         joinpath(OUTDIR, "artifact_summary.tsv"),

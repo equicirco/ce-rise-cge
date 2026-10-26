@@ -22,6 +22,8 @@ closed SAM used as the benchmark calibration base.
 
 include(joinpath(@__DIR__, "bonsai_family_outputs.jl"))
 using .BonsaiFamilyOutputs
+include(joinpath(@__DIR__, "discarded_equipment_treatment.jl"))
+using .DiscardedEquipmentTreatment
 
 const ROOT_DIR = normpath(joinpath(@__DIR__, "..", ".."))
 const SUT_DIR = joinpath(ROOT_DIR, "data", "interim", "sut_2016")
@@ -57,10 +59,13 @@ const STAGE1_FILES = [
     "figaro_reference_use.tsv",
     "bonsai_relevant_overlay_regions.tsv",
     "bonsai_family_outputs.tsv",
+    "bonsai_discarded_equipment_treatment.tsv",
+    "treatment_allocation.tsv",
     "ce_rise_parent_to_figaro.tsv",
 ]
 const STAGE2_VALIDATION = joinpath(STAGE2_DIR, "integrated_validation.tsv")
 const STAGE3_VALIDATION = joinpath(STAGE3_DIR, "final_validation.tsv")
+const STAGE3_TREATMENT_ALLOCATION = joinpath(STAGE3_DIR, "treatment_allocation.tsv")
 const STAGE4_VALIDATION = joinpath(STAGE4_DIR, "balancing_validation.tsv")
 const STAGE4B_VALIDATION = joinpath(STAGE4B_DIR, "symmetric_io_validation.tsv")
 const STAGE4C_VALIDATION = joinpath(STAGE4C_DIR, "symmetric_io_validation.tsv")
@@ -806,6 +811,49 @@ function manufacturing_family_check(path = MANUFACTURING_SHARES)
         "Each V2 family output is retained once; C27 is assigned to ELMA and C26 is divided between OFMA and RATV.")
 end
 
+function treatment_allocation_check(path = STAGE3_TREATMENT_ALLOCATION;
+    source_file = joinpath(STAGE2_DIR, "integrated_supply.tsv"))
+    if !isfile(path)
+        return artifact_row("03_final_preparation", "discarded_equipment_treatment", "FAIL", path,
+            "missing", "recorded mix and separate calibration seed", "Required treatment-allocation audit.")
+    end
+    table = read_tsv(path)
+    index = Dict(name => i for (i, name) in enumerate(table[1]))
+    expected = Dict(row.region => row for row in treatment_shares())
+    budgets = treatment_budgets(source_file)
+    seen = Set{String}()
+    valid = true
+    for row in table[2:end]
+        field(name) = row[index[name]]
+        number(name) = parse(Float64, field(name))
+        region = field("source_area")
+        if !haskey(expected, region) || region in seen
+            valid = false
+            continue
+        end
+        push!(seen, region)
+        ref = expected[region]
+        valid &= field("mix_basis") == ref.basis && parse(Bool, field("disposal_seeded")) == ref.seeded
+        for (column, value) in zip(SHARE_HEADER[3:8], (ref.recycling, ref.disposal,
+                ref.observed_rec, ref.observed_inc, ref.calibrated_rec, ref.calibrated_inc))
+            valid &= number(column) == value
+        end
+        rec, inc, total, seed = (number(name) for name in
+            ("recycling_output_meur", "disposal_output_meur", "total_treatment_output_meur", "disposal_seed_meur"))
+        valid &= all(isfinite, (rec, inc, total, seed)) && rec > 0 && inc > 0 &&
+            isapprox(rec + inc, total; atol = 1e-10, rtol = 1e-12) &&
+            isapprox(number("source_treatment_output_meur"), budgets[region]; atol = 1e-8, rtol = 1e-12) &&
+            isapprox(total, budgets[region]; atol = 1e-8, rtol = 1e-12) &&
+            isapprox(inc / total, ref.calibrated_inc; atol = 1e-12) &&
+            isapprox(seed, total * (ref.calibrated_inc - ref.observed_inc); atol = 1e-10, rtol = 1e-12) &&
+            parse(Bool, field("seed_above_bound_margin")) && (!ref.seeded || inc > seed_output_floor())
+    end
+    valid &= seen == Set(keys(expected))
+    return artifact_row("03_final_preparation", "discarded_equipment_treatment", artifact_status(valid), path,
+        "source allocations=$(length(seen)); consistent=$valid", "six regional mixes and one external-trade proxy",
+        "Recorded treatment-service quantities remain separate from the assumed positive disposal seed; recycling and disposal preserve their monetary total.")
+end
+
 function artifact_report_rows()
     rows = Vector{Vector{String}}()
 
@@ -817,6 +865,7 @@ function artifact_report_rows()
     push!(rows, manufacturing_family_check())
     append_stage_table_status!(rows, "02_integrated_sut", STAGE2_VALIDATION, "integrated_table")
     append_stage_table_status!(rows, "03_final_preparation", STAGE3_VALIDATION, "final_table")
+    push!(rows, treatment_allocation_check())
     append_stage4_checks!(rows)
     append_stage4b_checks!(rows)
     append_stage4c_checks!(rows)

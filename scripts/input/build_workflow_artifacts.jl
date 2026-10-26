@@ -21,7 +21,7 @@ function main()
         "map_ce_rise_to_figaro.jl",
         "disaggregate_sut.jl",
         "extract_circular_parent_sectors.jl",
-        "extract_circular_route_anchors.jl",
+        "extract_discarded_equipment_treatment.jl",
         "derive_circular_split_weights.jl",
         "build_intermediate_augmented_sut.jl",
         "build_stage1_initial_artifacts.jl",
