@@ -385,7 +385,9 @@ function multi_region_calibration(bundle::CalibrationBundle = default_calibratio
     armington_sigma > 0.0 || error("trade.armington_elasticity must be positive.")
     cet_psi > 0.0 || error("trade.cet_transformation_elasticity must be positive.")
     armington_exponent = Dict((product, region) => JCGECalibrate.rho_from_sigma(armington_sigma) for product in products for region in regions)
-    cet_exponent = Dict((product, region) => JCGECalibrate.rho_from_sigma(cet_psi) for product in products for region in regions)
+    # CET sales shift toward the better-paying destination; its curvature
+    # differs from the CES curvature used for Armington sourcing above.
+    cet_exponent = Dict((product, region) => (cet_psi + 1.0) / cet_psi for product in products for region in regions)
     supply_groups, demand_groups = _trade_groups(trade_routes)
     trade_goods, armington_scale, armington_share, cet_scale, cet_share,
     delivery_wedge, world_price, output_tax = _calibrate_trade!(

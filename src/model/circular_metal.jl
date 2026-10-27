@@ -98,10 +98,10 @@ _circular_inventory_id(region::Symbol, material::Symbol) =
 const _CIRCULAR_MATERIAL_PRICE_VAR = :P_MATERIAL_COMPOSITE
 
 """
-Model-local production block for activities with a virgin/recycled-metal CES
-input.  It replaces the two corresponding fixed intermediate coefficients
-while retaining the calibrated Cobb--Douglas value-added and Leontief
-non-metal inputs used by the standard JCGE production block.
+Model-local production block for metal inputs and their policy-adjusted costs.
+Activities with both sources use a virgin/recycled-metal CES input. Targeted
+new-product activities with only primary metal retain their fixed input
+coefficient. Value added and other inputs retain their calibrated technology.
 """
 struct MaterialCompositeProductionBlock <: JCGECore.AbstractBlock
     name::Symbol
@@ -123,10 +123,10 @@ end
 """
     circular_material_structure(model)
 
-Derive the virgin/recycled-metal input nest from the reclassified calibration
-bundle.  Each eligible activity has a positive BASIC_METALS and REC_EE input;
-their value shares define the reference CES composite, with no quality
-adjustment between the two material sources.
+Derive the metal inputs from the reclassified calibration bundle. Activities
+with positive BASIC_METALS and REC_EE inputs use their value shares in a CES
+composite, with no quality adjustment. Targeted new-product activities with
+only primary metal retain that fixed input and remain eligible for taxation.
 """
 function circular_material_structure(model::MultiRegionModelSpec)
     calibration = model.calibration
@@ -137,6 +137,8 @@ function circular_material_structure(model::MultiRegionModelSpec)
     recycled_good = Dict{Symbol,Symbol}()
     activities_by_region = Dict(region => Symbol[] for region in outline.regions)
     tolerance = calibration.positive_lower
+    new_product_activities = Set(goods[:NEW]
+        for goods in values(model.circular_routes.route_goods_by_service))
 
     for region in outline.regions
         virgin = calibration.product_by_region[(region, :BASIC_METALS)]
@@ -144,22 +146,26 @@ function circular_material_structure(model::MultiRegionModelSpec)
         for activity in outline.industries_by_region[region]
             virgin_coefficient = calibration.intermediate_coefficient[(virgin, activity)]
             recycled_coefficient = calibration.intermediate_coefficient[(recycled, activity)]
-            recycled_coefficient > tolerance || continue
-            virgin_coefficient > tolerance || error(
+            has_recycled = recycled_coefficient > tolerance
+            primary_only_target = activity in new_product_activities && virgin_coefficient > 0.0
+            has_recycled || primary_only_target || continue
+            has_recycled && virgin_coefficient <= tolerance && error(
                 "Constructed recycled-metal use in $(activity) requires a positive remaining BASIC_METALS input.")
-            total = virgin_coefficient + recycled_coefficient
+            total = virgin_coefficient + (has_recycled ? recycled_coefficient : 0.0)
             coefficient[activity] = total
             share[(activity, virgin)] = virgin_coefficient / total
-            share[(activity, recycled)] = recycled_coefficient / total
             primary_good[activity] = virgin
-            recycled_good[activity] = recycled
+            if has_recycled
+                share[(activity, recycled)] = recycled_coefficient / total
+                recycled_good[activity] = recycled
+            end
             push!(activities_by_region[region], activity)
         end
     end
     for activities in values(activities_by_region)
         sort!(activities)
     end
-    isempty(coefficient) && error("The calibration bundle has no constructed recycled-metal input uses.")
+    isempty(coefficient) && error("The calibration bundle has no eligible metal inputs.")
     return (
         activities = Set(keys(coefficient)),
         activities_by_region = activities_by_region,
@@ -169,6 +175,12 @@ function circular_material_structure(model::MultiRegionModelSpec)
         recycled_good = recycled_good,
         elasticity = _circular_material_elasticity(model),
     )
+end
+
+function _material_input_goods(structure, activity::Symbol)
+    primary = structure.primary_good[activity]
+    return haskey(structure.recycled_good, activity) ?
+        (primary, structure.recycled_good[activity]) : (primary,)
 end
 
 """Return CE-RISE NEW-route activities eligible for the virgin-metal tax."""
@@ -197,8 +209,8 @@ function _material_policy_multiplier(block::MaterialCompositeProductionBlock,
     if commodity === structure.primary_good[activity] &&
        activity in block.params.primary_tax_activities
         return 1.0 + policy_wedge(block.params.scenario, :virgin_metal_tax)
-    elseif commodity === structure.recycled_good[activity] &&
-           activity in block.params.recycled_support_activities
+    elseif activity in block.params.recycled_support_activities &&
+           commodity === structure.recycled_good[activity]
         return 1.0 + policy_wedge(block.params.scenario, :recycling_support)
     end
     return 1.0
@@ -215,7 +227,8 @@ end
 function _circular_material_price_expr(block::MaterialCompositeProductionBlock,
     activity::Symbol)
     structure = block.params.structure
-    goods = (structure.primary_good[activity], structure.recycled_good[activity])
+    goods = _material_input_goods(structure, activity)
+    length(goods) == 1 && return _effective_material_price_expr(block, activity, only(goods))
     elasticity = structure.elasticity
     is_cobb_douglas = isapprox(elasticity, 1.0; atol=1.0e-12, rtol=0.0)
     return is_cobb_douglas ? EMul([
@@ -245,9 +258,8 @@ function JCGECore.build!(block::MaterialCompositeProductionBlock,
     lower > 0.0 || error("Material-composite production requires a positive lower bound.")
     structure = block.params.structure
     for activity in block.activities
-        primary = structure.primary_good[activity]
-        recycled = structure.recycled_good[activity]
-        material_goods = (primary, recycled)
+        material_goods = _material_input_goods(structure, activity)
+        primary_only = length(material_goods) == 1
         _ensure_circular_route_variable!(ctx, model, JCGEBlocks.global_var(:Y, activity); lower=lower)
         _ensure_circular_route_variable!(ctx, model, JCGEBlocks.global_var(:Z, activity); lower=lower)
         _ensure_circular_route_variable!(ctx, model, JCGEBlocks.global_var(:py, activity); lower=lower)
@@ -314,7 +326,8 @@ function JCGECore.build!(block::MaterialCompositeProductionBlock,
         end
 
         _register_circular_route_equation!(ctx, block, :material_composite_price, activity;
-            info="the material-composite price is the CES index of equally effective virgin and recycled metal",
+            info=primary_only ? "the metal-input price includes the virgin-metal tax on the sole primary-metal input" :
+                "the material-composite price is the CES index of equally effective virgin and recycled metal",
             expr=EEq(
                 EVar(_CIRCULAR_MATERIAL_PRICE_VAR, Any[activity]),
                 _circular_material_price_expr(block, activity),
@@ -325,7 +338,7 @@ function JCGECore.build!(block::MaterialCompositeProductionBlock,
         ])
         is_cobb_douglas = isapprox(structure.elasticity, 1.0; atol=1.0e-12, rtol=0.0)
         for commodity in material_goods
-            demand_multiplier = is_cobb_douglas ? EDiv(
+            demand_multiplier = primary_only ? EConst(1.0) : is_cobb_douglas ? EDiv(
                 EVar(_CIRCULAR_MATERIAL_PRICE_VAR, Any[activity]),
                 _effective_material_price_expr(block, activity, commodity),
             ) : EPow(
@@ -337,7 +350,8 @@ function JCGECore.build!(block::MaterialCompositeProductionBlock,
             )
             _register_circular_route_equation!(ctx, block, :material_composite_demand,
                 activity, commodity;
-                info="CES material demand allocates calibrated effective-metal use between virgin and recycled metal without a quality penalty",
+                info=primary_only ? "primary-metal use retains its calibrated fixed input coefficient" :
+                    "CES material demand allocates calibrated effective-metal use between virgin and recycled metal without a quality penalty",
                 expr=EEq(
                     EVar(:X, Any[commodity, activity]),
                     EMul([
@@ -369,7 +383,7 @@ function JCGECore.build!(block::MaterialCompositeProductionBlock,
             ]))
         end
         _register_circular_route_equation!(ctx, block, :eqpzs, activity;
-            info="output price equals calibrated value-added, non-metal input, and virgin-recycled material-composite costs",
+            info="output price equals calibrated value-added, other input, and policy-adjusted metal costs",
             expr=EEq(EVar(:pz, Any[activity]), EAdd(price_terms)),
             index_names=(:activity,))
     end
@@ -384,7 +398,7 @@ function circular_material_initial_values(model::MultiRegionModelSpec, structure
     )
 end
 
-"""Create material-composite production blocks from the reclassified calibration bundle."""
+"""Create metal-input production blocks, retaining fixed coefficients for primary-only targets."""
 function circular_material_blocks(model::MultiRegionModelSpec,
     routes::CircularRouteCalibration;
     positive_lower::Real=model.calibration.positive_lower)

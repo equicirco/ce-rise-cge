@@ -1,8 +1,8 @@
 #!/usr/bin/env julia
 
 """
-Attempt remaining 2% virgin-metal-tax failures from adjacent solved sensitivity
-profiles. A neighbour differs in exactly one sensitivity parameter, so this is
+Attempt remaining policy failures from adjacent solved sensitivity profiles at
+the same instrument and wedge. A neighbour differs in exactly one parameter, so this is
 continuation in parameter space rather than a change in model equations or in
 the reported policy point.
 """
@@ -13,6 +13,9 @@ using CSV
 using DataFrames
 using Distributed
 using CERiseCGE
+include(joinpath(@__DIR__, "policy_recovery.jl"))
+using .PolicyRecovery: point_key, point_file, accepted_points, policy_model,
+    source_policy_start, checkpoint_complete
 
 include(joinpath(@__DIR__, "recovered_policy_summary.jl"))
 using .RecoveredPolicySummary
@@ -24,7 +27,6 @@ const DEFAULT_GRID_FILE = joinpath(ROOT_DIR, "results", "policy_sensitivity_grid
 const DEFAULT_PREDICTOR_FILE = joinpath(ROOT_DIR, "results", "predictor_trace.csv")
 const DEFAULT_OUTPUT_FILE = joinpath(ROOT_DIR, "results", "parameter_neighbor.csv")
 const DEFAULT_WORKERS = 10
-const TAX_WEDGE = 0.02
 
 function command_options(args)
     grid_file = DEFAULT_GRID_FILE
@@ -32,6 +34,7 @@ function command_options(args)
     output_file = DEFAULT_OUTPUT_FILE
     summary_dir = nothing
     outcome_dir = nothing
+    baseline_dir = nothing
     workers = DEFAULT_WORKERS
     dry_run = false
     index = 1
@@ -51,6 +54,9 @@ function command_options(args)
         elseif args[index] == "--outcome-dir" && index < length(args)
             outcome_dir = normpath(joinpath(ROOT_DIR, args[index + 1]))
             index += 2
+        elseif args[index] == "--baseline-dir" && index < length(args)
+            baseline_dir = normpath(joinpath(ROOT_DIR, args[index + 1]))
+            index += 2
         elseif args[index] == "--workers" && index < length(args)
             workers = parse(Int, args[index + 1])
             workers > 0 || error("--workers must be positive.")
@@ -61,23 +67,16 @@ function command_options(args)
         else
             error("Usage: julia --project=. scripts/analysis/run_parameter_neighbor_continuation.jl " *
                 "[--grid PATH] [--predictor PATH] [--output PATH] [--summary-dir PATH] " *
-                "[--outcome-dir PATH] [--workers N] [--dry-run]")
+                "[--outcome-dir PATH] [--baseline-dir PATH] [--workers N] [--dry-run]")
         end
     end
     return (grid_file = grid_file, predictor_file = predictor_file,
         output_file = output_file, summary_dir = summary_dir, outcome_dir = outcome_dir,
-        workers = workers, dry_run = dry_run)
+        baseline_dir=baseline_dir, workers = workers, dry_run = dry_run)
 end
 
 checkpoint_dir(output_file::AbstractString) = joinpath(dirname(output_file),
     "$(splitext(basename(output_file))[1])_checkpoints")
-
-function recovered_predictor_profiles(path::AbstractString)
-    isfile(path) || return Set{Symbol}()
-    trace = CSV.read(path, DataFrame)
-    return Set(Symbol(row.sensitivity_profile) for row in eachrow(trace)
-        if String(row.continuation_phase) == "predictor_target" && row.trial_accepted)
-end
 
 function profile_difference(target, source)
     parameter_keys = sort!(collect(keys(target.values)); by = item -> join(string.(item), "|"))
@@ -92,27 +91,29 @@ function parameter_label(keys)
 end
 
 function continuation_tasks(grid_file::AbstractString, predictor_file::AbstractString,
-    directory::AbstractString; summary_dir::Union{Nothing,AbstractString}=nothing)
+    directory::AbstractString; summary_dir::Union{Nothing,AbstractString}=nothing, baseline_dir=nothing)
     isfile(grid_file) || error("Completed policy grid is missing: $(grid_file)")
     grid = CSV.read(grid_file, DataFrame)
     required = Set([:sensitivity_profile, :instrument, :wedge, :solver_valid])
     required ⊆ Set(Symbol.(names(grid))) || error("Policy grid has no recognised columns.")
-    tax = filter(row -> String(row.instrument) == "virgin_metal_tax" &&
-        row.wedge == TAX_WEDGE, eachrow(grid))
-    valid = Set(Symbol(row.sensitivity_profile) for row in tax if row.solver_valid)
-    recovered = recovered_predictor_profiles(predictor_file)
+    valid = Set(point_key(row) for row in eachrow(grid) if coalesce(row.solver_valid, false))
+    recovered = accepted_points(predictor_file)
+    union!(valid, recovered)
     remaining = sort!(collect(setdiff(
-        Set(Symbol(row.sensitivity_profile) for row in tax if !row.solver_valid),
-        recovered)); by = String)
+        Set(point_key(row) for row in eachrow(grid) if !coalesce(row.solver_valid, false)),
+        recovered)); by = item -> (String(item[1]), String(item[2]), item[3]))
     bundle = CERiseCGE.default_calibration_bundle()
     profiles = Dict(profile.name => profile for profile in CERiseCGE.sensitivity_profiles(bundle))
-    all(haskey(profiles, name) for name in union(valid, Set(remaining))) ||
+    all(haskey(profiles, key[1]) for key in union(valid, Set(remaining))) ||
         error("A grid sensitivity profile is not available from the current calibration bundle.")
     tasks = NamedTuple[]
-    for target_name in remaining
+    for (target_name, instrument, wedge) in remaining
+        baseline_dir === nothing || CERiseCGE._checkpoint_files_valid(
+            CERiseCGE._baseline_paths(baseline_dir, target_name).manifest) || continue
         target = profiles[target_name]
         candidates = NamedTuple[]
-        for source_name in valid
+        for (source_name, source_instrument, source_wedge) in valid
+            source_instrument === instrument && source_wedge == wedge || continue
             source = profiles[source_name]
             difference = profile_difference(target, source)
             difference.count == 1 || continue
@@ -123,116 +124,100 @@ function continuation_tasks(grid_file::AbstractString, predictor_file::AbstractS
             ))
         end
         sort!(candidates; by = item -> (item.distance, String(item.parameter), String(item.profile)))
-        isempty(candidates) && error("No adjacent valid 2% tax profile is available for $(target_name).")
         push!(tasks, (
             target = target_name,
+            instrument=instrument,
+            wedge=wedge,
             candidates = candidates,
-            output_path = joinpath(directory, "$(target_name).csv"),
+            output_path = point_file(directory, target_name, instrument, wedge),
             summary_path = isnothing(summary_dir) ? nothing :
-                joinpath(summary_dir, "$(target_name).csv"),
+                point_file(summary_dir, target_name, instrument, wedge),
         ))
     end
     return tasks
 end
 
-function result_row(target, source, parameter, distance, result, elapsed_seconds;
+function result_row(target, instrument, wedge, source, parameter, distance, result, elapsed_seconds;
     source_baseline_valid::Union{Missing,Bool}=missing,
-    source_tax_valid::Union{Missing,Bool}=missing,
+    source_policy_valid::Union{Missing,Bool}=missing,
     error_message::Union{Missing,String}=missing)
     row = CERiseCGE._solvability_diagnostic_row(target, :policy,
-        :virgin_metal_tax_0_02, :virgin_metal_tax, TAX_WEDGE, result, elapsed_seconds)
+        CERiseCGE.eu_wide_policy_scenario(instrument, wedge).name,
+        instrument, wedge, result, elapsed_seconds)
     return merge(row, (
         source_profile = source,
         changed_parameter = parameter,
         parameter_distance = distance,
         source_baseline_valid = source_baseline_valid,
-        source_tax_valid = source_tax_valid,
+        source_policy_valid = source_policy_valid,
         continuation_error = error_message,
     ))
 end
 
-function failure_row(target, source, parameter, distance, error_message::String)
+function failure_row(target, instrument, wedge, source, parameter, distance, error_message::String)
     row = CERiseCGE._solvability_failure_row(target, :policy,
-        :virgin_metal_tax_0_02, :virgin_metal_tax, TAX_WEDGE,
+        CERiseCGE.eu_wide_policy_scenario(instrument, wedge).name, instrument, wedge,
         ErrorException(error_message))
     return merge(row, (
         source_profile = source,
         changed_parameter = parameter,
         parameter_distance = distance,
         source_baseline_valid = missing,
-        source_tax_valid = missing,
+        source_policy_valid = missing,
         continuation_error = error_message,
     ))
 end
 
-function target_model(profile, bundle)
-    profile_bundle = CERiseCGE.sensitivity_bundle(profile; bundle = bundle)
-    calibration = CERiseCGE.multi_region_calibration(profile_bundle)
-    scenario = CERiseCGE.eu_wide_policy_scenario(:virgin_metal_tax, TAX_WEDGE;
-        bundle = profile_bundle)
-    return CERiseCGE.multi_region_model(; bundle = profile_bundle,
-        calibration = calibration, scenario = scenario)
-end
-
-function source_tax_solution(profile, bundle)
-    profile_bundle = CERiseCGE.sensitivity_bundle(profile; bundle = bundle)
-    calibration = CERiseCGE.multi_region_calibration(profile_bundle)
-    baseline_model = CERiseCGE.multi_region_model(; bundle = profile_bundle,
-        calibration = calibration)
-    baseline = CERiseCGE.run_baseline(baseline_model)
-    CERiseCGE._valid_policy_solution(baseline) || return (baseline = baseline, policy = nothing)
-    models = CERiseCGE.policy_sweep_models(:virgin_metal_tax;
-        bundle = profile_bundle, calibration = calibration)
-    runs = CERiseCGE.run_policy_path(models;
-        start_values = CERiseCGE.solution_start_values(baseline))
-    policy = only(filter(run -> CERiseCGE.policy_wedge(run.model.scenario,
-        :virgin_metal_tax) == TAX_WEDGE, runs)).result
-    return (baseline = baseline, policy = policy)
-end
-
 function run_task(task)
-    isfile(task.output_path) && (isnothing(task.summary_path) || isfile(task.summary_path)) &&
-        (isnothing(task.outcome_path) || isfile(task.outcome_path)) &&
+    checkpoint_complete(task.output_path, [point_key(task.target, task.instrument, task.wedge)],
+        isnothing(task.summary_path) ? nothing : dirname(task.summary_path),
+        isnothing(task.outcome_path) ? nothing : dirname(task.outcome_path);
+        baseline_dir=get(task, :baseline_dir, nothing)) &&
         return (target = task.target, state = :skipped)
+    mkpath(dirname(task.output_path))
     bundle = CERiseCGE.default_calibration_bundle()
     profiles = Dict(profile.name => profile for profile in CERiseCGE.sensitivity_profiles(bundle))
     target = profiles[task.target]
-    model = target_model(target, bundle)
+    model = policy_model(target, bundle, task.instrument, task.wedge)
     rows = NamedTuple[]
+    isempty(task.candidates) && push!(rows, failure_row(target, task.instrument, task.wedge,
+        missing, missing, Inf, "No adjacent valid source exists at this instrument and wedge."))
     for candidate in task.candidates
         source = profiles[candidate.profile]
         try
-            source_run = source_tax_solution(source, bundle)
-            baseline_valid = CERiseCGE._valid_policy_solution(source_run.baseline)
-            if !baseline_valid || source_run.policy === nothing
-                push!(rows, failure_row(target, candidate.profile, candidate.parameter,
-                    candidate.distance, "Source profile has no valid baseline or tax path."))
+            source_run = source_policy_start(source, bundle, task.instrument, task.wedge;
+                baseline_dir=get(task, :baseline_dir, nothing))
+            baseline_valid = source_run.baseline_valid
+            if !baseline_valid || !source_run.policy_valid
+                push!(rows, failure_row(target, task.instrument, task.wedge, candidate.profile, candidate.parameter,
+                    candidate.distance, "Source profile has no valid baseline or policy path."))
                 continue
             end
-            source_valid = CERiseCGE._valid_policy_solution(source_run.policy)
+            source_valid = source_run.policy_valid
             if !source_valid
-                push!(rows, failure_row(target, candidate.profile, candidate.parameter,
-                    candidate.distance, "Source profile has no valid 2% tax solution."))
+                push!(rows, failure_row(target, task.instrument, task.wedge, candidate.profile, candidate.parameter,
+                    candidate.distance, "Source profile has no valid solution at this instrument and wedge."))
                 continue
             end
             elapsed = @elapsed result = CERiseCGE.run_policy_scenario(model;
-                start_values = CERiseCGE.solution_start_values(source_run.policy))
-            row = result_row(target, candidate.profile, candidate.parameter,
+                start_values = source_run.starts)
+            row = result_row(target, task.instrument, task.wedge, candidate.profile, candidate.parameter,
                 candidate.distance, result, elapsed;
                 source_baseline_valid = baseline_valid,
-                source_tax_valid = source_valid)
+                source_policy_valid = source_valid)
             push!(rows, row)
             if row.solver_valid
                 !isnothing(task.summary_path) &&
                     RecoveredPolicySummary.write_summary(task.summary_path, target, bundle,
-                        model, result, :neighbor)
+                        model, result, :neighbor; baseline_dir=get(task, :baseline_dir, nothing))
                 !isnothing(task.outcome_path) &&
                     RecoveredPolicyOutcome.write_outcome(task.outcome_path, target, bundle,
-                        model, result)
+                        model, result; baseline_dir=get(task, :baseline_dir, nothing))
                 break
             end
         catch err
-            push!(rows, failure_row(target, candidate.profile, candidate.parameter,
+            err isa InterruptException && rethrow()
+            push!(rows, failure_row(target, task.instrument, task.wedge, candidate.profile, candidate.parameter,
                 candidate.distance, sprint(showerror, err)))
         end
     end
@@ -258,15 +243,15 @@ function main()
     options = command_options(ARGS)
     directory = checkpoint_dir(options.output_file)
     tasks = continuation_tasks(options.grid_file, options.predictor_file, directory;
-        summary_dir = options.summary_dir)
-    tasks = [merge(task, (outcome_path = isnothing(options.outcome_dir) ? nothing :
-        joinpath(options.outcome_dir, "$(task.target).csv"),)) for task in tasks]
-    pending = filter(task -> !isfile(task.output_path) ||
-        (!isnothing(task.summary_path) && !isfile(task.summary_path)) ||
-        (!isnothing(task.outcome_path) && !isfile(task.outcome_path)), tasks)
-    println("Remaining tax profiles: ", length(tasks))
+        summary_dir = options.summary_dir, baseline_dir=options.baseline_dir)
+    tasks = [merge(task, (baseline_dir=options.baseline_dir, outcome_path = isnothing(options.outcome_dir) ? nothing :
+        point_file(options.outcome_dir, task.target, task.instrument, task.wedge),)) for task in tasks]
+    pending = filter(task -> !checkpoint_complete(task.output_path,
+        [point_key(task.target, task.instrument, task.wedge)], options.summary_dir, options.outcome_dir;
+        baseline_dir=options.baseline_dir), tasks)
+    println("Remaining policy points: ", length(tasks))
     println("Completed checkpoints: ", length(tasks) - length(pending))
-    println("Pending profiles: ", length(pending))
+    println("Pending policy points: ", length(pending))
     println("Checkpoint directory: ", directory)
     flush(stdout)
     if options.dry_run
@@ -274,11 +259,11 @@ function main()
         return nothing
     end
     mkpath(directory)
-    start_workers(options.workers)
-    isempty(pending) || (options.workers == 1 ? map(run_task, pending) : pmap(run_task, pending))
-    tables = DataFrame[CSV.read(task.output_path, DataFrame) for task in tasks]
-    combined = vcat(tables...; cols = :union)
-    CERiseCGE._write_atomic_csv(options.output_file, combined)
+    if !isempty(pending)
+        start_workers(options.workers)
+        options.workers == 1 ? map(run_task, pending) : pmap(run_task, pending)
+    end
+    combined = PolicyRecovery.combine_checkpoints([task.output_path for task in tasks], options.output_file)
     println("Wrote ", nrow(combined), " continuation attempts to ", options.output_file)
 end
 

@@ -1,0 +1,13 @@
+mechanism	sequence	value	interpretation
+repair_labour_saving	1	0.05	Five percent less unaugmented labour can produce the same repair output when other inputs are held fixed; actual factor use and output remain endogenous.
+repair_labour_saving	2	0.10	Ten percent less unaugmented labour can produce the same repair output when other inputs are held fixed; actual factor use and output remain endogenous.
+repair_labour_saving	3	0.20	Twenty percent less unaugmented labour can produce the same repair output when other inputs are held fixed; actual factor use and output remain endogenous.
+refurbishment_labour_saving	1	0.05	Five percent less unaugmented labour can produce the same refurbishment output when other inputs are held fixed; actual factor use and output remain endogenous.
+refurbishment_labour_saving	2	0.10	Ten percent less unaugmented labour can produce the same refurbishment output when other inputs are held fixed; actual factor use and output remain endogenous.
+refurbishment_labour_saving	3	0.20	Twenty percent less unaugmented labour can produce the same refurbishment output when other inputs are held fixed; actual factor use and output remain endogenous.
+recycling_labour_saving	1	0.05	Five percent less unaugmented labour can produce the same recycling output when other inputs are held fixed; actual factor use and output remain endogenous.
+recycling_labour_saving	2	0.10	Ten percent less unaugmented labour can produce the same recycling output when other inputs are held fixed; actual factor use and output remain endogenous.
+recycling_labour_saving	3	0.20	Twenty percent less unaugmented labour can produce the same recycling output when other inputs are held fixed; actual factor use and output remain endogenous.
+circular_preference_increase	1	0.05	Five percent increase in each repair, refurbishment and reuse CES demand weight relative to new production, followed by normalization within the family.
+circular_preference_increase	2	0.10	Ten percent increase in each repair, refurbishment and reuse CES demand weight relative to new production, followed by normalization within the family.
+circular_preference_increase	3	0.20	Twenty percent increase in each repair, refurbishment and reuse CES demand weight relative to new production, followed by normalization within the family.

@@ -5,9 +5,12 @@ using CERiseCGE
 
 """Write the full target-policy summary at the continuation stage that solved it."""
 function write_summary(path::AbstractString, target::CERiseCGE.SensitivityProfile,
-    bundle, endpoint_model, endpoint_result, stage::Symbol)
+    bundle, endpoint_model, endpoint_result, stage::Symbol; baseline_dir=nothing)
     CERiseCGE._valid_policy_solution(endpoint_result) ||
         error("Cannot materialize an invalid recovered endpoint for $(target.name).")
+    saved = CERiseCGE._load_policy_baseline(target, endpoint_model, baseline_dir)
+    baseline_dir !== nothing && saved === nothing && error("The saved reference for $(target.name) is incomplete.")
+    if saved === nothing
     target_bundle = CERiseCGE.sensitivity_bundle(target; bundle = bundle)
     calibration = CERiseCGE.multi_region_calibration(target_bundle)
     baseline_model = CERiseCGE.multi_region_model(; bundle = target_bundle,
@@ -17,6 +20,9 @@ function write_summary(path::AbstractString, target::CERiseCGE.SensitivityProfil
         error("Baseline for recovered profile $(target.name) is not valid.")
     summary = CERiseCGE.policy_sweep_summary(baseline, baseline_model,
         [(model = endpoint_model, result = endpoint_result)])
+    else
+        summary = DataFrame([CERiseCGE._policy_summary_row(saved.measures, endpoint_model, endpoint_result)])
+    end
     nrow(summary) == 1 || error("Recovered endpoint summary must have one row.")
     summary.sensitivity_profile = [target.name]
     for (component, key) in CERiseCGE.SENSITIVITY_PARAMETER_KEYS

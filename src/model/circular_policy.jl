@@ -44,7 +44,7 @@ struct CircularPolicyFiscalBlock <: JCGECore.AbstractBlock
     params::NamedTuple
 end
 
-"""Household demand block with the regional net policy transfer in disposable income."""
+"""Upper CES demand for other goods, with optional regional net policy transfers."""
 struct PolicyAwareHouseholdDemandBlock <: JCGECore.AbstractBlock
     name::Symbol
     regions::Vector{Symbol}
@@ -121,16 +121,16 @@ function JCGECore.build!(block::CircularPolicyFiscalBlock,
         support_terms = JCGECore.EquationExpr[]
         for activity in structure.activities_by_region[region]
             primary = structure.primary_good[activity]
-            recycled = structure.recycled_good[activity]
             _ensure_policy_variable!(ctx, model, JCGEBlocks.global_var(:pq, primary); lower=lower)
-            _ensure_policy_variable!(ctx, model, JCGEBlocks.global_var(:pq, recycled); lower=lower)
             _ensure_policy_variable!(ctx, model, JCGEBlocks.global_var(:X, primary, activity); lower=0.0)
-            _ensure_policy_variable!(ctx, model, JCGEBlocks.global_var(:X, recycled, activity); lower=0.0)
             if activity in primary_tax_activities && !iszero(primary_tax)
                 push!(revenue_terms,
                     EMul([EConst(primary_tax), _policy_base_term(primary, activity)]))
             end
             if activity in recycled_support_activities && !iszero(recycled_support)
+                recycled = structure.recycled_good[activity]
+                _ensure_policy_variable!(ctx, model, JCGEBlocks.global_var(:pq, recycled); lower=lower)
+                _ensure_policy_variable!(ctx, model, JCGEBlocks.global_var(:X, recycled, activity); lower=0.0)
                 push!(support_terms,
                     EMul([EConst(recycled_support), _policy_base_term(recycled, activity)]))
             end
@@ -174,41 +174,33 @@ function JCGECore.build!(block::PolicyAwareHouseholdDemandBlock,
     model = ctx.model
     lower = Float64(block.params.positive_lower)
     lower > 0.0 || error("Policy-aware household demand requires a positive lower bound.")
+    isfinite(block.params.consumption_elasticity) && block.params.consumption_elasticity > 0.0 ||
+        error("Upper consumption elasticity must be finite and positive.")
     for region in block.regions
         goods = block.goods_by_region[region]
         factors = block.factors_by_region[region]
         activities = block.activities_by_region[region]
         _ensure_policy_variable!(ctx, model, JCGEBlocks.global_var(:Sp, region); lower=nothing)
         _ensure_policy_variable!(ctx, model, JCGEBlocks.global_var(:Td, region); lower=nothing)
-        _ensure_policy_variable!(ctx, model,
+        block.params.include_policy_transfer && _ensure_policy_variable!(ctx, model,
             JCGEBlocks.global_var(_CIRCULAR_POLICY_TRANSFER_VAR, region); lower=nothing)
+        _ensure_policy_variable!(ctx, model,
+            JCGEBlocks.global_var(_HOUSEHOLD_CES_PRICE_VAR, region); lower=lower)
         for factor in factors, activity in activities
             _ensure_policy_variable!(ctx, model, JCGEBlocks.global_var(:pf, factor); lower=lower)
             _ensure_policy_variable!(ctx, model, JCGEBlocks.global_var(:F, factor, activity); lower=0.0)
         end
-        disposable_income = EAdd([
-            ESum(:factor, factors, ESum(:activity, activities, EMul([
-                EVar(:pf, Any[EIndex(:factor)]),
-                EVar(:F, Any[EIndex(:factor), EIndex(:activity)]),
-            ]))),
-            ENeg(EVar(:Sp, Any[region])),
-            ENeg(EVar(:Td, Any[region])),
-            EVar(_CIRCULAR_POLICY_TRANSFER_VAR, Any[region]),
-        ])
+        disposable_income = _circular_disposable_income_expr(region, factors, activities;
+            include_policy_transfer=block.params.include_policy_transfer)
         for good in goods
             _ensure_policy_variable!(ctx, model, JCGEBlocks.global_var(:pq, good); lower=lower)
             _ensure_policy_variable!(ctx, model, JCGEBlocks.global_var(:Xp, good); lower=0.0)
             _register_policy_equation!(ctx, block, :regional_household_demand, good, region;
-                info="household demand allocates disposable factor income including the regional policy transfer",
+                info="upper CES demand allocates household spending across other consumption goods",
                 expr=EEq(
                     EVar(:Xp, Any[good]),
-                    EDiv(
-                        EMul([
-                            EParam(:alpha, Any[good, region]),
-                            disposable_income,
-                        ]),
-                        EVar(:pq, Any[good]),
-                    ),
+                    _consumption_demand_expr(EParam(:alpha, Any[good, region]),
+                        disposable_income, EVar(:pq, Any[good]), region),
                 ), index_names=(:good, :region))
         end
     end
@@ -272,6 +264,8 @@ function circular_policy_blocks(outline::MultiRegionOutline,
         outline.factors_by_region,
         outline.industries_by_region,
         (alpha = calibration.household_demand_share,
+         consumption_elasticity = routes.consumption_elasticity,
+         include_policy_transfer = true,
          positive_lower = lower,),
     )
     private_saving = PolicyAwarePrivateSavingBlock(

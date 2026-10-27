@@ -580,6 +580,7 @@ starting state for the following declared policy point.
 function _run_declared_policy_points(models::AbstractVector{<:MultiRegionModelSpec};
     tol::Union{Nothing,Real}=nothing,
     baseline_start_values::Union{Nothing,AbstractDict{Symbol,<:Real}}=nothing,
+    initial_strength::Real=0.0,
     on_point::Union{Nothing,Function}=nothing)
     instrument = _validate_policy_path(models)
     strengths = abs.(Float64[policy_wedge(model.scenario, instrument) for model in models])
@@ -589,7 +590,8 @@ function _run_declared_policy_points(models::AbstractVector{<:MultiRegionModelSp
     valid = falses(length(models))
     messages = Union{Missing,String}[missing for _ in models]
 
-    source_strength = 0.0
+    0.0 <= initial_strength < first(strengths) || error("Invalid preceding policy strength.")
+    source_strength = Float64(initial_strength)
     source_starts = baseline_start_values
     for (index, model) in enumerate(models)
         wedge = policy_wedge(model.scenario, instrument)
@@ -857,7 +859,10 @@ end
 function _checkpointed_sensitivity_profile(profile::SensitivityProfile,
     bundle::CalibrationBundle, requested_instruments::AbstractVector{Symbol},
     checkpoint_dir::AbstractString; tol::Union{Nothing,Real}=nothing,
-    outcome_path::Union{Nothing,AbstractString}=nothing)
+    outcome_dir::AbstractString=joinpath(dirname(checkpoint_dir), "data", "outcomes", "direct"),
+    baseline_dir::AbstractString=joinpath(dirname(checkpoint_dir), "data", "baselines"),
+    execute_point::Function=_execute_checkpointed_policy,
+    capture_baseline::Function=_capture_policy_baseline)
     mkpath(checkpoint_dir)
     profile_name = String(profile.name)
     result_path = joinpath(checkpoint_dir, "$(profile_name).csv")
@@ -877,32 +882,69 @@ function _checkpointed_sensitivity_profile(profile::SensitivityProfile,
         return nothing
     end
 
-    table = nothing
     error_message = missing
-    outcome_tables = DataFrame[]
-    elapsed_seconds = @elapsed begin
-        try
-            table = _run_configured_sensitivity_profile(profile, bundle,
-                requested_instruments; tol=tol, on_progress=progress,
-                on_valid_policy = outcome_path === nothing ? nothing :
-                    (baseline_result, baseline_model, record) -> push!(outcome_tables,
-                        policy_outcome_comparison(baseline_result, baseline_model,
-                            record.result, record.model)))
+    profile_bundle = sensitivity_bundle(profile; bundle)
+    calibration = multi_region_calibration(profile_bundle)
+    baseline_model = multi_region_model(; bundle=profile_bundle, calibration)
+    saved = _load_policy_baseline(profile, baseline_model, baseline_dir)
+    if saved === nothing
+        progress((phase=:baseline_start,))
+        saved = try
+            capture_baseline(profile, baseline_model, baseline_dir; tol)
         catch err
-            error_message = sprint(showerror, err)
-            table = _sensitivity_failure_table(profile, bundle,
-                requested_instruments, err)
+            err isa InterruptException && rethrow()
+            failure = _sensitivity_failure_table(profile, bundle, requested_instruments, err)
+            mkpath(baseline_dir)
+            failure_path = joinpath(baseline_dir, "$(profile.name).failure.csv")
+            _write_atomic_csv(failure_path, DataFrame(solver_message=[sprint(showerror, err)]))
+            _checkpoint_manifest(failure_path * ".complete.csv", [failure_path])
+            for row in eachrow(failure)
+                paths = _policy_checkpoint_paths(checkpoint_dir, outcome_dir, profile.name, row.instrument, row.wedge)
+                _save_policy_checkpoint(paths, (summary=DataFrame([NamedTuple(row)]),
+                    outcomes=DataFrame(), starts=Dict{Symbol,Float64}()))
+            end
+            _write_atomic_csv(result_path, failure)
+            _checkpoint_manifest(result_path * ".complete.csv", [result_path])
+            _write_profile_status(status_path, profile; state=:failed, phase=:profile_complete,
+                started_at, completed_attempts=completed_attempts[], error_message=sprint(showerror, err))
+            return (sensitivity_profile=profile.name, result_path=result_path, rows=nrow(failure),
+                solver_valid_rows=0, solver_rejected_rows=nrow(failure),
+                profile_elapsed_seconds=time()-started_at, error_message=sprint(showerror, err))
+        end
+        progress((phase=:baseline_complete,))
+    end
+    tables = DataFrame[]
+    for instrument in requested_instruments
+        starts = saved.starts
+        strength = 0.0
+        for model in policy_sweep_models(instrument; bundle=profile_bundle, calibration)
+            wedge = policy_wedge(model.scenario, instrument)
+            paths = _policy_checkpoint_paths(checkpoint_dir, outcome_dir, profile.name, instrument, wedge)
+            checkpoint = _read_policy_checkpoint(paths, profile, model, saved)
+            if checkpoint === nothing
+                progress((phase=:direct_start, instrument=instrument, wedge=wedge, attempt=1))
+                checkpoint = try
+                    execute_point(profile, model, saved, starts, strength; tol, on_progress=progress)
+                catch err
+                    err isa InterruptException && rethrow()
+                    failed = _sensitivity_failure_table(profile, bundle, [instrument], err)
+                    failed = failed[failed.scenario .== model.scenario.name, :]
+                    (summary=failed, outcomes=DataFrame(), starts=Dict{Symbol,Float64}())
+                end
+                _save_policy_checkpoint(paths, checkpoint)
+            end
+            push!(tables, checkpoint.summary)
+            if only(checkpoint.summary.solver_valid)
+                starts = checkpoint.starts
+                strength = abs(wedge)
+            end
         end
     end
+    table = vcat(tables...; cols=:union)
+    elapsed_seconds = time() - started_at
     table.profile_elapsed_seconds = fill(elapsed_seconds, nrow(table))
     _write_atomic_csv(result_path, table)
-    if outcome_path !== nothing
-        outcomes = isempty(outcome_tables) ? DataFrame() : vcat(outcome_tables...; cols=:union)
-        nrow(outcomes) > 0 || error("Sensitivity profile $(profile.name) has no valid policy outcomes.")
-        outcomes.sensitivity_profile = fill(profile.name, nrow(outcomes))
-        mkpath(dirname(outcome_path))
-        _write_atomic_csv(outcome_path, outcomes)
-    end
+    _checkpoint_manifest(result_path * ".complete.csv", [result_path])
     valid_rows = count(table.solver_valid)
     completion = (
         phase = :profile_complete,

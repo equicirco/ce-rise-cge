@@ -6,7 +6,7 @@ Primary and manufactured products clear through common EU markets with one EU pr
 ## Contents
 
 - `data/disaggregation/`: the supplied electronics SUT extract, family-production totals from the [BONSAI V2 archive](https://doi.org/10.5281/zenodo.23342753), and discarded-equipment treatment records from the [2016 supply table](https://doi.org/10.5281/zenodo.23157221). Julia importers are in `scripts/input/`.
-- `data/mappings/`: regional, sectoral, and model-configuration mappings.
+- `data/mappings/`: regional, sectoral, model-configuration and intervention-design inputs.
 - `data/artifacts/`: persisted supply-use, input-output, and social-accounting-matrix artifacts, plus 18 verified family-production mass anchors.
 - `scripts/input/`: data preparation, balancing, validation, and calibration-data construction scripts.
 - `scripts/analysis/`: policy-sensitivity analysis and reproducible solution workflows.
@@ -17,16 +17,36 @@ Primary and manufactured products clear through common EU markets with one EU pr
 
 ## Reproduce policy-sensitivity solutions
 
-Run the complete declared policy experiment and its documented numerical continuation workflow with:
+Run the fiscal-instrument sweep and its documented numerical continuation workflow with:
 
 ```bash
 julia --project=. scripts/analysis/reproduce_policy_sensitivity_solutions.jl --workers 10
 ```
 
-The script creates a fresh result directory containing the staged diagnostics,
-one complete 14,580-row policy table, and the retained unresolved points. It
-validates 14,570 equilibria and leaves the ten unresolved 2% virgin-metal-tax
-points visible rather than replacing them.
+The script solves the 43,740 declared policy points (2,187 sensitivity profiles,
+five instruments and four wedge levels), applies numerical recovery,
+and compiles `results/data/policy_outcomes.duckdb` from the saved outputs. It
+retains complete economic, fiscal and physical outcomes, solved variable values,
+zero-policy references, and diagnostics for unresolved points.
+
+The information-intervention specification is in
+`data/mappings/information_parameter_grid.tsv`. `policy_experiment_design()`
+enumerates the 55 agreed fiscal, information and joint cases;
+`policy_experiment_comparisons()` defines their matched comparisons. The
+information and joint cases are specified for implementation; the current
+numerical runner covers the fiscal-instrument sweep.
+
+Repeat the same command after an interruption to resume verified checkpoints,
+including completed points within a partially finished sensitivity profile.
+Checksums identify damaged files; the run-input record prevents mixing different
+model code or calibration inputs. A new experiment requires an empty result
+directory, selectable with `--output-dir`.
+
+Rebuild the database from the saved files independently with:
+
+```bash
+julia --project=. scripts/analysis/compile_policy_outcomes_database.jl
+```
 
 ## License
 

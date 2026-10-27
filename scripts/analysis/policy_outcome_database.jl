@@ -12,6 +12,13 @@ function database_table(table::DataFrame)
     converted = copy(table)
     for name in names(converted)
         column = converted[!, name]
+        if Base.nonmissingtype(eltype(column)) === Union{}
+            numeric = name in ("level", "baseline_level", "policy_level", "absolute_change", "percentage_change", "wedge") ||
+                occursin(r"seconds|tonnes|million_eur|residual|violation|attempts", name)
+            converted[!, name] = numeric ? Union{Missing,Float64}[missing for _ in column] :
+                Union{Missing,String}[missing for _ in column]
+            continue
+        end
         any(value -> value isa Symbol, skipmissing(column)) || continue
         converted[!, name] = Union{Missing,String}[
             ismissing(value) ? missing : string(value)
@@ -56,20 +63,22 @@ function create_database(path::AbstractString, policy_points::DataFrame)
 end
 
 """Append detailed outcomes for one or more solved policy points."""
-function append_outcomes!(store, outcomes::DataFrame)
+append_outcomes!(store, outcomes::DataFrame) = append_table!(store, OUTCOME_TABLE, outcomes)
+
+function append_table!(store, name::AbstractString, outcomes::DataFrame)
     nrow(outcomes) > 0 || return store
     incoming = database_table(outcomes)
     connection = store.connection
     tables = DataFrame(DBInterface.execute(connection,
         "SELECT table_name FROM information_schema.tables " *
-        "WHERE table_schema = 'main' AND table_name = '$(OUTCOME_TABLE)'"))
+        "WHERE table_schema = 'main' AND table_name = '$(name)'"))
     if isempty(tables)
-        _create_table!(connection, OUTCOME_TABLE, incoming)
+        _create_table!(connection, name, incoming)
     else
         DuckDB.register_table(connection, incoming, "incoming")
         try
             DBInterface.execute(connection,
-                "INSERT INTO $(OUTCOME_TABLE) SELECT * FROM incoming")
+                "INSERT INTO $(name) SELECT * FROM incoming")
         finally
             DuckDB.unregister_table(connection, "incoming")
         end

@@ -29,6 +29,7 @@ trade	cet_transformation_elasticity	1.0	Initial CET transformation elasticity fo
 trade	delivery_wedge	1.0	Reference delivery-price wedge for observed trade routes; transport margins are represented in the monetary calibration accounts.
 trade	row_world_price	1.0	Reference world price for the price-taking rest-of-world endpoint.
 final_demand	household_codes	P3_S14;P3_S15	Final-demand codes aggregated into regional household consumption.
+final_demand	consumption_elasticity	1.0	Upper CES substitution elasticity across electronics-family access composites and other household consumption goods; expenditure shares are calibrated from the SAM and the elasticity is varied in sensitivity analysis.
 final_demand	government_code	P3_S13	Final-demand code for regional government consumption.
 final_demand	fixed_investment_code	P51G	Final-demand code for gross fixed capital formation.
 final_demand	inventory_change_code	P5M	Final-demand code for changes in inventories, retained from gross output before trade allocation and financed through saving-investment rather than treated as goods-market demand or fixed investment.

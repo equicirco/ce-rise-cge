@@ -17,3 +17,6 @@ circular_routes	eol_productivity_elasticity	3	2.0	High production response to no
 circular_metal	material_substitution_elasticity	1	0.5	Low substitution responsiveness between primary and recycled metal in eligible CE-RISE activities.
 circular_metal	material_substitution_elasticity	2	1.0	Unitary substitution responsiveness between primary and recycled metal in eligible CE-RISE activities.
 circular_metal	material_substitution_elasticity	3	2.0	High substitution responsiveness between primary and recycled metal in eligible CE-RISE activities.
+final_demand	consumption_elasticity	1	0.5	Low substitution responsiveness across electronics-family access composites and other household consumption goods.
+final_demand	consumption_elasticity	2	1.0	Unitary upper-level consumption substitution, reproducing fixed household expenditure shares.
+final_demand	consumption_elasticity	3	2.0	High substitution responsiveness across electronics-family access composites and other household consumption goods.

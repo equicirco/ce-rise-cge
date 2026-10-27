@@ -17,23 +17,26 @@ const TREATMENT_ROUTES = Dict(
 const REGIONS = ("DE", "FR", "IT", "PL", "SK", "REU")
 const SHARE_HEADER = ["source_area", "mix_basis", "reference_recycling_service_tonnes",
     "reference_disposal_service_tonnes", "recorded_recycling_share", "recorded_disposal_share",
-    "calibrated_recycling_share", "calibrated_disposal_share", "disposal_seeded"]
+    "calibrated_recycling_share", "calibrated_disposal_share", "disposal_seeded",
+    "disposal_to_recycling_cost_ratio"]
 
-function treatment_configuration()
-    rows = readlines(joinpath(ROOT, "data", "mappings", "treatment_allocation.tsv"))
+function treatment_configuration(path = joinpath(ROOT, "data", "mappings", "treatment_allocation.tsv"))
+    rows = readlines(path)
     options = Dict(split(row, '\t')[1] => parse(Float64, split(row, '\t')[2]) for row in rows[2:end])
+    all(isfinite, values(options)) || error("Treatment calibration parameters must be finite")
     0 < options["zero_disposal_share"] < 1 || error("Invalid zero-disposal calibration share")
+    options["disposal_cost_ratio"] > 0 || error("Invalid disposal-to-recycling cost ratio")
     options["seed_bound_multiple"] > 1 || error("Invalid seed bound multiple")
     return options
 end
 
 """Monetary output corresponding to the declared margin above the model quantity bound."""
-function seed_output_floor()
+function seed_output_floor(; configuration = treatment_configuration())
     rows = readlines(joinpath(ROOT, "data", "mappings", "model_configuration.tsv"))
     options = Dict((split(row, '\t')[1], split(row, '\t')[2]) => split(row, '\t')[3] for row in rows[2:end])
     bound = parse(Float64, options[("numerical", "model_positive_lower")])
     price = parse(Float64, options[("normalization", "base_price")])
-    return bound * price * treatment_configuration()["seed_bound_multiple"]
+    return bound * price * configuration["seed_bound_multiple"]
 end
 
 """Monetary output allocated to electronics treatment before the recycling/disposal split."""
@@ -81,13 +84,18 @@ function treatment_totals(; path = TREATMENT_FILE)
 end
 
 """
-Use the same regional treatment mix for each electronics family. A positive
-disposal seed changes calibration shares only, never the source observations.
+Use the same regional treatment mix for each electronics family. The monetary
+disposal share is c*D/(R+c*D), where c is the disposal-to-recycling unit-cost
+ratio. Cost assumptions and positive disposal seeds change calibration shares
+only, never the source observations or the total monetary treatment budget.
 The pooled European mix allocates extra-European transactions; it is not an
 observed treatment mix or production system for a modeled ROW region.
 """
-function treatment_shares(; path = TREATMENT_FILE, zero_disposal_share = treatment_configuration()["zero_disposal_share"])
+function treatment_shares(; path = TREATMENT_FILE,
+    zero_disposal_share = treatment_configuration()["zero_disposal_share"],
+    disposal_cost_ratio = treatment_configuration()["disposal_cost_ratio"])
     0 < zero_disposal_share < 1 || error("Invalid zero-disposal calibration share")
+    isfinite(disposal_cost_ratio) && disposal_cost_ratio > 0 || error("Invalid disposal-to-recycling cost ratio")
     totals = treatment_totals(; path)
     rows = NamedTuple[]
     for region in REGIONS
@@ -97,17 +105,21 @@ function treatment_shares(; path = TREATMENT_FILE, zero_disposal_share = treatme
         recycling > 0 || error("Missing positive recorded recycling for $region")
         seeded = disposal == 0
         observed = disposal / (recycling + disposal)
-        calibrated = seeded ? zero_disposal_share : observed
+        calibrated = seeded ? zero_disposal_share :
+            disposal_cost_ratio * disposal / (recycling + disposal_cost_ratio * disposal)
         push!(rows, (region = region, basis = "regional_records", recycling = recycling,
             disposal = disposal, observed_rec = 1 - observed, observed_inc = observed,
-            calibrated_rec = 1 - calibrated, calibrated_inc = calibrated, seeded = seeded))
+            calibrated_rec = 1 - calibrated, calibrated_inc = calibrated, seeded = seeded,
+            cost_ratio = Float64(disposal_cost_ratio)))
     end
     recycling = sum(row.recycling for row in rows)
     disposal = sum(row.disposal for row in rows)
     share = disposal / (recycling + disposal)
+    calibrated = disposal_cost_ratio * disposal / (recycling + disposal_cost_ratio * disposal)
     push!(rows, (region = "ROW", basis = "pooled_european_external_trade_proxy",
         recycling = recycling, disposal = disposal, observed_rec = 1 - share, observed_inc = share,
-        calibrated_rec = 1 - share, calibrated_inc = share, seeded = false))
+        calibrated_rec = 1 - calibrated, calibrated_inc = calibrated, seeded = false,
+        cost_ratio = Float64(disposal_cost_ratio)))
     return rows
 end
 
@@ -120,7 +132,7 @@ function write_treatment_shares(path, rows)
     end
 end
 
-function read_treatment_shares(path)
+function read_treatment_shares(path; configuration = treatment_configuration())
     lines = readlines(path)
     split(lines[1], '\t') == SHARE_HEADER || error("Unexpected treatment-share header")
     rows = NamedTuple[]
@@ -130,9 +142,11 @@ function read_treatment_shares(path)
         a = parse.(Float64, fields[3:8])
         push!(rows, (region = String(fields[1]), basis = String(fields[2]), recycling = a[1],
             disposal = a[2], observed_rec = a[3], observed_inc = a[4],
-            calibrated_rec = a[5], calibrated_inc = a[6], seeded = parse(Bool, fields[9])))
+            calibrated_rec = a[5], calibrated_inc = a[6], seeded = parse(Bool, fields[9]),
+            cost_ratio = parse(Float64, fields[10])))
     end
-    expected = treatment_shares()
+    expected = treatment_shares(; zero_disposal_share = configuration["zero_disposal_share"],
+        disposal_cost_ratio = configuration["disposal_cost_ratio"])
     rows == expected || error("Treatment shares differ from their recorded source and calibration rule; regenerate them")
     return rows
 end

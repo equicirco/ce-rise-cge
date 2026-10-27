@@ -1,3 +1,4 @@
 key	value	notes
 zero_disposal_share	0.0001	Assumed disposal share only where recorded disposal is zero; recycling receives the complement and the monetary treatment total is preserved.
+disposal_cost_ratio	1.0	Assumed average disposal cost per tonne divided by average recycling cost per tonne, used to allocate the fixed monetary treatment total.
 seed_bound_multiple	1000	Require a seeded disposal activity's output to exceed this multiple of the existing model positive lower bound.

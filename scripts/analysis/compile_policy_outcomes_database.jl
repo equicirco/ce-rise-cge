@@ -1,129 +1,199 @@
 #!/usr/bin/env julia
 
-"""
-Reproduce the policy-sensitivity experiment and compile detailed accepted
-equilibrium outcomes into one local DuckDB database.
-
-All temporary solver checkpoints and outcome CSVs are kept outside the project.
-Only the completed database is written below `results/data/`.
-"""
+"""Build the outcome database from saved results; this script never solves models."""
+module CompilePolicyOutcomes
 
 using CSV
 using DataFrames
 using DBInterface
-
-const ROOT_DIR = normpath(joinpath(@__DIR__, "..", ".."))
-const DEFAULT_DATABASE = joinpath(ROOT_DIR, "results", "data", "policy_outcomes.duckdb")
-const DEFAULT_WORKERS = 10
-
+using DuckDB
+using CERiseCGE
 include(joinpath(@__DIR__, "policy_outcome_database.jl"))
 using .PolicyOutcomeDatabase
 
+const ROOT_DIR = normpath(joinpath(@__DIR__, "..", ".."))
+
 function command_options(args)
-    database = DEFAULT_DATABASE
-    workers = DEFAULT_WORKERS
+    input = joinpath(ROOT_DIR, "results", "policy_sensitivity_solutions.csv")
+    output = nothing
+    outcomes = nothing
+    baselines = nothing
     dry_run = false
     index = 1
     while index <= length(args)
-        if args[index] == "--output" && index < length(args)
-            database = normpath(joinpath(ROOT_DIR, args[index + 1]))
-            index += 2
-        elseif args[index] == "--workers" && index < length(args)
-            workers = parse(Int, args[index + 1])
-            workers > 0 || error("--workers must be positive.")
+        if args[index] in ("--input", "--output", "--outcome-dir", "--baseline-dir") && index < length(args)
+            value = abspath(args[index + 1])
+            args[index] == "--input" && (input = value)
+            args[index] == "--output" && (output = value)
+            args[index] == "--outcome-dir" && (outcomes = value)
+            args[index] == "--baseline-dir" && (baselines = value)
             index += 2
         elseif args[index] == "--dry-run"
             dry_run = true
             index += 1
         else
-            error("Usage: julia --project=. scripts/analysis/compile_policy_outcomes_database.jl " *
-                "[--output PATH] [--workers N] [--dry-run]")
+            error("Usage: compile_policy_outcomes_database.jl [--input PATH] [--output PATH] " *
+                "[--outcome-dir PATH] [--baseline-dir PATH] [--dry-run]")
         end
     end
-    return (database = database, workers = workers, dry_run = dry_run)
+    data = joinpath(dirname(input), "data")
+    return (solutions=input, database=something(output, joinpath(data, "policy_outcomes.duckdb")),
+        outcome_dir=something(outcomes, joinpath(data, "outcomes")),
+        baseline_dir=something(baselines, joinpath(data, "baselines")), dry_run=dry_run)
 end
 
-function run_reproduction(workdir::AbstractString, workers::Integer)
-    output_dir = joinpath(workdir, "solver")
-    outcome_dir = joinpath(workdir, "outcomes")
-    script = joinpath(ROOT_DIR, "scripts", "analysis",
-        "reproduce_policy_sensitivity_solutions.jl")
-    command = `$(Base.julia_cmd()) --project=$(ROOT_DIR) $(script) --output-dir $(output_dir) --outcome-dir $(outcome_dir) --workers $(string(workers))`
-    run(command)
-    return (
-        solutions = joinpath(output_dir, "policy_sensitivity_solutions.csv"),
-        direct_outcomes = joinpath(outcome_dir, "direct"),
-        recovered_outcomes = joinpath(outcome_dir, "recovered"),
-    )
-end
-
-function outcome_paths(paths)
-    files = String[]
-    for directory in (paths.direct_outcomes, paths.recovered_outcomes)
+function input_files(options, solutions)
+    isfile(options.solutions) || error("Saved policy results are missing: $(options.solutions)")
+    outcomes = String[]
+    for name in ("direct", "recovered")
+        directory = joinpath(options.outcome_dir, name)
         isdir(directory) || continue
-        append!(files, filter(path -> endswith(path, ".csv"),
-            readdir(directory; join=true)))
+        append!(outcomes, filter(path -> endswith(path, ".csv"), readdir(directory; join=true)))
     end
-    sort!(files)
-    isempty(files) && error("The reproduced experiment generated no detailed outcome tables.")
-    return files
+    baselines = isdir(options.baseline_dir) ? filter(path -> endswith(path, ".csv") &&
+        !any(suffix -> endswith(path, suffix), (".metal.csv", ".variables.csv", ".complete.csv", ".failure.csv")),
+        readdir(options.baseline_dir; join=true)) : String[]
+    baseline_variables = isdir(options.baseline_dir) ? filter(path -> endswith(path, ".variables.csv"),
+        readdir(options.baseline_dir; join=true)) : String[]
+    for path in baselines
+        CERiseCGE._checkpoint_files_valid(replace(path, r"\.csv$" => ".complete.csv")) ||
+            error("The saved reference checkpoint is incomplete or modified: $path")
+    end
+    variables = NamedTuple[]
+    root = dirname(options.solutions)
+    for row in eachrow(solutions)
+        coalesce(row.solver_valid, false) || continue
+        direct = CERiseCGE._policy_checkpoint_paths(joinpath(root, "policy_sensitivity_grid_checkpoints"),
+            joinpath(options.outcome_dir, "direct"), row.sensitivity_profile, row.instrument, row.wedge)
+        recovered = CERiseCGE._policy_point_file(joinpath(dirname(options.baseline_dir), "variables", "recovered"),
+            row.sensitivity_profile, row.instrument, row.wedge)
+        direct_valid = CERiseCGE._checkpoint_files_valid(direct.manifest) &&
+            only(CSV.read(direct.summary, DataFrame).solver_valid)
+        recovered_valid = CERiseCGE._checkpoint_files_valid(recovered * ".complete.csv")
+        path = direct_valid ? direct.variables : recovered
+        (direct_valid || recovered_valid) && isfile(path) ||
+            error("Saved variable values are missing or modified for $(row.scenario).")
+        push!(variables, (path=path, profile=String(row.sensitivity_profile), scenario=String(row.scenario),
+            instrument=String(row.instrument), wedge=Float64(row.wedge)))
+    end
+    return (outcomes=sort!(outcomes), baselines=sort!(baselines),
+        baseline_variables=sort!(baseline_variables), variables=variables)
 end
 
-policy_key(row) = (String(row.sensitivity_profile), String(row.scenario))
+key(row) = (String(row.sensitivity_profile), String(row.scenario), String(row.instrument), Float64(row.wedge))
 
-function validate_database(store, expected::DataFrame)
-    expected_valid = filter(:solver_valid => identity, expected)
-    expected_keys = Set(policy_key(row) for row in eachrow(expected_valid))
+function validate_database(store, expected)
+    valid = expected[coalesce.(expected.solver_valid, false), :]
     observed = DataFrame(DBInterface.execute(store.connection,
-        "SELECT sensitivity_profile, scenario, count(*) AS outcome_rows " *
-        "FROM policy_outcomes GROUP BY sensitivity_profile, scenario"))
-    observed_keys = Set(policy_key(row) for row in eachrow(observed))
-    expected_keys == observed_keys || error(
-        "Outcome database has $(length(observed_keys)) policy scenarios; expected $(length(expected_keys)).")
-    all(observed.outcome_rows .> 0) || error("An accepted policy scenario has no detailed outcomes.")
+        "SELECT sensitivity_profile, scenario, instrument, wedge, count(*) AS n " *
+        "FROM policy_outcomes GROUP BY ALL"))
+    Set(key.(eachrow(observed))) == Set(key.(eachrow(valid))) ||
+        error("Saved detailed outcomes do not cover exactly the accepted policy points.")
+    columns = join(["\"$column\"" for column in CERiseCGE._OUTCOME_KEY_FIELDS], ", ")
+    duplicates = DataFrame(DBInterface.execute(store.connection,
+        "SELECT count(*) AS n FROM (SELECT sensitivity_profile, scenario, $columns, count(*) AS n " *
+        "FROM policy_outcomes GROUP BY ALL HAVING count(*) <> 1)"))
+    only(duplicates.n) == 0 || error("Duplicate detailed outcome identifiers.")
+    counts = DataFrame(DBInterface.execute(store.connection,
+        "SELECT p.sensitivity_profile, p.scenario, count(*) AS n, " *
+        "(SELECT count(*) FROM baseline_outcomes b WHERE b.sensitivity_profile=p.sensitivity_profile) AS baseline_n " *
+        "FROM policy_outcomes p GROUP BY p.sensitivity_profile, p.scenario"))
+    all(counts.n .== counts.baseline_n) || error("An accepted case has incomplete baseline or policy outcomes.")
+    joins = join(["p.\"$column\" IS NOT DISTINCT FROM b.\"$column\""
+        for column in CERiseCGE._OUTCOME_KEY_FIELDS], " AND ")
+    invalid = DataFrame(DBInterface.execute(store.connection,
+        "SELECT count(*) AS n FROM policy_outcomes p LEFT JOIN baseline_outcomes b " *
+        "ON p.sensitivity_profile=b.sensitivity_profile AND $joins " *
+        "WHERE b.level IS NULL OR p.baseline_level IS DISTINCT FROM b.level " *
+        "OR NOT isfinite(p.policy_level) OR NOT isfinite(p.absolute_change)"))
+    only(invalid.n) == 0 || error("Policy outcomes have missing, inconsistent or non-finite reference values.")
+    variables = DataFrame(DBInterface.execute(store.connection,
+        "SELECT sensitivity_profile, scenario, instrument, wedge FROM policy_variables GROUP BY ALL"))
+    Set(key.(eachrow(variables))) == Set(key.(eachrow(valid))) || error("Saved policy-variable coverage is incomplete.")
+    duplicates = DataFrame(DBInterface.execute(store.connection,
+        "SELECT count(*) AS n FROM (SELECT sensitivity_profile, scenario, variable, count(*) " *
+        "FROM policy_variables GROUP BY ALL HAVING count(*) <> 1)"))
+    only(duplicates.n) == 0 || error("Duplicate saved variable values.")
+    for table in ("baseline_variables", "policy_variables")
+        invalid = DataFrame(DBInterface.execute(store.connection,
+            "SELECT count(*) AS n FROM $table WHERE variable IS NULL OR value IS NULL OR NOT isfinite(value)"))
+        only(invalid.n) == 0 || error("Invalid saved values in $table.")
+    end
     return PolicyOutcomeDatabase.database_summary(store.connection)
 end
 
 function compile_database(options)
-    ispath(options.database) && error(
-        "Refusing to overwrite existing outcome database: $(options.database)")
-    mktempdir() do workdir
-        paths = run_reproduction(workdir, options.workers)
-        solutions = CSV.read(paths.solutions, DataFrame)
-        nrow(solutions) == 14_580 || error(
-            "Reproduced policy table has $(nrow(solutions)) rows; expected 14,580.")
-        temporary_database = joinpath(workdir, "policy_outcomes.duckdb")
-        store = PolicyOutcomeDatabase.create_database(temporary_database, solutions)
-        summary = nothing
+    solutions = CSV.read(options.solutions, DataFrame)
+    files = input_files(options, solutions)
+    length(unique((String(row.sensitivity_profile), String(row.instrument), Float64(row.wedge))
+        for row in eachrow(solutions))) == nrow(solutions) || error("Duplicate declared policy points.")
+    isempty(files.outcomes) && error("Saved detailed outcomes are missing; no models will be rerun by this script.")
+    isempty(files.baselines) && error("Saved zero-policy outcomes are missing.")
+    paths = sort!(vcat([options.solutions], files.outcomes, files.baselines,
+        files.baseline_variables, [item.path for item in files.variables]))
+    inputs = DataFrame(file=relpath.(paths, Ref(dirname(options.solutions))),
+        sha256=CERiseCGE._file_digest.(paths))
+    sort!(inputs, :file)
+    if isfile(options.database)
+        database = DuckDB.DB(options.database; readonly=true)
+        connection = DBInterface.connect(database)
         try
-            for path in outcome_paths(paths)
+            stored = DataFrame(DBInterface.execute(connection, "SELECT * FROM source_files ORDER BY file"))
+            isequal(stored, inputs) || error("The existing database contains different saved results.")
+            summary = validate_database((connection=connection,), solutions)
+            println("Verified existing database: ", options.database)
+            return summary
+        finally
+            DBInterface.close!(connection)
+            close(database)
+        end
+    end
+    mkpath(dirname(options.database))
+    return mktempdir(dirname(options.database)) do directory
+        temporary = joinpath(directory, "policy_outcomes.duckdb")
+        store = PolicyOutcomeDatabase.create_database(temporary, solutions)
+        summary = try
+            for path in files.baselines
+                PolicyOutcomeDatabase.append_table!(store, "baseline_outcomes", CSV.read(path, DataFrame))
+            end
+            for path in files.outcomes
                 PolicyOutcomeDatabase.append_outcomes!(store, CSV.read(path, DataFrame))
             end
-            summary = validate_database(store, solutions)
+            for path in files.baseline_variables
+                table = CSV.read(path, DataFrame)
+                table.sensitivity_profile = fill(first(split(basename(path), ".variables.csv")), nrow(table))
+                PolicyOutcomeDatabase.append_table!(store, "baseline_variables", table)
+            end
+            for item in files.variables
+                table = CSV.read(item.path, DataFrame)
+                table.sensitivity_profile = fill(item.profile, nrow(table))
+                table.scenario = fill(item.scenario, nrow(table))
+                table.instrument = fill(item.instrument, nrow(table))
+                table.wedge = fill(item.wedge, nrow(table))
+                PolicyOutcomeDatabase.append_table!(store, "policy_variables", table)
+            end
+            PolicyOutcomeDatabase._create_table!(store.connection, "source_files", inputs)
+            validate_database(store, solutions)
         finally
             PolicyOutcomeDatabase.close_database!(store)
         end
-        mkpath(dirname(options.database))
-        mv(temporary_database, options.database)
-        println("Compiled ", options.database)
-        println("Policy points: ", summary.policy_points)
-        println("Detailed outcome rows: ", summary.outcome_rows)
+        mv(temporary, options.database)
+        println("Compiled ", summary.outcome_rows, " detailed outcome rows into ", options.database)
+        return summary
     end
-    return nothing
 end
 
 function main()
     options = command_options(ARGS)
-    println("Database: ", options.database)
-    println("Workers: ", options.workers)
     if options.dry_run
-        println("Workflow: reproduce policy solutions; capture accepted detailed outcomes; " *
-            "validate scenario coverage; write one DuckDB database.")
+        println("Read saved policy and baseline outcomes; validate and compile the database. No model solves.")
         return nothing
     end
     compile_database(options)
 end
 
+end
+
 if abspath(PROGRAM_FILE) == @__FILE__
-    main()
+    CompilePolicyOutcomes.main()
 end

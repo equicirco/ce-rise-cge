@@ -10,6 +10,18 @@ Removed: For features removed in this release.
 Fixed: For any bug fixes.
 Security: For vulnerabilities.
 
+## [Unreleased]
+### Added
+- Reproducible specification of information-enabled interventions and their combinations with fiscal instruments, with explicit within-profile comparisons for total effects and interactions.
+- Upper household-consumption CES across electronics-family access composites and other goods, with SAM-calibrated shares and a seventh sensitivity elasticity at 0.5, 1 and 2; unitary substitution retains the previous demand equations.
+- Single-execution solution and database workflow with complete per-point outcomes, solved variables, saved zero-policy references, checksum-verified resumption, and database-only reconstruction from persisted files.
+- Targeted treatment-calibration input checks at central behavioural elasticities, varying Poland's disposal seed and the relative disposal cost separately while preserving source observations and monetary totals.
+
+### Fixed
+- Generalized numerical recovery to every declared policy instrument and wedge, with distinct endpoint files and preservation of previously accepted results.
+- Corrected the CET exponent for European versus extra-European sales destinations so relative sales increase with the destination price. Regression tests cover calibration replication and independent CET and Armington price responses at elasticities of 0.5, 1 and 2.
+- Apply the virgin-metal input tax and regional revenue accounting to targeted new-product industries with no recycled-metal input, retaining their calibrated fixed input requirements.
+
 ## [0.1.0] - 2026-09-21
 ### Added
 - Initial public release of the CE-RISE Circular Economy CGE model.

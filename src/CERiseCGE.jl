@@ -13,6 +13,7 @@ using JCGECore
 using JCGEOutput
 using JCGERuntime
 using JuMP
+using SHA
 
 const RuntimeExperiments = JCGERuntime.Experiments
 
@@ -26,6 +27,7 @@ export MultiRegionCalibration, multi_region_calibration, calibration_consistency
 export calibration_option, calibration_option_number
 export PolicyScenario, baseline_scenario, CIRCULAR_POLICY_INSTRUMENTS
 export SensitivityProfile, SENSITIVITY_PARAMETER_KEYS
+export INFORMATION_MECHANISMS, information_parameter_grid, policy_experiment_design, policy_experiment_comparisons
 export eu_wide_policy_scenario, policy_wedge, policy_wedge_grid, policy_sweep_scenarios, validate_policy_scenario
 export sensitivity_parameter_grid, sensitivity_profiles, sensitivity_bundle
 export MULTI_REGION_BLOCK_KINDS, multi_region_blocks
@@ -51,6 +53,7 @@ include("model/calibration.jl")
 include("model/circular_metal_types.jl")
 include("model/circular_routes_types.jl")
 include("model/scenarios.jl")
+include("model/experiment_design.jl")
 include("model/trade.jl")
 include("model/blocks.jl")
 include("model/model.jl")
@@ -61,5 +64,6 @@ include("model/physical_satellite.jl")
 include("model/circular_metal.jl")
 include("model/circular_routes.jl")
 include("model/circular_policy.jl")
+include("model/checkpoints.jl")
 
 end

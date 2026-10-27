@@ -5,15 +5,18 @@ Combine direct-grid outcomes with summaries persisted by successful recovery sta
 
 Each recovery stage writes its endpoint summary when it first obtains a valid
 solution. This script performs no additional model solves: it replaces only
-the initially invalid 2% virgin-metal-tax rows with those persisted summaries.
+the initially invalid declared policy rows with those persisted summaries.
 """
+
+module MaterializeRecoveredPolicyResults
 
 using CSV
 using DataFrames
 using CERiseCGE
+include(joinpath(@__DIR__, "policy_recovery.jl"))
+using .PolicyRecovery: point_key
 
 const ROOT_DIR = normpath(joinpath(@__DIR__, "..", ".."))
-const TAX_WEDGE = 0.02
 
 function command_options(args)
     paths = Dict{Symbol,String}()
@@ -38,9 +41,10 @@ function command_options(args)
 end
 
 function read_recovered_summaries(directory::AbstractString)
-    isdir(directory) || error("Recovered-summary directory is missing: $(directory)")
-    paths = sort!(filter(path -> endswith(path, ".csv"), readdir(directory; join = true)))
-    isempty(paths) && error("Recovered-summary directory contains no endpoint summaries.")
+    paths = isdir(directory) ?
+        sort!(filter(path -> endswith(path, ".csv"), readdir(directory; join=true))) : String[]
+    isempty(paths) && return DataFrame(sensitivity_profile=String[], instrument=String[],
+        wedge=Float64[], solver_valid=Bool[], recovery_stage=String[])
     tables = DataFrame[CSV.read(path, DataFrame) for path in paths]
     all(nrow(table) == 1 for table in tables) ||
         error("Every recovered endpoint summary must contain exactly one row.")
@@ -48,14 +52,33 @@ function read_recovered_summaries(directory::AbstractString)
     required = Set([:sensitivity_profile, :instrument, :wedge, :solver_valid, :recovery_stage])
     required ⊆ Set(Symbol.(names(recovered))) ||
         error("Recovered endpoint summaries have no recognised policy-summary columns.")
-    all(String(row.instrument) == "virgin_metal_tax" &&
-        isapprox(Float64(row.wedge), TAX_WEDGE; atol = eps(TAX_WEDGE), rtol = 0.0) &&
-        row.solver_valid for row in eachrow(recovered)) ||
-        error("Recovered summaries must be valid 2% virgin-metal-tax endpoints.")
-    targets = String.(recovered.sensitivity_profile)
+    all(coalesce(row.solver_valid, false) for row in eachrow(recovered)) ||
+        error("Recovered summaries must contain accepted endpoints.")
+    targets = point_key.(eachrow(recovered))
     length(unique(targets)) == length(targets) ||
-        error("Recovered endpoint summaries duplicate sensitivity profiles.")
+        error("Recovered summaries duplicate a profile, instrument and wedge.")
     return recovered
+end
+
+function merge_recovered_results(grid::DataFrame, recovered::DataFrame)
+    grid_keys = point_key.(eachrow(grid))
+    length(unique(grid_keys)) == nrow(grid) || error("The declared grid contains duplicate policy points.")
+    recovered_keys = point_key.(eachrow(recovered))
+    length(unique(recovered_keys)) == nrow(recovered) || error("Recovered policy points are duplicated.")
+    Set(recovered_keys) ⊆ Set(grid_keys) || error("A recovered endpoint is outside the declared grid.")
+    all(coalesce.(recovered.solver_valid, false)) || error("A recovered endpoint is not accepted.")
+    original = copy(grid)
+    original.recovery_stage = [coalesce(row.solver_valid, false) ? "declared_policy_path" : "unresolved"
+        for row in eachrow(original)]
+    rejected = Set(grid_keys[.!coalesce.(grid.solver_valid, false)])
+    replacements = recovered[in.(recovered_keys, Ref(rejected)), :]
+    replaced = Set(point_key.(eachrow(replacements)))
+    retained = original[.!in.(grid_keys, Ref(replaced)), :]
+    final = vcat(retained, replacements; cols=:union)
+    sort!(final, [:sensitivity_profile, :instrument, :wedge])
+    nrow(final) == nrow(grid) && Set(point_key.(eachrow(final))) == Set(grid_keys) ||
+        error("Recovery changed the declared policy-point coverage.")
+    return final
 end
 
 function main()
@@ -68,18 +91,14 @@ function main()
         println("Dry run completed; no consolidated results were written.")
         return nothing
     end
-    grid.recovery_stage = [row.solver_valid ? "declared_policy_path" : "unresolved"
-        for row in eachrow(grid)]
-    recovered_targets = Set(String.(recovered.sensitivity_profile))
-    retained = grid[.!((String.(grid.instrument) .== "virgin_metal_tax") .&
-        isapprox.(grid.wedge, TAX_WEDGE; atol = eps(TAX_WEDGE), rtol = 0.0) .&
-        in.(String.(grid.sensitivity_profile), Ref(recovered_targets))), :]
-    final = vcat(retained, recovered; cols = :union)
-    sort!(final, [:sensitivity_profile, :instrument, :wedge])
-    nrow(final) == nrow(grid) || error("Final table has $(nrow(final)) rows; expected $(nrow(grid)).")
+    final = merge_recovered_results(grid, recovered)
     CERiseCGE._write_atomic_csv(options.output, final)
     println("Wrote ", nrow(final), " rows with ", count(coalesce.(final.solver_valid, false)),
         " validated solutions to ", options.output)
 end
 
-main()
+end
+
+if abspath(PROGRAM_FILE) == @__FILE__
+    MaterializeRecoveredPolicyResults.main()
+end

@@ -1,0 +1,6 @@
+case	changed_assumption	zero_disposal_share	disposal_cost_ratio
+reference	none	0.0001	1.0
+disposal_seed_low	zero_disposal_share	0.00001	1.0
+disposal_seed_high	zero_disposal_share	0.001	1.0
+disposal_cost_low	disposal_cost_ratio	0.0001	0.5
+disposal_cost_high	disposal_cost_ratio	0.0001	2.0

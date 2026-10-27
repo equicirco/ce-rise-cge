@@ -96,12 +96,12 @@ function policy_sweep_summary(baseline_result,
     models = MultiRegionModelSpec[run.model for run in policy_runs]
     instrument = _validate_policy_path(models)
     baseline = _metal_policy_measures(baseline_result, baseline_model)
-    fiscal_basis_kind = instrument === :virgin_metal_tax ?
-        :tax_revenue : :support_expenditure
-    rows = NamedTuple[]
-    for run in policy_runs
-        model = run.model
-        result = run.result
+    return DataFrame([_policy_summary_row(baseline, run.model, run.result) for run in policy_runs])
+end
+
+function _policy_summary_row(baseline, model::MultiRegionModelSpec, result)
+        instrument = _active_policy_instrument(model)
+        fiscal_basis_kind = instrument === :virgin_metal_tax ? :tax_revenue : :support_expenditure
         measures = _metal_policy_measures(result, model)
         fiscal = policy_fiscal_totals(result, model)
         fiscal_basis = instrument === :virgin_metal_tax ?
@@ -110,7 +110,7 @@ function policy_sweep_summary(baseline_result,
             "Policy sweep fiscal basis must be positive for $(model.scenario.name).")
         primary_reduction = baseline.primary_metal_market_demand_tonnes -
             measures.primary_metal_market_demand_tonnes
-        push!(rows, merge(
+        return merge(
             (
                 scenario = model.scenario.name,
                 instrument = instrument,
@@ -128,9 +128,7 @@ function policy_sweep_summary(baseline_result,
             ),
             measures,
             fiscal,
-        ))
-    end
-    return DataFrame(rows)
+        )
 end
 
 const _OUTCOME_KEY_FIELDS = (
@@ -176,7 +174,8 @@ function _outcome_variable_value(result, name::Symbol; default=nothing)
 end
 
 function _outcome_key(row)
-    return Tuple(getproperty(row, field) for field in _OUTCOME_KEY_FIELDS)
+    return Tuple(ismissing(getproperty(row, field)) ? missing : Symbol(getproperty(row, field))
+        for field in _OUTCOME_KEY_FIELDS)
 end
 
 function _require_unique_outcome_keys(table::DataFrame, label::AbstractString)
@@ -390,6 +389,12 @@ function policy_outcome_comparison(baseline_result,
         physical_reference=reference)
     policy_table = equilibrium_outcomes(policy_result, policy_model;
         physical_reference=reference)
+    return _policy_outcome_tables(baseline_table, policy_table, policy_model)
+end
+
+"""Compare saved reference outcomes with a newly solved policy without solving again."""
+function _policy_outcome_tables(baseline_table::DataFrame, policy_table::DataFrame,
+    policy_model::MultiRegionModelSpec)
     baseline_keys = _require_unique_outcome_keys(baseline_table, "Baseline")
     policy_keys = _require_unique_outcome_keys(policy_table, "Policy")
     Set(baseline_keys) == Set(policy_keys) || error(

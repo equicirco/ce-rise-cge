@@ -15,6 +15,7 @@ const SENSITIVITY_PARAMETER_KEYS = (
     ("circular_routes", "eol_allocation_elasticity"),
     ("circular_routes", "eol_productivity_elasticity"),
     ("circular_metal", "material_substitution_elasticity"),
+    ("final_demand", "consumption_elasticity"),
 )
 
 """One fully specified behavioural sensitivity case drawn from the shared grid."""
@@ -141,7 +142,7 @@ end
 """
     sensitivity_parameter_grid(bundle=default_calibration_bundle())
 
-Load the shared three-level grid for the six behavioural parameters that are
+Load the shared three-level grid for the seven behavioural parameters that are
 varied jointly with every policy path. Physical reporting coefficients and
 numerical solver settings are deliberately excluded.
 """

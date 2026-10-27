@@ -256,19 +256,16 @@ function multi_region_blocks(outline::MultiRegionOutline,
             params = (ssp = calibration.private_saving_share, positive_lower = positive_lower),
         )
     household_demand = policy_active ? policy.household :
-        JCGEBlocks.regional_household_income_demand(
+        PolicyAwareHouseholdDemandBlock(
             :regional_household_demand,
             regions,
             circular_routes.nonservice_goods_by_region,
             outline.factors_by_region,
-            outline.industries_by_region;
-            factor_input = :F,
-            factor_price = :pf,
-            composite_price = :pq,
-            consumption_var = :Xp,
-            saving_var = :Sp,
-            direct_tax_var = :Td,
-            params = (alpha = calibration.household_demand_share, positive_lower = positive_lower),
+            outline.industries_by_region,
+            (alpha = calibration.household_demand_share,
+             consumption_elasticity = circular_routes.consumption_elasticity,
+             include_policy_transfer = false,
+             positive_lower = positive_lower),
         )
     government_demand = JCGEBlocks.regional_government_demand(
         :regional_government_demand,

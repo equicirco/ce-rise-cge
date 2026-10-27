@@ -12,6 +12,7 @@ available tonne-based evidence.
 
 const _CIRCULAR_SERVICE_PRICE_VAR = :P_CIRCULAR_SERVICE
 const _CIRCULAR_SERVICE_QUANTITY_VAR = :Q_CIRCULAR_SERVICE
+const _HOUSEHOLD_CES_PRICE_VAR = :P_HH_CES
 const _CIRCULAR_EOL_FLOW_VAR = :EOL_FLOW
 const _CIRCULAR_EOL_INDEX_VAR = :EOL_INDEX
 
@@ -195,6 +196,7 @@ function circular_route_calibration(outline::MultiRegionOutline,
         _circular_route_configuration(outline.bundle, "eol_allocation_elasticity"),
         _circular_route_configuration(outline.bundle, "eol_productivity_elasticity"),
         _circular_route_configuration(outline.bundle, "service_elasticity"),
+        _consumption_elasticity(outline.bundle),
     )
 end
 
@@ -228,6 +230,7 @@ function circular_route_initial_values(outline::MultiRegionOutline,
             for service in routes.services if routes.service_region[service] === region
         )
         starts[JCGEBlocks.global_var(:UU, region)] = nonservice_utility * service_utility
+        starts[JCGEBlocks.global_var(_HOUSEHOLD_CES_PRICE_VAR, region)] = base_price
     end
     return starts
 end
@@ -266,6 +269,33 @@ struct CircularHouseholdUtilityBlock <: JCGECore.AbstractBlock
     calibration::CircularRouteCalibration
     regions::Vector{Symbol}
     params::NamedTuple
+end
+
+function _consumption_elasticity(bundle::CalibrationBundle)
+    value = calibration_option_number(bundle, "final_demand", "consumption_elasticity")
+    isfinite(value) && value > 0.0 ||
+        error("final_demand.consumption_elasticity must be finite and strictly positive.")
+    return value
+end
+
+"""Marshallian demand from the upper consumption CES, including its unitary limit."""
+function _consumption_demand_expr(share, disposable_income, purchaser_price, region)
+    price_index = EVar(_HOUSEHOLD_CES_PRICE_VAR, Any[region])
+    return EMul([
+        share,
+        EDiv(disposable_income, price_index),
+        EPow(EDiv(price_index, purchaser_price), EParam(:consumption_elasticity, Any[])),
+    ])
+end
+
+"""Weighted CES index with an explicit Cobb--Douglas branch at elasticity one."""
+function _consumption_index_expr(components, exponent; unitary::Bool)
+    if unitary
+        return EMul([EPow(value, share) for (share, value) in components])
+    end
+    return EPow(EAdd([
+        EMul([share, EPow(value, exponent)]) for (share, value) in components
+    ]), EDiv(EConst(1.0), exponent))
 end
 
 function _ensure_circular_route_variable!(ctx::JCGERuntime.KernelContext, model,
@@ -488,12 +518,16 @@ function JCGECore.build!(block::CircularServiceDemandBlock,
     elasticity = Float64(block.params.elasticity)
     lower > 0.0 || error("Circular service demand requires a positive lower bound.")
     elasticity > 0.0 || error("Circular service elasticity must be positive.")
+    isfinite(block.params.consumption_elasticity) && block.params.consumption_elasticity > 0.0 ||
+        error("Upper consumption elasticity must be finite and positive.")
     is_cobb_douglas = isapprox(elasticity, 1.0; atol=1.0e-12, rtol=0.0)
     for service in routes.services
         region = routes.service_region[service]
         factors = block.factors_by_region[region]
         activities = block.activities_by_region[region]
         goods = sort!(collect(values(routes.route_goods_by_service[service])))
+        _ensure_circular_route_variable!(ctx, model,
+            JCGEBlocks.global_var(_HOUSEHOLD_CES_PRICE_VAR, region); lower=lower)
         _ensure_circular_route_variable!(ctx, model,
             JCGEBlocks.global_var(_CIRCULAR_SERVICE_PRICE_VAR, service); lower=lower)
         _ensure_circular_route_variable!(ctx, model,
@@ -543,17 +577,14 @@ function JCGECore.build!(block::CircularServiceDemandBlock,
             expr=service_price, index_names=(:service,))
         service_demand = EEq(
             EVar(_CIRCULAR_SERVICE_QUANTITY_VAR, Any[service]),
-            EDiv(
-                EMul([
-                    EParam(:service_share, Any[service]),
-                    _circular_disposable_income_expr(region, factors, activities;
-                        include_policy_transfer=block.params.include_policy_transfer),
-                ]),
-                EVar(_CIRCULAR_SERVICE_PRICE_VAR, Any[service]),
-            ),
+            _consumption_demand_expr(
+                EParam(:service_share, Any[service]),
+                _circular_disposable_income_expr(region, factors, activities;
+                    include_policy_transfer=block.params.include_policy_transfer),
+                EVar(_CIRCULAR_SERVICE_PRICE_VAR, Any[service]), region),
         )
         _register_circular_route_equation!(ctx, block, :circular_service_demand, service;
-            info="households allocate their calibrated expenditure share to the family-specific circular-service composite",
+            info="upper CES demand allocates household spending to each family-specific access composite",
             expr=service_demand, index_names=(:service,))
         for (route, good) in routes.route_goods_by_service[service]
             demand_rhs = is_cobb_douglas ?
@@ -591,6 +622,7 @@ function JCGECore.build!(block::CircularHouseholdPriceIndexBlock,
     routes = block.calibration
     lower = Float64(block.params.positive_lower)
     lower > 0.0 || error("Circular household price index requires a positive lower bound.")
+    unitary = isapprox(block.params.consumption_elasticity, 1.0; atol=1.0e-12, rtol=0.0)
     services_by_region = Dict(region => Symbol[] for region in block.regions)
     for service in routes.services
         push!(services_by_region[routes.service_region[service]], service)
@@ -598,12 +630,14 @@ function JCGECore.build!(block::CircularHouseholdPriceIndexBlock,
     for region in block.regions
         _ensure_circular_route_variable!(ctx, model, JCGEBlocks.global_var(:P_HH, region); lower=lower)
         terms = JCGECore.EquationExpr[]
+        components = Tuple{JCGECore.EquationExpr,JCGECore.EquationExpr}[]
         for good in routes.nonservice_goods_by_region[region]
             _ensure_circular_route_variable!(ctx, model, JCGEBlocks.global_var(:pq, good); lower=lower)
             push!(terms, EMul([
                 EParam(:nonservice_share, Any[good]),
                 EVar(:pq, Any[good]),
             ]))
+            push!(components, (EParam(:nonservice_share, Any[good]), EVar(:pq, Any[good])))
         end
         for service in services_by_region[region]
             _ensure_circular_route_variable!(ctx, model,
@@ -612,11 +646,23 @@ function JCGECore.build!(block::CircularHouseholdPriceIndexBlock,
                 EParam(:service_share, Any[service]),
                 EVar(_CIRCULAR_SERVICE_PRICE_VAR, Any[service]),
             ]))
+            push!(components, (EParam(:service_share, Any[service]),
+                EVar(_CIRCULAR_SERVICE_PRICE_VAR, Any[service])))
         end
         price_index = EEq(EVar(:P_HH, Any[region]), EAdd(terms))
         _register_circular_route_equation!(ctx, block, :regional_household_price_index, region;
             info="regional household price index combines non-circular goods with circular-service composite prices",
             expr=price_index, index_names=(:region,))
+        # Retain the fixed-basket index for the real factor-price closure and
+        # numeraire; use the exact CES expenditure index in household demand.
+        _ensure_circular_route_variable!(ctx, model,
+            JCGEBlocks.global_var(_HOUSEHOLD_CES_PRICE_VAR, region); lower=lower)
+        ces_price = _consumption_index_expr(components,
+            EAdd([EConst(1.0), ENeg(EParam(:consumption_elasticity, Any[]))]); unitary)
+        _register_circular_route_equation!(ctx, block, :regional_consumption_ces_price, region;
+            info="exact upper CES expenditure index across electronics-family composites and other consumption goods",
+            expr=EEq(EVar(_HOUSEHOLD_CES_PRICE_VAR, Any[region]), ces_price),
+            index_names=(:region,))
     end
     _ensure_circular_route_variable!(ctx, model, :P_HH_COMMON; lower=lower)
     common = EEq(
@@ -636,31 +682,36 @@ function JCGECore.build!(block::CircularHouseholdUtilityBlock,
     ctx::JCGERuntime.KernelContext, spec::JCGECore.RunSpec)
     model = ctx.model
     routes = block.calibration
+    unitary = isapprox(block.params.consumption_elasticity, 1.0; atol=1.0e-12, rtol=0.0)
     services_by_region = Dict(region => Symbol[] for region in block.regions)
     for service in routes.services
         push!(services_by_region[routes.service_region[service]], service)
     end
     for region in block.regions
-        terms = JCGECore.EquationExpr[]
+        components = Tuple{JCGECore.EquationExpr,JCGECore.EquationExpr}[]
         _ensure_circular_route_variable!(ctx, model, JCGEBlocks.global_var(:UU, region); lower=0.0)
         for good in routes.nonservice_goods_by_region[region]
             _ensure_circular_route_variable!(ctx, model, JCGEBlocks.global_var(:Xp, good); lower=0.0)
-            push!(terms, EPow(
-                EVar(:Xp, Any[good]),
-                EParam(:nonservice_share, Any[good]),
-            ))
+            quantity = EVar(:Xp, Any[good])
+            unitary || (quantity = EDiv(quantity, EParam(:reference_quantity, Any[good])))
+            push!(components, (EParam(:nonservice_share, Any[good]), quantity))
         end
         for service in services_by_region[region]
             _ensure_circular_route_variable!(ctx, model,
                 JCGEBlocks.global_var(_CIRCULAR_SERVICE_QUANTITY_VAR, service); lower=0.0)
-            push!(terms, EPow(
-                EVar(_CIRCULAR_SERVICE_QUANTITY_VAR, Any[service]),
-                EParam(:service_share, Any[service]),
-            ))
+            quantity = EVar(_CIRCULAR_SERVICE_QUANTITY_VAR, Any[service])
+            unitary || (quantity = EDiv(quantity, EParam(:reference_quantity, Any[service])))
+            push!(components, (EParam(:service_share, Any[service]), quantity))
         end
-        utility = EEq(EVar(:UU, Any[region]), EMul(terms))
+        exponent = EDiv(EAdd([EParam(:consumption_elasticity, Any[]), ENeg(EConst(1.0))]),
+            EParam(:consumption_elasticity, Any[]))
+        quantity_index = _consumption_index_expr(components, exponent; unitary)
+        utility_rhs = unitary ? quantity_index : EMul([
+            EParam(:reference_utility, Any[region]), quantity_index,
+        ])
+        utility = EEq(EVar(:UU, Any[region]), utility_rhs)
         _register_circular_route_equation!(ctx, block, :regional_circular_utility, region;
-            info="regional household utility combines non-circular consumption with family-specific circular services",
+            info="upper CES household utility combines electronics-family access composites and other consumption goods",
             expr=utility, index_names=(:region,))
     end
     objective = ESum(:region, block.regions, EVar(:UU, Any[EIndex(:region)]))
@@ -728,6 +779,7 @@ function circular_route_blocks(outline::MultiRegionOutline,
             service_share = routes.service_share,
             route_share = routes.route_share,
             elasticity = routes.service_elasticity,
+            consumption_elasticity = routes.consumption_elasticity,
             scenario = scenario,
             include_policy_transfer = include_policy_transfer,
             positive_lower = lower,
@@ -741,9 +793,16 @@ function circular_route_blocks(outline::MultiRegionOutline,
             nonservice_share = calibration.household_share,
             service_share = routes.service_share,
             common_weight = calibration.common_price_weight,
+            consumption_elasticity = routes.consumption_elasticity,
             positive_lower = lower,
         ),
     )
+    references = circular_route_initial_values(outline, calibration, routes)
+    reference_quantity = copy(calibration.household_demand)
+    for service in routes.services
+        reference_quantity[service] = references[
+            JCGEBlocks.global_var(_CIRCULAR_SERVICE_QUANTITY_VAR, service)]
+    end
     utility = CircularHouseholdUtilityBlock(
         :regional_circular_household_utility,
         routes,
@@ -751,6 +810,10 @@ function circular_route_blocks(outline::MultiRegionOutline,
         (
             nonservice_share = calibration.household_share,
             service_share = routes.service_share,
+            consumption_elasticity = routes.consumption_elasticity,
+            reference_quantity = reference_quantity,
+            reference_utility = Dict(region => references[JCGEBlocks.global_var(:UU, region)]
+                for region in outline.regions),
         ),
     )
     return (

@@ -81,8 +81,8 @@ function family_from_code(code::AbstractString)
     return nothing
 end
 
-function load_waste_route_shares(path = TREATMENT_SHARES)
-    rows = read_treatment_shares(path)
+function load_waste_route_shares(path = TREATMENT_SHARES; configuration = treatment_configuration())
+    rows = read_treatment_shares(path; configuration)
     shares = Dict(row.region => (row.calibrated_rec, row.calibrated_inc) for row in rows)
     return shares, rows
 end
@@ -93,12 +93,14 @@ function waste_split(region::AbstractString, family::AbstractString, shares, met
     return shares[region]
 end
 
-function write_treatment_allocation(path, supply_totals, metadata; source_file = IN_SUPPLY)
-    minimum_output = seed_output_floor()
+function write_treatment_allocation(path, supply_totals, metadata; source_file = IN_SUPPLY,
+    configuration = treatment_configuration())
+    minimum_output = seed_output_floor(; configuration)
     budgets = treatment_budgets(source_file)
     open(path, "w") do io
         println(io, join(vcat(SHARE_HEADER, ["source_treatment_output_meur", "recycling_output_meur", "disposal_output_meur",
-            "total_treatment_output_meur", "disposal_seed_meur", "seed_above_bound_margin"]), '\t'))
+            "total_treatment_output_meur", "disposal_seed_meur", "seed_above_bound_margin",
+            "disposal_cost_reallocation_meur"]), '\t'))
         for row in metadata
             output(sector) = sum(value for (key, value) in supply_totals if key[3] == row.region && key[4] == sector; init = 0.0)
             recycling, disposal = output("REC_EE"), output("INC_EE")
@@ -110,8 +112,10 @@ function write_treatment_allocation(path, supply_totals, metadata; source_file =
                 error("Treatment allocation differs from the calibrated share in $(row.region)")
             above_bound = !row.seeded || disposal > minimum_output
             above_bound || error("Disposal seed for $(row.region) is too close to the model's quantity lower bound")
-            seed = total * (row.calibrated_inc - row.observed_inc)
-            println(io, join(string.(vcat(collect(values(row)), Any[budgets[row.region], recycling, disposal, total, seed, above_bound])), '\t'))
+            seed = row.seeded ? total * row.calibrated_inc : 0.0
+            cost_adjustment = row.seeded ? 0.0 : total * (row.calibrated_inc - row.observed_inc)
+            println(io, join(string.(vcat(collect(values(row)),
+                Any[budgets[row.region], recycling, disposal, total, seed, above_bound, cost_adjustment])), '\t'))
         end
     end
 end

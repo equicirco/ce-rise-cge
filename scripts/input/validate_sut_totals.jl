@@ -651,6 +651,7 @@ function append_stage8_checks!(rows)
         ("circular_routes", "eol_allocation_elasticity"),
         ("circular_routes", "eol_productivity_elasticity"),
         ("circular_metal", "material_substitution_elasticity"),
+        ("final_demand", "consumption_elasticity"),
     ])
     sensitivity_ladder = [0.5, 1.0, 2.0]
     sensitivity_ok = sensitivity_header_ok && sensitivity_parse_ok &&
@@ -663,7 +664,7 @@ function append_stage8_checks!(rows)
         artifact_status(sensitivity_ok),
         STAGE8_SENSITIVITY_PARAMETER_GRID,
         "parameters=$(length(sensitivity_by_parameter)); rows=$(length(sensitivity_values))",
-        "six parameters; 18 rows; common values 0.5;1.0;2.0",
+        "seven parameters; 21 rows; common values 0.5;1.0;2.0",
         "The policy analysis must use one data-defined shared behavioural ladder across trade and circular-economy response parameters.",
     ))
 
@@ -812,14 +813,17 @@ function manufacturing_family_check(path = MANUFACTURING_SHARES)
 end
 
 function treatment_allocation_check(path = STAGE3_TREATMENT_ALLOCATION;
-    source_file = joinpath(STAGE2_DIR, "integrated_supply.tsv"))
+    source_file = joinpath(STAGE2_DIR, "integrated_supply.tsv"),
+    configuration = treatment_configuration())
     if !isfile(path)
         return artifact_row("03_final_preparation", "discarded_equipment_treatment", "FAIL", path,
             "missing", "recorded mix and separate calibration seed", "Required treatment-allocation audit.")
     end
     table = read_tsv(path)
     index = Dict(name => i for (i, name) in enumerate(table[1]))
-    expected = Dict(row.region => row for row in treatment_shares())
+    expected = Dict(row.region => row for row in treatment_shares(;
+        zero_disposal_share = configuration["zero_disposal_share"],
+        disposal_cost_ratio = configuration["disposal_cost_ratio"]))
     budgets = treatment_budgets(source_file)
     seen = Set{String}()
     valid = true
@@ -833,7 +837,8 @@ function treatment_allocation_check(path = STAGE3_TREATMENT_ALLOCATION;
         end
         push!(seen, region)
         ref = expected[region]
-        valid &= field("mix_basis") == ref.basis && parse(Bool, field("disposal_seeded")) == ref.seeded
+        valid &= field("mix_basis") == ref.basis && parse(Bool, field("disposal_seeded")) == ref.seeded &&
+            number("disposal_to_recycling_cost_ratio") == ref.cost_ratio
         for (column, value) in zip(SHARE_HEADER[3:8], (ref.recycling, ref.disposal,
                 ref.observed_rec, ref.observed_inc, ref.calibrated_rec, ref.calibrated_inc))
             valid &= number(column) == value
@@ -845,8 +850,10 @@ function treatment_allocation_check(path = STAGE3_TREATMENT_ALLOCATION;
             isapprox(number("source_treatment_output_meur"), budgets[region]; atol = 1e-8, rtol = 1e-12) &&
             isapprox(total, budgets[region]; atol = 1e-8, rtol = 1e-12) &&
             isapprox(inc / total, ref.calibrated_inc; atol = 1e-12) &&
-            isapprox(seed, total * (ref.calibrated_inc - ref.observed_inc); atol = 1e-10, rtol = 1e-12) &&
-            parse(Bool, field("seed_above_bound_margin")) && (!ref.seeded || inc > seed_output_floor())
+            isapprox(seed, ref.seeded ? total * ref.calibrated_inc : 0.0; atol = 1e-10, rtol = 1e-12) &&
+            isapprox(number("disposal_cost_reallocation_meur"),
+                ref.seeded ? 0.0 : total * (ref.calibrated_inc - ref.observed_inc); atol = 1e-10, rtol = 1e-12) &&
+            parse(Bool, field("seed_above_bound_margin")) && (!ref.seeded || inc > seed_output_floor(; configuration))
     end
     valid &= seen == Set(keys(expected))
     return artifact_row("03_final_preparation", "discarded_equipment_treatment", artifact_status(valid), path,

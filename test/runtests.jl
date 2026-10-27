@@ -2,6 +2,7 @@ using Test
 include("input_data.jl")
 include("manufacturing_allocation.jl")
 include("treatment_allocation.jl")
+include("treatment_sensitivity.jl")
 include("physical_anchor_coverage.jl")
 using DataFrames: DataFrame, nrow
 using CERiseCGE
@@ -11,6 +12,12 @@ using JCGEOutput
 using JCGERuntime
 using JuMP
 include("physical_anchor_loader.jl")
+include("trade_elasticities.jl")
+include("primary_metal_tax.jl")
+include("consumption_substitution.jl")
+include("experiment_design.jl")
+include("policy_recovery.jl")
+include("result_persistence.jl")
 
 bundle = default_calibration_bundle()
 
@@ -24,7 +31,7 @@ for instrument in CIRCULAR_POLICY_INSTRUMENTS
     @test abs.([row.wedge for row in rows]) == [0.0025, 0.005, 0.01, 0.02]
 end
 sensitivity_grid = sensitivity_parameter_grid(bundle)
-@test nrow(sensitivity_grid) == 18
+@test nrow(sensitivity_grid) == 21
 @test Set((row.component, row.key) for row in eachrow(sensitivity_grid)) ==
     Set(SENSITIVITY_PARAMETER_KEYS)
 for (component, key) in SENSITIVITY_PARAMETER_KEYS
@@ -34,7 +41,7 @@ for (component, key) in SENSITIVITY_PARAMETER_KEYS
     @test [row.value for row in rows] == [0.5, 1.0, 2.0]
 end
 sensitivity_cases = sensitivity_profiles(bundle)
-@test length(sensitivity_cases) == 729
+@test length(sensitivity_cases) == 2187
 @test sensitivity_cases[1].name == :sensitivity_001
 @test all(value == 0.5 for value in values(sensitivity_cases[1].values))
 unit_profile = only(filter(profile -> all(value == 1.0 for value in values(profile.values)),
@@ -164,7 +171,7 @@ accounting_targets = closure_accounting_targets(bundle)
 blocks = multi_region_blocks(model.outline, model.calibration, model.scenario;
     circular_routes = model.circular_routes,
     circular_metal = model.circular_metal)
-@test length(blocks.production) == 13
+@test length(blocks.production) == 12
 @test blocks.material_composite !== nothing
 @test length(blocks.material_composite.production) == 6
 @test blocks.circular_routes.eol_allocation isa CERiseCGE.EUWideEOLAllocationBlock
@@ -213,12 +220,12 @@ initial_values = blocks.initial_values.params.start
 @test any(block -> block isa CERiseCGE.EUWideEOLAllocationBlock, spec.model.blocks)
 @test any(block -> block isa CERiseCGE.CircularServiceDemandBlock, spec.model.blocks)
 material = circular_material_structure(model)
-@test length(material.activities) == 146
+@test length(material.activities) == 147
 @test material.elasticity == 1.0
 @test all(length(material.activities_by_region[region]) > 0 for region in outline.regions)
 @test all(isapprox(
-    material.share[(activity, material.primary_good[activity])] +
-    material.share[(activity, material.recycled_good[activity])],
+    sum(material.share[(activity, good)]
+        for good in CERiseCGE._material_input_goods(material, activity)),
     1.0;
     atol = 1.0e-12,
 ) for activity in material.activities)
@@ -329,8 +336,8 @@ baseline_result = run_baseline(model)
     model.calibration.intermediate_coefficient[(good, activity)] *
         model.calibration.activity_output[activity];
     atol = 1.0e-3, rtol = 1.0e-9,
-) for activity in material.activities for good in (
-    material.primary_good[activity], material.recycled_good[activity]))
+) for activity in material.activities
+    for good in CERiseCGE._material_input_goods(material, activity))
 
 zero_policy_result = run_policy_scenario(zero_policy_model)
 @test JuMP.termination_status(zero_policy_result.context.model) == JuMP.MOI.ALMOST_LOCALLY_SOLVED

@@ -1,8 +1,8 @@
 #!/usr/bin/env julia
 
 """
-Use adaptive bisection in one sensitivity parameter at a fixed 2% virgin-metal
-tax. Each target starts from its best previously tested one-parameter solved
+Use adaptive bisection in one sensitivity parameter for any policy instrument
+and declared wedge. Each target starts from a previously tested solved
 neighbour; intermediate parameter values are numerical continuation points and
 are not part of the reported sensitivity design.
 """
@@ -14,6 +14,9 @@ using DataFrames
 using Distributed
 using JuMP
 using CERiseCGE
+include(joinpath(@__DIR__, "policy_recovery.jl"))
+using .PolicyRecovery: point_key, point_file, accepted_points, declared_key,
+    policy_model, source_policy_start, source_baseline_start, checkpoint_complete
 
 include(joinpath(@__DIR__, "recovered_policy_summary.jl"))
 using .RecoveredPolicySummary
@@ -24,7 +27,6 @@ const ROOT_DIR = normpath(joinpath(@__DIR__, "..", ".."))
 const DEFAULT_INPUT_FILE = joinpath(ROOT_DIR, "results", "parameter_neighbor.csv")
 const DEFAULT_OUTPUT_FILE = joinpath(ROOT_DIR, "results", "parameter_bisection.csv")
 const DEFAULT_WORKERS = 10
-const TAX_WEDGE = 0.02
 const DEFAULT_MINIMUM_FRACTION_INCREMENT = 1.0 / 1024.0
 const MAXIMUM_ATTEMPTS = 60
 
@@ -33,6 +35,7 @@ function command_options(args)
     output_file = DEFAULT_OUTPUT_FILE
     summary_dir = nothing
     outcome_dir = nothing
+    baseline_dir = nothing
     remaining_from = nothing
     minimum_fraction_increment = DEFAULT_MINIMUM_FRACTION_INCREMENT
     continuation_path = :parameter_only
@@ -52,6 +55,9 @@ function command_options(args)
         elseif args[index] == "--outcome-dir" && index < length(args)
             outcome_dir = normpath(joinpath(ROOT_DIR, args[index + 1]))
             index += 2
+        elseif args[index] == "--baseline-dir" && index < length(args)
+            baseline_dir = normpath(joinpath(ROOT_DIR, args[index + 1]))
+            index += 2
         elseif args[index] == "--remaining-from" && index < length(args)
             remaining_from = normpath(joinpath(ROOT_DIR, args[index + 1]))
             index += 2
@@ -62,8 +68,8 @@ function command_options(args)
             index += 2
         elseif args[index] == "--continuation-path" && index < length(args)
             continuation_path = Symbol(args[index + 1])
-            continuation_path in (:parameter_only, :diagonal_tax_parameter) ||
-                error("--continuation-path must be parameter_only or diagonal_tax_parameter.")
+            continuation_path in (:parameter_only, :diagonal_policy_parameter) ||
+                error("--continuation-path must be parameter_only or diagonal_policy_parameter.")
             index += 2
         elseif args[index] == "--workers" && index < length(args)
             workers = parse(Int, args[index + 1])
@@ -75,8 +81,8 @@ function command_options(args)
         else
             error("Usage: julia --project=. scripts/analysis/run_parameter_bisection_continuation.jl " *
                 "[--input PATH] [--output PATH] [--summary-dir PATH] [--remaining-from PATH] " *
-                "[--outcome-dir PATH] [--minimum-fraction-increment VALUE] " *
-                "[--continuation-path parameter_only|diagonal_tax_parameter] " *
+                "[--outcome-dir PATH] [--baseline-dir PATH] [--minimum-fraction-increment VALUE] " *
+                "[--continuation-path parameter_only|diagonal_policy_parameter] " *
                 "[--workers N] [--dry-run]")
         end
     end
@@ -85,32 +91,20 @@ function command_options(args)
         remaining_from = remaining_from,
         minimum_fraction_increment = minimum_fraction_increment,
         continuation_path = continuation_path,
-        workers = workers, dry_run = dry_run)
+        baseline_dir=baseline_dir, workers = workers, dry_run = dry_run)
 end
 
 checkpoint_dir(output_file::AbstractString) = joinpath(dirname(output_file),
     "$(splitext(basename(output_file))[1])_checkpoints")
 
-function completed_checkpoint(path::AbstractString)
-    isfile(path) || return false
-    table = CSV.read(path, DataFrame)
-    :target_profile in Symbol.(names(table)) || return false
-    return any(!ismissing(value) for value in table.target_profile)
-end
-
-function unresolved_endpoint_profiles(path::AbstractString)
+function unresolved_endpoint_points(path::AbstractString)
     isfile(path) || error("Previous parameter-bisection results are missing: $(path)")
     table = CSV.read(path, DataFrame)
-    required = Set([:target_profile, :trial_fraction, :trial_accepted])
+    required = Set([:sensitivity_profile, :instrument, :wedge, :trial_fraction, :trial_accepted])
     required ⊆ Set(Symbol.(names(table))) ||
         error("Previous parameter-bisection results have no recognised endpoint columns.")
-    targets = Set(Symbol(row.target_profile) for row in eachrow(table)
-        if !ismissing(row.target_profile))
-    recovered = Set(Symbol(row.target_profile) for row in eachrow(table)
-        if !ismissing(row.target_profile) && !ismissing(row.trial_fraction) &&
-           row.trial_fraction == 1.0 && !ismissing(row.trial_accepted) &&
-           row.trial_accepted)
-    return setdiff(targets, recovered)
+    targets = Set(declared_key(row) for row in eachrow(table))
+    return setdiff(targets, accepted_points(table))
 end
 
 function choose_tasks(input_file::AbstractString, directory::AbstractString;
@@ -120,17 +114,17 @@ function choose_tasks(input_file::AbstractString, directory::AbstractString;
     summary_dir::Union{Nothing,AbstractString}=nothing)
     isfile(input_file) || error("Parameter-neighbour results are missing: $(input_file)")
     table = CSV.read(input_file, DataFrame)
-    required = Set([:sensitivity_profile, :source_profile, :changed_parameter,
+    required = Set([:sensitivity_profile, :instrument, :wedge, :source_profile, :changed_parameter,
         :parameter_distance, :solver_valid, :max_scaled_residual])
     required ⊆ Set(Symbol.(names(table))) || error("Input has no recognised continuation columns.")
-    recovered = combine(groupby(table, :sensitivity_profile), :solver_valid => any => :recovered)
-    selected = isnothing(remaining_from) ? nothing : unresolved_endpoint_profiles(remaining_from)
+    selected = isnothing(remaining_from) ? nothing : unresolved_endpoint_points(remaining_from)
     tasks = NamedTuple[]
-    for row in eachrow(recovered)
-        row.recovered && continue
-        selected === nothing || Symbol(row.sensitivity_profile) in selected || continue
-        attempts = filter(item -> item.sensitivity_profile == row.sensitivity_profile,
-            eachrow(table))
+    for group in groupby(table, [:sensitivity_profile, :instrument, :wedge])
+        any(coalesce.(group.solver_valid, false)) && continue
+        row = first(eachrow(group))
+        selected === nothing || point_key(row) in selected || continue
+        attempts = filter(item -> !ismissing(item.source_profile) && !ismissing(item.changed_parameter),
+            eachrow(group))
         finite = filter(item -> !ismissing(item.max_scaled_residual) &&
             isfinite(item.max_scaled_residual), attempts)
         candidates = isempty(finite) ? collect(attempts) : collect(finite)
@@ -150,23 +144,24 @@ function choose_tasks(input_file::AbstractString, directory::AbstractString;
                 parameter = parameter,
             ))
         end
-        isempty(sources) && error("No usable parameter-neighbour source is available for $(row.sensitivity_profile).")
         push!(tasks, (
             target = Symbol(row.sensitivity_profile),
+            instrument = Symbol(row.instrument),
+            wedge = Float64(row.wedge),
             sources = sources,
             minimum_fraction_increment = Float64(minimum_fraction_increment),
             continuation_path = continuation_path,
-            output_path = joinpath(directory, "$(row.sensitivity_profile).csv"),
+            output_path = point_file(directory, point_key(row)...),
             summary_path = isnothing(summary_dir) ? nothing :
-                joinpath(summary_dir, "$(row.sensitivity_profile).csv"),
+                point_file(summary_dir, point_key(row)...),
         ))
     end
-    sort!(tasks; by = item -> String(item.target))
+    sort!(tasks; by = item -> (String(item.target), String(item.instrument), item.wedge))
     return tasks
 end
 
 function summary_stage(task)
-    task.continuation_path === :diagonal_tax_parameter && return :diagonal
+    task.continuation_path === :diagonal_policy_parameter && return :diagonal
     task.minimum_fraction_increment < DEFAULT_MINIMUM_FRACTION_INCREMENT && return :fine
     return :bisection
 end
@@ -189,50 +184,16 @@ function intermediate_profile(source::CERiseCGE.SensitivityProfile,
     )
 end
 
-function tax_model(profile::CERiseCGE.SensitivityProfile, bundle;
-    wedge::Real=TAX_WEDGE)
-    profile_bundle = CERiseCGE.sensitivity_bundle(profile; bundle = bundle)
-    calibration = CERiseCGE.multi_region_calibration(profile_bundle)
-    scenario = CERiseCGE.eu_wide_policy_scenario(:virgin_metal_tax, wedge;
-        bundle = profile_bundle)
-    return CERiseCGE.multi_region_model(; bundle = profile_bundle,
-        calibration = calibration, scenario = scenario)
-end
-
-function source_baseline_solution(profile::CERiseCGE.SensitivityProfile, bundle)
-    profile_bundle = CERiseCGE.sensitivity_bundle(profile; bundle = bundle)
-    calibration = CERiseCGE.multi_region_calibration(profile_bundle)
-    model = CERiseCGE.multi_region_model(; bundle = profile_bundle,
-        calibration = calibration)
-    baseline = CERiseCGE.run_baseline(model)
-    return (baseline = baseline, policy = baseline)
-end
-
-function source_tax_solution(profile::CERiseCGE.SensitivityProfile, bundle)
-    profile_bundle = CERiseCGE.sensitivity_bundle(profile; bundle = bundle)
-    calibration = CERiseCGE.multi_region_calibration(profile_bundle)
-    baseline_model = CERiseCGE.multi_region_model(; bundle = profile_bundle,
-        calibration = calibration)
-    baseline = CERiseCGE.run_baseline(baseline_model)
-    CERiseCGE._valid_policy_solution(baseline) || return (baseline = baseline, policy = nothing)
-    models = CERiseCGE.policy_sweep_models(:virgin_metal_tax;
-        bundle = profile_bundle, calibration = calibration)
-    records = CERiseCGE._run_declared_policy_points(models;
-        baseline_start_values = CERiseCGE.solution_start_values(baseline))
-    policy = only(filter(record -> CERiseCGE.policy_wedge(record.model.scenario,
-        :virgin_metal_tax) == TAX_WEDGE, records)).result
-    return (baseline = baseline, policy = policy)
-end
-
 function trace_row(target, source, key, fraction::Real, phase::Symbol, attempt::Integer,
-    model, result, elapsed_seconds::Real, continuation_path::Symbol)
+    model, result, elapsed_seconds::Real, continuation_path::Symbol, instrument::Symbol, declared_wedge::Real)
     trial_value = source.values[key] + fraction * (target.values[key] - source.values[key])
     scenario = model.scenario
     row = CERiseCGE._solvability_diagnostic_row(target, :policy, scenario.name,
-        :virgin_metal_tax, CERiseCGE.policy_wedge(scenario, :virgin_metal_tax),
+        instrument, CERiseCGE.policy_wedge(scenario, instrument),
         result, elapsed_seconds)
     return merge(row, (
         target_profile = target.name,
+        declared_wedge = Float64(declared_wedge),
         source_profile = source.name,
         continued_parameter = "$(first(key)).$(last(key))",
         source_parameter_value = source.values[key],
@@ -247,10 +208,12 @@ function trace_row(target, source, key, fraction::Real, phase::Symbol, attempt::
 end
 
 function trace_task(task)
-    completed_checkpoint(task.output_path) &&
-        (isnothing(task.summary_path) || isfile(task.summary_path)) &&
-        (isnothing(task.outcome_path) || isfile(task.outcome_path)) &&
+    checkpoint_complete(task.output_path, [point_key(task.target, task.instrument, task.wedge)],
+        isnothing(task.summary_path) ? nothing : dirname(task.summary_path),
+        isnothing(task.outcome_path) ? nothing : dirname(task.outcome_path);
+        baseline_dir=get(task, :baseline_dir, nothing)) &&
         return (target = task.target, state = :skipped)
+    mkpath(dirname(task.output_path))
     bundle = CERiseCGE.default_calibration_bundle()
     profiles = Dict(profile.name => profile for profile in CERiseCGE.sensitivity_profiles(bundle))
     target = profiles[task.target]
@@ -263,11 +226,10 @@ function trace_task(task)
             candidate_source = profiles[candidate.profile]
             try
                 candidate_run = task.continuation_path === :parameter_only ?
-                    source_tax_solution(candidate_source, bundle) :
-                    source_baseline_solution(candidate_source, bundle)
-                if CERiseCGE._valid_policy_solution(candidate_run.baseline) &&
-                   candidate_run.policy !== nothing &&
-                   CERiseCGE._valid_policy_solution(candidate_run.policy)
+                    source_policy_start(candidate_source, bundle, task.instrument, task.wedge;
+                        baseline_dir=get(task, :baseline_dir, nothing)) :
+                    source_baseline_start(candidate_source, bundle; baseline_dir=get(task, :baseline_dir, nothing))
+                if candidate_run.baseline_valid && candidate_run.policy_valid
                     source = candidate_source
                     key = parameter_key(candidate.parameter)
                     source_run = candidate_run
@@ -275,6 +237,7 @@ function trace_task(task)
                 end
                 push!(source_errors, "$(candidate.profile): no reproducible valid source path")
             catch err
+                err isa InterruptException && rethrow()
                 push!(source_errors, "$(candidate.profile): $(sprint(showerror, err))")
             end
         end
@@ -282,23 +245,21 @@ function trace_task(task)
             join(source_errors, "; ") * ").")
         rows = NamedTuple[]
         current_fraction = 0.0
-        current_result = source_run.policy
-        current_starts = CERiseCGE.solution_start_values(current_result)
+        current_starts = source_run.starts
         attempts = 0
-        direct_model = task.continuation_path === :parameter_only ?
-            tax_model(target, bundle) : tax_model(target, bundle; wedge = TAX_WEDGE)
+        direct_model = policy_model(target, bundle, task.instrument, task.wedge)
         direct_elapsed = @elapsed direct = CERiseCGE.run_policy_scenario(direct_model;
             start_values = current_starts)
         attempts += 1
         push!(rows, trace_row(target, source, key, 1.0, :direct_target, attempts,
-            direct_model, direct, direct_elapsed, task.continuation_path))
+            direct_model, direct, direct_elapsed, task.continuation_path, task.instrument, task.wedge))
         if CERiseCGE._valid_policy_solution(direct)
             !isnothing(task.summary_path) &&
                 RecoveredPolicySummary.write_summary(task.summary_path, target, bundle,
-                    direct_model, direct, summary_stage(task))
+                    direct_model, direct, summary_stage(task); baseline_dir=get(task, :baseline_dir, nothing))
             !isnothing(task.outcome_path) &&
                 RecoveredPolicyOutcome.write_outcome(task.outcome_path, target, bundle,
-                    direct_model, direct)
+                    direct_model, direct; baseline_dir=get(task, :baseline_dir, nothing))
             CERiseCGE._write_atomic_csv(task.output_path, DataFrame(rows))
             return (target = task.target, state = :recovered)
         end
@@ -306,26 +267,25 @@ function trace_task(task)
         while attempts < MAXIMUM_ATTEMPTS && step >= task.minimum_fraction_increment
             trial_fraction = min(1.0, current_fraction + step)
             profile = intermediate_profile(source, target, key, trial_fraction)
-            wedge = task.continuation_path === :parameter_only ? TAX_WEDGE :
-                TAX_WEDGE * trial_fraction
-            model = tax_model(profile, bundle; wedge = wedge)
+            wedge = task.continuation_path === :parameter_only ? task.wedge :
+                task.wedge * trial_fraction
+            model = policy_model(profile, bundle, task.instrument, wedge)
             elapsed = @elapsed result = CERiseCGE.run_policy_scenario(model;
                 start_values = current_starts)
             attempts += 1
             push!(rows, trace_row(target, source, key, trial_fraction,
                 :parameter_bisection, attempts, model, result, elapsed,
-                task.continuation_path))
+                task.continuation_path, task.instrument, task.wedge))
             if CERiseCGE._valid_policy_solution(result)
                 current_fraction = trial_fraction
-                current_result = result
                 current_starts = CERiseCGE.solution_start_values(result)
                 if isapprox(current_fraction, 1.0; atol = eps(1.0), rtol = 0.0)
                     !isnothing(task.summary_path) &&
                         RecoveredPolicySummary.write_summary(task.summary_path, target, bundle,
-                            model, result, summary_stage(task))
+                            model, result, summary_stage(task); baseline_dir=get(task, :baseline_dir, nothing))
                     !isnothing(task.outcome_path) &&
                         RecoveredPolicyOutcome.write_outcome(task.outcome_path, target, bundle,
-                            model, result)
+                            model, result; baseline_dir=get(task, :baseline_dir, nothing))
                     break
                 end
                 step = min(1.0 - current_fraction, 2.0 * step)
@@ -336,8 +296,12 @@ function trace_task(task)
         CERiseCGE._write_atomic_csv(task.output_path, DataFrame(rows))
         return (target = task.target, state = :completed)
     catch err
+        err isa InterruptException && rethrow()
         row = CERiseCGE._solvability_failure_row(target, :policy,
-            :virgin_metal_tax_0_02, :virgin_metal_tax, TAX_WEDGE, err)
+            CERiseCGE.eu_wide_policy_scenario(task.instrument, task.wedge).name,
+            task.instrument, task.wedge, err)
+        row = merge(row, (target_profile=target.name, declared_wedge=task.wedge,
+            trial_fraction=missing, trial_accepted=false))
         CERiseCGE._write_atomic_csv(task.output_path, DataFrame([row]))
         return (target = task.target, state = :error)
     end
@@ -365,14 +329,14 @@ function main()
         minimum_fraction_increment = options.minimum_fraction_increment,
         continuation_path = options.continuation_path,
         summary_dir = options.summary_dir)
-    tasks = [merge(task, (outcome_path = isnothing(options.outcome_dir) ? nothing :
-        joinpath(options.outcome_dir, "$(task.target).csv"),)) for task in tasks]
-    pending = filter(task -> !completed_checkpoint(task.output_path) ||
-        (!isnothing(task.summary_path) && !isfile(task.summary_path)) ||
-        (!isnothing(task.outcome_path) && !isfile(task.outcome_path)), tasks)
-    println("Remaining tax profiles: ", length(tasks))
+    tasks = [merge(task, (baseline_dir=options.baseline_dir, outcome_path = isnothing(options.outcome_dir) ? nothing :
+        point_file(options.outcome_dir, task.target, task.instrument, task.wedge),)) for task in tasks]
+    pending = filter(task -> !checkpoint_complete(task.output_path,
+        [point_key(task.target, task.instrument, task.wedge)], options.summary_dir, options.outcome_dir;
+        baseline_dir=options.baseline_dir), tasks)
+    println("Remaining policy points: ", length(tasks))
     println("Completed checkpoints: ", length(tasks) - length(pending))
-    println("Pending profiles: ", length(pending))
+    println("Pending policy points: ", length(pending))
     println("Workers: ", options.workers)
     println("Checkpoint directory: ", directory)
     flush(stdout)
@@ -381,11 +345,11 @@ function main()
         return nothing
     end
     mkpath(directory)
-    start_workers(options.workers)
-    isempty(pending) || (options.workers == 1 ? map(trace_task, pending) : pmap(trace_task, pending))
-    tables = DataFrame[CSV.read(task.output_path, DataFrame) for task in tasks]
-    combined = vcat(tables...; cols = :union)
-    CERiseCGE._write_atomic_csv(options.output_file, combined)
+    if !isempty(pending)
+        start_workers(options.workers)
+        options.workers == 1 ? map(trace_task, pending) : pmap(trace_task, pending)
+    end
+    combined = PolicyRecovery.combine_checkpoints([task.output_path for task in tasks], options.output_file)
     println("Wrote ", nrow(combined), " parameter-bisection rows to ", options.output_file)
 end
 

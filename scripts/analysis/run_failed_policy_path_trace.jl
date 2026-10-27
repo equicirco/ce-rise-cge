@@ -18,6 +18,8 @@ using DataFrames
 using Distributed
 using JuMP
 using CERiseCGE
+include(joinpath(@__DIR__, "policy_recovery.jl"))
+using .PolicyRecovery: point_key, point_file, checkpoint_complete
 
 include(joinpath(@__DIR__, "recovered_policy_summary.jl"))
 using .RecoveredPolicySummary
@@ -28,7 +30,6 @@ const ROOT_DIR = normpath(joinpath(@__DIR__, "..", ".."))
 const DEFAULT_INPUT_FILE = joinpath(ROOT_DIR, "results", "policy_sensitivity_grid.csv")
 const DEFAULT_OUTPUT_FILE = joinpath(ROOT_DIR, "results", "predictor_trace.csv")
 const DEFAULT_WORKERS = 6
-const TAX_WEDGE = 0.02
 
 function command_options(args)
     input_file = DEFAULT_INPUT_FILE
@@ -38,6 +39,7 @@ function command_options(args)
     predictor = false
     summary_dir = nothing
     outcome_dir = nothing
+    baseline_dir = nothing
     dry_run = false
     index = 1
     while index <= length(args)
@@ -64,18 +66,21 @@ function command_options(args)
         elseif args[index] == "--outcome-dir" && index < length(args)
             outcome_dir = normpath(joinpath(ROOT_DIR, args[index + 1]))
             index += 2
+        elseif args[index] == "--baseline-dir" && index < length(args)
+            baseline_dir = normpath(joinpath(ROOT_DIR, args[index + 1]))
+            index += 2
         elseif args[index] == "--dry-run"
             dry_run = true
             index += 1
         else
             error("Usage: julia --project=. scripts/analysis/run_failed_policy_path_trace.jl " *
                 "[--input PATH] [--output PATH] [--workers N] [--limit N] [--predictor] " *
-                "[--summary-dir PATH] [--outcome-dir PATH] [--dry-run]")
+                "[--summary-dir PATH] [--outcome-dir PATH] [--baseline-dir PATH] [--dry-run]")
         end
     end
     return (input_file=input_file, output_file=output_file, workers=workers,
         limit=limit, predictor=predictor, summary_dir=summary_dir,
-        outcome_dir=outcome_dir, dry_run=dry_run)
+        outcome_dir=outcome_dir, baseline_dir=baseline_dir, dry_run=dry_run)
 end
 
 checkpoint_dir(output_file::AbstractString) = joinpath(dirname(output_file),
@@ -112,6 +117,29 @@ function _baseline_row(profile, result, elapsed_seconds::Real)
     ))
 end
 
+function _policy_attempt(profile, model, phase, instrument, declared_wedge, source_wedge,
+    attempt; start_values, runner=CERiseCGE.run_policy_scenario)
+    result = nothing
+    failure = nothing
+    elapsed = @elapsed try
+        result = runner(model; start_values)
+    catch err
+        err isa InterruptException && rethrow()
+        failure = err
+    end
+    trial_wedge = CERiseCGE.policy_wedge(model.scenario, instrument)
+    row = if failure === nothing
+        _trace_row(profile, phase, instrument, declared_wedge, source_wedge, trial_wedge,
+            attempt, model.scenario.name, result, elapsed)
+    else
+        merge(CERiseCGE._solvability_failure_row(profile, phase, model.scenario.name,
+            instrument, trial_wedge, failure), (declared_wedge=Float64(declared_wedge),
+            source_wedge=Float64(source_wedge), trial_wedge=Float64(trial_wedge),
+            continuation_phase=phase, attempt=Int(attempt), trial_accepted=false))
+    end
+    return (result=result, row=row)
+end
+
 """Trace one declared policy path using the same adaptive-continuation logic as the sweep."""
 function _predictor_start_values(result, prior_starts::AbstractDict{Symbol,<:Real},
     fraction::Real)
@@ -135,33 +163,32 @@ function _predictor_start_values(result, prior_starts::AbstractDict{Symbol,<:Rea
     return predicted
 end
 
-function trace_declared_policy_path(profile, models, baseline_result; predictor::Bool=false)
+function trace_declared_policy_path(profile, models, baseline_result; predictor::Bool=false,
+    baseline_start_values=nothing)
     instrument = CERiseCGE._validate_policy_path(models)
     source_strength = 0.0
-    source_starts = CERiseCGE.solution_start_values(baseline_result)
+    source_starts = baseline_start_values === nothing ? CERiseCGE.solution_start_values(baseline_result) : baseline_start_values
     source_result = baseline_result
     prior_strength = nothing
     prior_starts = nothing
     rows = NamedTuple[]
-    endpoint = nothing
+    endpoints = NamedTuple[]
 
     for model in models
         target_wedge = CERiseCGE.policy_wedge(model.scenario, instrument)
         target_strength = abs(target_wedge)
-        direct_elapsed = @elapsed direct_result = CERiseCGE.run_policy_scenario(model;
-            start_values=source_starts)
-        push!(rows, _trace_row(profile, :direct_target, instrument, target_wedge,
-            sign(target_wedge) * source_strength, target_wedge, 1,
-            model.scenario.name, direct_result, direct_elapsed))
+        direct = _policy_attempt(profile, model, :direct_target, instrument, target_wedge,
+            sign(target_wedge) * source_strength, 1; start_values=source_starts)
+        direct_result = direct.result
+        push!(rows, direct.row)
 
-        if CERiseCGE._valid_policy_solution(direct_result)
+        if direct.row.trial_accepted
             prior_strength = source_strength
             prior_starts = source_starts
             source_strength = target_strength
             source_starts = CERiseCGE.solution_start_values(direct_result)
             source_result = direct_result
-            isapprox(target_strength, TAX_WEDGE; atol=eps(TAX_WEDGE), rtol=0.0) &&
-                (endpoint = (model = model, result = direct_result))
+            push!(endpoints, (model=model, result=direct_result))
             continue
         end
 
@@ -179,13 +206,12 @@ function trace_declared_policy_path(profile, models, baseline_result; predictor:
             trial_model = isapprox(trial_strength, target_strength;
                 atol=eps(target_strength), rtol=0.0) ?
                 model : CERiseCGE._policy_continuation_model(model, instrument, trial_wedge)
-            trial_elapsed = @elapsed trial_result = CERiseCGE.run_policy_scenario(trial_model;
-                start_values=starts)
             attempts += 1
-            valid = CERiseCGE._valid_policy_solution(trial_result)
-            push!(rows, _trace_row(profile, :continuation_trial, instrument,
-                target_wedge, sign(target_wedge) * current_strength, trial_wedge,
-                attempts, trial_model.scenario.name, trial_result, trial_elapsed))
+            trial = _policy_attempt(profile, trial_model, :continuation_trial, instrument,
+                target_wedge, sign(target_wedge) * current_strength, attempts; start_values=starts)
+            trial_result = trial.result
+            valid = trial.row.trial_accepted
+            push!(rows, trial.row)
             if valid
                 prior_strength = current_strength
                 prior_starts = starts
@@ -197,8 +223,7 @@ function trace_declared_policy_path(profile, models, baseline_result; predictor:
                     accepted_target = true
                     source_strength = current_strength
                     source_starts = starts
-                    isapprox(current_strength, TAX_WEDGE; atol=eps(TAX_WEDGE), rtol=0.0) &&
-                        (endpoint = (model = model, result = current_result))
+                    push!(endpoints, (model=model, result=current_result))
                     break
                 end
                 step = min(target_strength - current_strength, 2.0 * step)
@@ -211,31 +236,30 @@ function trace_declared_policy_path(profile, models, baseline_result; predictor:
             fraction = (target_strength - current_strength) /
                 (current_strength - prior_strength)
             predictor_starts = _predictor_start_values(current_result, prior_starts, fraction)
-            predictor_elapsed = @elapsed predictor_result = CERiseCGE.run_policy_scenario(model;
-                start_values=predictor_starts)
             attempts += 1
-            push!(rows, _trace_row(profile, :predictor_target, instrument,
-                target_wedge, sign(target_wedge) * current_strength, target_wedge,
-                attempts, model.scenario.name, predictor_result, predictor_elapsed))
-            if CERiseCGE._valid_policy_solution(predictor_result)
+            predicted = _policy_attempt(profile, model, :predictor_target, instrument,
+                target_wedge, sign(target_wedge) * current_strength, attempts; start_values=predictor_starts)
+            predictor_result = predicted.result
+            push!(rows, predicted.row)
+            if predicted.row.trial_accepted
                 source_strength = target_strength
                 source_starts = CERiseCGE.solution_start_values(predictor_result)
                 source_result = predictor_result
-                isapprox(target_strength, TAX_WEDGE; atol=eps(TAX_WEDGE), rtol=0.0) &&
-                    (endpoint = (model = model, result = predictor_result))
+                push!(endpoints, (model=model, result=predictor_result))
             end
         end
         accepted_target || nothing
     end
-    return (trace = DataFrame(rows), endpoint = endpoint)
+    return (trace=DataFrame(rows), endpoints=endpoints)
 end
 
 function run_failure_path(task)
     profile_name = Symbol(task.profile)
     instrument = Symbol(task.instrument)
     output_path = String(task.output_path)
-    isfile(output_path) && (isnothing(task.summary_path) || isfile(task.summary_path)) &&
-        (isnothing(task.outcome_path) || isfile(task.outcome_path)) && return (
+    requested = [point_key(profile_name, instrument, wedge) for wedge in task.wedges]
+    checkpoint_complete(output_path, requested, task.summary_dir, task.outcome_dir;
+        baseline_dir=get(task, :baseline_dir, nothing)) && return (
         profile = profile_name,
         instrument = instrument,
         output_path = output_path,
@@ -249,22 +273,45 @@ function run_failure_path(task)
     calibration = CERiseCGE.multi_region_calibration(profile_bundle)
     baseline_model = CERiseCGE.multi_region_model(; bundle=profile_bundle,
         calibration=calibration)
-    baseline_elapsed = @elapsed baseline_result = CERiseCGE.run_baseline(baseline_model)
-    rows = NamedTuple[_baseline_row(profile, baseline_result, baseline_elapsed)]
-    if CERiseCGE._valid_policy_solution(baseline_result)
+    baseline_result = nothing
+    baseline_error = nothing
+    saved = CERiseCGE._load_policy_baseline(profile, baseline_model, get(task, :baseline_dir, nothing))
+    baseline_elapsed = @elapsed try
+        if saved === nothing
+        baseline_result = CERiseCGE.run_baseline(baseline_model)
+        end
+    catch err
+        err isa InterruptException && rethrow()
+        baseline_error = err
+    end
+    baseline_row = saved !== nothing ?
+        (sensitivity_profile=profile.name, stage=:baseline, scenario=:baseline, instrument=missing,
+            wedge=0.0, declared_wedge=0.0, source_wedge=0.0, trial_wedge=0.0,
+            continuation_phase=:baseline, attempt=0, trial_accepted=true, solver_valid=true,
+            solver_elapsed_seconds=0.0, cached_reference=true) :
+        baseline_error === nothing ? _baseline_row(profile, baseline_result, baseline_elapsed) :
+        merge(CERiseCGE._solvability_failure_row(profile, :baseline, :baseline, missing, 0.0, baseline_error),
+            (declared_wedge=0.0, source_wedge=0.0, trial_wedge=0.0, continuation_phase=:baseline,
+                attempt=1, trial_accepted=false))
+    rows = NamedTuple[baseline_row]
+    if saved !== nothing || (baseline_result !== nothing && CERiseCGE._valid_policy_solution(baseline_result))
         models = CERiseCGE.policy_sweep_models(instrument; bundle=profile_bundle,
             calibration=calibration)
         traced = trace_declared_policy_path(profile, models, baseline_result;
-            predictor=task.predictor)
+            predictor=task.predictor, baseline_start_values=saved === nothing ? nothing : saved.starts)
         for row in eachrow(traced.trace)
             push!(rows, NamedTuple(row))
         end
-        !isnothing(task.summary_path) && !isnothing(traced.endpoint) &&
-            RecoveredPolicySummary.write_summary(task.summary_path, profile, bundle,
-                traced.endpoint.model, traced.endpoint.result, :predictor)
-        !isnothing(task.outcome_path) && !isnothing(traced.endpoint) &&
-            RecoveredPolicyOutcome.write_outcome(task.outcome_path, profile, bundle,
-                traced.endpoint.model, traced.endpoint.result)
+        for endpoint in traced.endpoints
+            wedge = CERiseCGE.policy_wedge(endpoint.model.scenario, instrument)
+            wedge in task.wedges || continue
+            !isnothing(task.summary_dir) && RecoveredPolicySummary.write_summary(
+                point_file(task.summary_dir, profile_name, instrument, wedge), profile, bundle,
+                endpoint.model, endpoint.result, :predictor; baseline_dir=get(task, :baseline_dir, nothing))
+            !isnothing(task.outcome_dir) && RecoveredPolicyOutcome.write_outcome(
+                point_file(task.outcome_dir, profile_name, instrument, wedge), profile, bundle,
+                endpoint.model, endpoint.result; baseline_dir=get(task, :baseline_dir, nothing))
+        end
     end
     table = DataFrame(rows)
     mkpath(dirname(output_path))
@@ -281,23 +328,24 @@ function failed_path_tasks(input_file::AbstractString, directory::AbstractString
     limit::Union{Nothing,Int}=nothing)
     isfile(input_file) || error("Completed sweep input is missing: $(input_file)")
     table = CSV.read(input_file, DataFrame)
-    required = Set([:sensitivity_profile, :instrument, :solver_valid])
+    required = Set([:sensitivity_profile, :instrument, :wedge, :solver_valid])
     required ⊆ Set(Symbol.(names(table))) || error("Input sweep has no recognised diagnostic columns.")
     is_diagnostic = :stage in Symbol.(names(table))
     failed = filter(row ->
-        (!is_diagnostic || String(row.stage) == "policy") && !row.solver_valid,
+        (!is_diagnostic || String(row.stage) == "policy") && !coalesce(row.solver_valid, false),
         eachrow(table))
     pairs = sort!(unique([(Symbol(row.sensitivity_profile), Symbol(row.instrument))
         for row in failed]); by = item -> (String(first(item)), String(last(item))))
     limit === nothing || (pairs = first(pairs, min(limit, length(pairs))))
     return [(profile=profile, instrument=instrument,
+        wedges=sort!(unique(Float64[row.wedge for row in failed
+            if Symbol(row.sensitivity_profile) === profile && Symbol(row.instrument) === instrument]); by=abs),
         output_path=checkpoint_path(directory, profile, instrument))
         for (profile, instrument) in pairs]
 end
 
 function combine_checkpoints(tasks, output_file::AbstractString)
-    tables = DataFrame[CSV.read(task.output_path, DataFrame) for task in tasks]
-    combined = vcat(tables...; cols=:union)
+    combined = PolicyRecovery.combine_checkpoints([task.output_path for task in tasks], output_file)
     sort!(combined, [:sensitivity_profile, :instrument, :declared_wedge,
         :attempt, :trial_wedge])
     CERiseCGE._write_atomic_csv(output_file, combined)
@@ -322,16 +370,19 @@ function main()
     options = command_options(ARGS)
     directory = checkpoint_dir(options.output_file)
     tasks = failed_path_tasks(options.input_file, directory; limit=options.limit)
+    if options.baseline_dir !== nothing
+        filter!(task -> CERiseCGE._checkpoint_files_valid(
+            CERiseCGE._baseline_paths(options.baseline_dir, task.profile).manifest), tasks)
+    end
     tasks = [merge(task, (
         predictor=options.predictor,
-        summary_path=isnothing(options.summary_dir) ? nothing :
-        joinpath(options.summary_dir, "$(task.profile).csv"),
-        outcome_path=isnothing(options.outcome_dir) ? nothing :
-        joinpath(options.outcome_dir, "$(task.profile).csv"),
+        summary_dir=options.summary_dir,
+        outcome_dir=options.outcome_dir,
+        baseline_dir=options.baseline_dir,
     )) for task in tasks]
-    pending = filter(task -> !isfile(task.output_path) ||
-        (!isnothing(task.summary_path) && !isfile(task.summary_path)) ||
-        (!isnothing(task.outcome_path) && !isfile(task.outcome_path)), tasks)
+    pending = filter(task -> !checkpoint_complete(task.output_path,
+        [point_key(task.profile, task.instrument, wedge) for wedge in task.wedges],
+        task.summary_dir, task.outcome_dir; baseline_dir=options.baseline_dir), tasks)
     println("Failed profile--instrument paths: ", length(tasks))
     println("Completed checkpoints: ", length(tasks) - length(pending))
     println("Pending paths: ", length(pending))
@@ -341,8 +392,8 @@ function main()
         println("Dry run completed; no diagnostics were written.")
         return nothing
     end
-    _start_workers(options.workers)
     if !isempty(pending)
+        _start_workers(options.workers)
         println("Tracing pending paths with ", options.workers, " worker process(es).")
         flush(stdout)
         options.workers == 1 ? map(run_failure_path, pending) :

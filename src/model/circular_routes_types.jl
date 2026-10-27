@@ -15,4 +15,5 @@ struct CircularRouteCalibration
     eol_allocation_elasticity::Float64
     eol_productivity_elasticity::Float64
     service_elasticity::Float64
+    consumption_elasticity::Float64
 end

@@ -16,6 +16,7 @@ JCGECore = "9fb9d605-0ed3-4980-82c1-f0874844db5d"
 JCGEOutput = "d375a7b0-530a-4732-94fc-3dc39a3a1ffd"
 JCGERuntime = "cc244198-1562-43f7-ad75-589e1d675269"
 JuMP = "4076af6c-e467-56ae-b986-b466b2749572"
+SHA = "ea8e919c-243c-51af-8825-aaa63cd721ce"
 
 [compat]
 CSV = "0.10"
